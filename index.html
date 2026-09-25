@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
 <style>
   :root {
     --paper: #0c0f25; --panel: #121638; --ink: #e8ebf8; --ink-2: #9ea6cc; --rule: #262c55;
@@ -33,7 +34,9 @@
   @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
   .stage { position: relative; width: 100%; background: var(--stage-edge); padding: 6px; box-sizing: border-box; display: grid; place-items: center; outline: none;
     clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)); }
-  #cv { display: block; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; }
+  .screen { position: relative; line-height: 0; max-width: 100%; }
+  #cv { display: block; position: relative; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; }
+  #gl { display: block; position: absolute; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; }
   .pad { display: none; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; }
   @media (pointer: coarse) { .pad { display: flex; } }
   .pad .grp { display: flex; gap: 6px; }
@@ -64,7 +67,7 @@
   <div class="layout">
     <section aria-label="遊戲畫面">
       <div class="stage" id="stage" tabindex="0" aria-label="格鬥遊戲畫面，用鍵盤操作">
-        <canvas id="cv" width="960" height="540"></canvas>
+        <div class="screen"><canvas id="gl" width="480" height="270" aria-hidden="true"></canvas><canvas id="cv" width="960" height="540"></canvas></div>
       </div>
       <div class="pad" aria-label="觸控操作">
         <div class="grp"><button type="button" data-hold="left" aria-label="左">◀</button><button type="button" data-hold="down" aria-label="下">▼</button><button type="button" data-hold="right" aria-label="右">▶</button></div>
@@ -80,6 +83,7 @@
           <dt><kbd>↓</kbd></dt><dd>蹲下；↓Z 屈み義手、↓X 足払い（下段，要蹲防）</dd>
           <dt><kbd>Z</kbd> <kbd>X</kbd></dt><dd>Z 義手連段：ジャブ→ストレート→横薙ぎ→ハイキック；X 刀連段：袈裟斬→刺突→回天斬（兩條連段可互接）。貼身按 →+X＝投げ</dd>
           <dt><kbd>C</kbd></dt><dd>居合・一閃；↓C＝義手砲（光彈）。連段中可取消</dd>
+          <dt><kbd>G</kbd></dt><dd>切換 WebGL（three.js：視差、發光、鏡頭）／2D 畫布</dd>
           <dt><kbd>Enter</kbd></dt><dd>開始／決定　<kbd>P</kbd> 暫停　<kbd>M</kbd> 音效</dd>
         </dl>
       </div>
@@ -117,5 +121,10 @@
 <script src="src/anims.js"></script>
 <script src="src/stage.js"></script>
 <script src="src/game.js"></script>
+<script type="module">
+  // three.js render layer (src/gl.js); the game falls back to the 2D canvas when this cannot load
+  import { createGL } from './src/gl.js';
+  window.createGL = createGL;
+</script>
 </body>
 </html>

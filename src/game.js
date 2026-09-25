@@ -62,7 +62,11 @@
     for (let i = 0; i < b.c.length; i++) if (sil[i]) sh[i] = inkc;
     const shL = new Uint32Array(sh.length);
     for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) shL[y * b.w + (b.w - 1 - x)] = sh[y * b.w + x];
-    e = { R: toCanvas(b.c, b.w, b.h), L: toCanvas(fl.c, fl.w, fl.h), GR: toCanvas(sil, b.w, b.h), GL: toCanvas(silL, b.w, b.h), SR: toCanvas(sh, b.w, b.h), SL: toCanvas(shL, b.w, b.h) };
+    const fxc = new Uint32Array(b.c.length); let anyFx = false;
+    for (let i = 0; i < b.c.length; i++) if (b.c[i] && (b.f[i] & 2)) { fxc[i] = b.c[i]; anyFx = true; }
+    let FR = null, FL = null;
+    if (anyFx) { const fxl = new Uint32Array(fxc.length); for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) fxl[y * b.w + (b.w - 1 - x)] = fxc[y * b.w + x]; FR = toCanvas(fxc, b.w, b.h); FL = toCanvas(fxl, b.w, b.h); }
+    e = { R: toCanvas(b.c, b.w, b.h), L: toCanvas(fl.c, fl.w, fl.h), GR: toCanvas(sil, b.w, b.h), GL: toCanvas(silL, b.w, b.h), SR: toCanvas(sh, b.w, b.h), SL: toCanvas(shL, b.w, b.h), FR, FL };
     cache.set(key, e);
     return e;
   }
@@ -611,6 +615,7 @@
     if (e.target.closest && e.target.closest('input, textarea, select')) return;
     ensureAudio();
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === 'g' && !e.repeat && glc) { wantGL = !wantGL; if (!wantGL) gl = null; glc.style.display = wantGL ? '' : 'none'; }
     const m = KEYS[k];
     if (m) { e.preventDefault(); if (!held[m[0]][m[1]]) { uiPress = uiPress || { slot: m[0], key: m[1] }; stick[m[0]][m[1]] = true; } held[m[0]][m[1]] = true; }
     if (e.key === 'Enter') { e.preventDefault(); uiPress = { slot: 0, key: 'start' }; }
@@ -679,6 +684,14 @@
   // ------------------------------------------------------------ drawing
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
+  const glc = document.getElementById('gl');
+  let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
+  function initGL() {
+    if (gl || !wantGL || !window.createGL) return;
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35 }); }
+    catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
+  }
+  function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
   const low = document.createElement('canvas'); low.width = VW; low.height = VH;
   const lx = low.getContext('2d');
   const BG = STAGE.paint();
@@ -693,6 +706,7 @@
     scale = fill ? intScale : Math.max(1, (availCss * dpr) / VW);
     cv.width = Math.round(VW * scale); cv.height = Math.round(VH * scale);
     cv.style.width = (cv.width / dpr) + 'px'; cv.style.height = (cv.height / dpr) + 'px';
+    if (glc) { glc.style.width = cv.style.width; glc.style.height = cv.style.height; }
   }
   window.addEventListener('resize', fit);
   if (window.ResizeObserver) new ResizeObserver(fit).observe(holder);
@@ -725,34 +739,41 @@
     return (batImgs[key] = toCanvas(buf.c, buf.w, buf.h));
   }
 
-  function drawFighter(f, camX) {
+  // ------------------------------------------------------------ world draw list
+  // Both renderers consume the same list (screen pixels, camera applied, y down): draw2D() executes it on the
+  // low canvas, src/gl.js turns it into textured planes in a three.js scene.
+  function fighterList(list, f, camX) {
     const an = A(f)[f.anim], fr = cur(f);
     const S = f.C.R.SIZE;
     const img = frameImg(f, an, f.fi);
     const lift = f.y + (fr.lift || 0);
     const sx = Math.round(f.x - camX), sy = Math.round(G - lift);
     const oxL = S.w - 1 - S.ox;
-    // shadow on the ground
+    const right = f.face > 0;
     if (!fr.pose.hidden) {
-      const w = Math.max(11, 22 - f.y * 0.15);
-      lx.fillStyle = 'rgba(4,6,20,0.55)';
-      for (let r = 0; r < 5; r++) { const ww = Math.round(w - Math.abs(r - 2) * 3); lx.fillRect(sx - ww, G - 2 + r, ww * 2, 1); }
-      if (lift >= 0) { lx.save(); lx.globalAlpha = 0.35; lx.setTransform(1, 0, -f.face * 0.5, -0.07, Math.round(sx - (f.face > 0 ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07); lx.drawImage(f.face > 0 ? img.SR : img.SL, 0, 0); lx.restore(); }
+      list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(11, 22 - f.y * 0.15) });
+      if (lift >= 0) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - (right ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07], a: 0.35 });
     }
-    // afterimages
     for (const g of f.trail) {
       const age = (sim.t - g.t) / 200;
       if (age >= 1) continue;
-      const gi = (() => { const key = f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask; const e = cache.get(key); return e; })();
+      const gi = cache.get(f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask);
       if (!gi) continue;
-      lx.globalAlpha = 0.4 * (1 - age);
-      lx.drawImage(g.face > 0 ? gi.GR : gi.GL, Math.round(g.x - camX - (g.face > 0 ? S.ox : oxL)), Math.round(G - g.y - S.oy));
-      lx.globalAlpha = 1;
+      list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? S.ox : oxL)), y: Math.round(G - g.y - S.oy), a: 0.4 * (1 - age) });
     }
     f.trail = f.trail.filter((g) => sim.t - g.t < 200);
-    lx.drawImage(f.face > 0 ? img.R : img.L, sx - (f.face > 0 ? S.ox : oxL), sy - S.oy);
-    if (f.flashT > 0 && f.flashT % 2 === 0) { lx.globalCompositeOperation = 'source-atop'; lx.fillStyle = 'rgba(255,255,255,0.0)'; lx.globalCompositeOperation = 'source-over'; }
+    list.push({ k: 'img', img: right ? img.R : img.L, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, fx: right ? img.FR : img.FL, refl: !fr.pose.hidden });
   }
+  function draw2D(list) {
+    for (const it of list) {
+      if (it.k === 'blob') { lx.fillStyle = 'rgba(4,6,20,0.55)'; for (let r = 0; r < 5; r++) { const ww = Math.round(it.w - Math.abs(r - 2) * 3); lx.fillRect(it.x - ww, it.y + r, ww * 2, 1); } }
+      else if (it.k === 'skew') { lx.save(); lx.globalAlpha = it.a; lx.transform(...it.m); lx.drawImage(it.img, 0, 0); lx.restore(); }
+      else if (it.k === 'img') { lx.globalAlpha = it.a; lx.drawImage(it.img, it.x, it.y); lx.globalAlpha = 1; }
+      else if (it.k === 'rect') { lx.fillStyle = it.col; lx.fillRect(it.x, it.y, it.w, it.h); }
+      else if (it.k === 'ring') { lx.strokeStyle = it.col; lx.globalAlpha = it.a; lx.beginPath(); lx.arc(it.x, it.y, it.r, 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; }
+    }
+  }
+  function drawFighter(f, camX) { const list = []; fighterList(list, f, camX); draw2D(list); }
 
   function bar(x, y, w, h, frac, col, back, right) {
     lx.fillStyle = '#05060f'; lx.fillRect(x - 1, y - 1, w + 2, h + 2);
@@ -801,24 +822,37 @@
     }
   }
 
-  function drawWorld() {
-    const camX = Math.round(sim.camX);
-    const sx = sim.shake > 0.2 ? Math.round((rnd() * 2 - 1) * sim.shake) : 0, sy = sim.shake > 0.2 ? Math.round((rnd() * 2 - 1) * sim.shake * 0.5) : 0;
-    lx.setTransform(1, 0, 0, 1, sx, sy);
-    lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
-    lx.drawImage(NEAR, -camX, 0);
+  function worldList(camX) {
+    const list = [];
     const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
-    for (const f of fs) drawFighter(f, camX);
+    for (const f of fs) fighterList(list, f, camX);
     for (const p of sim.projs) {
       if (p.dead) continue;
-      if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t); lx.drawImage(im, Math.round(p.x - camX - im.width / 2), Math.round(G - p.y - im.height / 2)); continue; }
-      lx.drawImage(batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), Math.round(p.x - camX - 12), Math.round(G - p.y - 7));
+      if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t); list.push({ k: 'img', img: im, x: Math.round(p.x - camX - im.width / 2), y: Math.round(G - p.y - im.height / 2), a: 1, glow: true }); continue; }
+      list.push({ k: 'img', img: batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), x: Math.round(p.x - camX - 12), y: Math.round(G - p.y - 7), a: 1 });
     }
     for (const p of sim.particles) {
-      if (p.ring) { lx.strokeStyle = p.col; lx.globalAlpha = p.life / 12; lx.beginPath(); lx.arc(p.x - camX, p.y, p.r * (1.6 - p.life / 12), 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; continue; }
-      lx.fillStyle = p.col; lx.fillRect(Math.round(p.x - camX), Math.round(p.y), p.size || 1, p.size || 1);
+      if (p.ring) { list.push({ k: 'ring', x: p.x - camX, y: p.y, r: p.r * (1.6 - p.life / 12), col: p.col, a: p.life / 12 }); continue; }
+      list.push({ k: 'rect', x: Math.round(p.x - camX), y: Math.round(p.y), w: p.size || 1, h: p.size || 1, col: p.col });
     }
+    return list;
+  }
+  function drawWorld() {
+    const camX = Math.round(sim.camX);
+    const shake = sim.shake > 0.2 ? [Math.round((rnd() * 2 - 1) * sim.shake), Math.round((rnd() * 2 - 1) * sim.shake * 0.5)] : [0, 0];
+    const list = worldList(camX);
+    initGL();
     lx.setTransform(1, 0, 0, 1, 0, 0);
+    if (gl) {
+      gl.render({ camX, list, shake, zoom: koZoom() });
+      lx.clearRect(0, 0, VW, VH);
+    } else {
+      lx.setTransform(1, 0, 0, 1, shake[0], shake[1]);
+      lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
+      lx.drawImage(NEAR, -camX, 0);
+      draw2D(list);
+      lx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     if (sim.phase !== 'title' && sim.phase !== 'select') hudPixels();
   }
 
@@ -918,7 +952,7 @@
     if (sim.phase === 'result' || sim.phase === 'end') { for (const f of sim.fighters) { animate(f); physics(f); } for (const p of sim.particles) { p.life--; if (!p.ring) { p.x += p.vx; p.y += p.vy; p.vy += p.g || 0; } } sim.particles = sim.particles.filter((p) => p.life > 0); for (const t of sim.texts) t.t -= dt; sim.texts = sim.texts.filter((t) => t.t > 0); }
     drawWorld();
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (gl) ctx.clearRect(0, 0, cv.width, cv.height); else { ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height); }
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
     drawHudText();
     requestAnimationFrame(frame);
