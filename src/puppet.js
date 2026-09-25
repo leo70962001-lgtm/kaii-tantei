@@ -141,7 +141,7 @@
     push(P.hairB2, hang(P.hairB2, apply(m1, P.hairB1.tip), sway * 1.1 + lag * 1.7));
     push(P.uArmF, span(P.uArmF, J.shF, J.eF));
     push(P.fArmF, span(P.fArmF, J.eF, J.hF));
-    push(P.handF, hang(P.handF, J.hF, 0));
+    { const fa = Math.atan2(J.hF[1] - J.eF[1], J.hF[0] - J.eF[0]) - Math.atan2(P.fArmF.tip[1] - P.fArmF.pivot[1], P.fArmF.tip[0] - P.fArmF.pivot[0]); push(P.handF, hang(P.handF, J.hF, P.handF.res > 1 ? fa : 0)); }
     // sword layers: 'back' behind both legs, 'mid' between them (the picture: in front of the back leg, behind
     // the chrome leg), 'front' over everything; the back (boot) leg is drawn first, the chrome leg over it
     if (drawSword && p.swordLayer === 'back') push(swordPart, hang(swordPart, J.hF, swordAng));

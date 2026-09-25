@@ -139,7 +139,7 @@ add('hairB1', (27, 18, 47, 41), (28, 22), tip=(35, 40), keep=lambda x, y, p: hai
 add('hairB2', (27, 38, 47, 64), (35, 40), keep=lambda x, y, p: hair(p) and not (43 <= y <= 59 and abs(x - (44 - (y - 44) * 0.5)) <= 2.2), ncol=4)
 # torso: collar, sailor top, scarf, midriff — the steel arm, its sleeve and the back hair are not part of it
 add('torso', (7, 21, 34, 50), (20, 50),
-    clear=lambda x, y, p: (x <= 19 and y >= 40 and chrome(p)) or (x <= 18 and 26 <= y <= 47 and not (x >= 14 and y <= 27) and not hair(p)) or (x >= 32 and y >= 44 and skin(p)),
+    clear=lambda x, y, p: (x <= 19 and y >= 40 and chrome(p)) or (x <= 18 and 26 <= y <= 47 and not (x >= 14 and y <= 27) and not hair(p)) or (x >= 32 and y >= 44 and skin(p)) or (x >= 27 and 26 <= y <= 37 and white(p)),
     inpaint=lambda x, y, p: p[3] == 0 and x <= 18 and 27 <= y <= 46 and x >= 12, ncol=None)
 # skirt over the hips
 add('skirt', (7, 47, 37, 72), (20, 50),
@@ -196,6 +196,32 @@ for name, blade in (('sword', 56), ('swordShort', 22), ('hilt', 0)):
     im = katana(blade); im.save('part_%s.png' % name)
     parts[name] = {'w': im.width, 'h': im.height, 'd': base64.b64encode(im.tobytes()).decode('ascii'), 'pivot': [11, 3], 'name': name}
     if blade: parts[name]['tip'] = [im.width - 2, 3]
+
+# ---- far forearm + hand: the drawn skin arm of the component sheet (ref/jkp_c_native4.png, side view, 1.4:1)
+from collections import Counter
+def shrink(im, f):
+    px = im.load(); w, h = im.size; W, H = max(1, round(w / f)), max(1, round(h / f))
+    out = Image.new('RGBA', (W, H), (0, 0, 0, 0)); o = out.load()
+    for Y in range(H):
+        for X in range(W):
+            x0, x1 = int(X * f), max(int(X * f) + 1, int((X + 1) * f)); y0, y1 = int(Y * f), max(int(Y * f) + 1, int((Y + 1) * f))
+            cols = [px[x, y][:3] for y in range(y0, min(h, y1)) for x in range(x0, min(w, x1)) if px[x, y][3]]
+            if len(cols) * 2 >= (min(h, y1) - y0) * (min(w, x1) - x0): o[X, Y] = Counter(cols).most_common(1)[0][0] + (255,)
+    return out
+CS = Image.open('jkp_c_native4.png').convert('RGBA'); cpx = CS.load()
+def cgrab(box):
+    x0, y0, x1, y1 = box; im = Image.new('RGBA', (x1 - x0 + 1, y1 - y0 + 1), (0, 0, 0, 0)); o = im.load()
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            p = cpx[x, y]
+            if max(p[:3]) >= 14: o[x - x0, y - y0] = p[:3] + (255,)
+    return im
+fa = shrink(cgrab((36, 227, 46, 251)), 1.4); polish(fa)
+parts['fArmF'] = {'w': fa.width, 'h': fa.height, 'd': base64.b64encode(fa.tobytes()).decode('ascii'), 'pivot': [round((41 - 36) / 1.4), round((229 - 227) / 1.4)], 'tip': [round((41 - 36) / 1.4), round((249 - 227) / 1.4)], 'name': 'fArmF'}
+fa.save('part_fArmF.png')
+hf = shrink(cgrab((35, 246, 47, 257)), 1.4); polish(hf)
+parts['handF'] = {'w': hf.width, 'h': hf.height, 'd': base64.b64encode(hf.tobytes()).decode('ascii'), 'pivot': [round((41 - 35) / 1.4), round((249 - 246) / 1.4)], 'name': 'handF'}
+hf.save('part_handF.png')
 js = ('// jk-parts.js — the JK standing picture cut into cutout-puppet parts (ref/parts_jk.py): RGBA base64,\n'
       '// pivot = the joint the part hangs from, tip = its far joint (limbs), in part pixels. Facing +x.\n'
       '(function (root) { root.CAST = root.CAST || {}; root.CAST.jkParts = ' + json.dumps(parts) + '; })(typeof window !== "undefined" ? window : globalThis);\n')

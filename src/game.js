@@ -158,7 +158,7 @@
   const isAttack = (f) => ATTACKS.includes(f.anim) || f.anim === 'transform';
   const stats = (f) => (f.form === 'wolf' && f.C.wolfStats ? Object.assign({}, f.C.stats, f.C.wolfStats) : f.C.stats);
   function busy(f) {
-    return isAttack(f) || ['hurt', 'hurtLow', 'down', 'getup', 'blockHit', 'stagger', 'lose', 'win', 'backdash'].includes(f.anim) || (f.anim === 'jump' && (cur(f).air === 'squat' || cur(f).air === 'land'));
+    return isAttack(f) || ['hurt', 'hurtHead', 'hurtLow', 'down', 'getup', 'blockHit', 'stagger', 'lose', 'win', 'backdash'].includes(f.anim) || (f.anim === 'jump' && (cur(f).air === 'squat' || cur(f).air === 'land'));
   }
 
   function play(f, name) {
@@ -280,7 +280,7 @@
     const an = A(f)[f.anim];
     if (f.anim === 'down') { const i = an.frames.findIndex((r) => r.air === 'land'); if (i >= 0) { f.fi = i; f.ft = 0; enter(f); } return; }
     if (f.anim === 'jump' || AIRS.includes(f.anim)) { const i = A(f).jump.frames.findIndex((r) => r.air === 'land'); f.anim = 'jump'; f.fi = i; f.ft = 0; f.hitIds = new Set(); enter(f); return; }
-    if (f.anim === 'hurt') { play(f, 'idle'); }
+    if (f.anim === 'hurt' || f.anim === 'hurtHead') { play(f, 'idle'); }
   }
   function animate(f) {
     if (f.freeze > 0) return;
@@ -376,7 +376,7 @@
   }
   function hitFighter(att, def, fr, zones, cx, cy) {
     const dmg = fr.dmg * att.dmgMul * def.defMul;
-    const wasHurt = def.stun > 0 || ['hurt', 'hurtLow', 'down'].includes(def.anim) || def.air;
+    const wasHurt = def.stun > 0 || ['hurt', 'hurtHead', 'hurtLow', 'down'].includes(def.anim) || def.air;
     def.hp = Math.max(0, def.hp - dmg);
     att.meter = Math.min(100, (att.meter || 0) + 9); def.meter = Math.min(100, (def.meter || 0) + 5);
     att.combo = wasHurt ? att.combo + 1 : 1; att.comboT = 900;
@@ -400,7 +400,7 @@
       def.stun = fr.stun;
       def.vx = -def.face * fr.kb * KB;
       if (def.x <= sim.camX + 23 || def.x >= sim.camX + VW - 23) att.vx = -att.face * fr.kb * 0.6 * KB;
-      play(def, def.anim === 'crouch' || def.anim === 'crouchLight' || def.anim === 'blockLow' ? 'hurtLow' : 'hurt');
+      play(def, def.anim === 'crouch' || def.anim === 'crouchLight' || def.anim === 'blockLow' ? 'hurtLow' : (zones.includes('head') && A(def).hurtHead ? 'hurtHead' : 'hurt'));
     }
   }
   function knockdown(def, att, fr, ko) {
