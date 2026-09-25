@@ -140,8 +140,9 @@
   }
 
   // ------------------------------------------------------------ fighters
-  const ATTACKS = ['light', 'light2', 'light3', 'light4', 'heavy', 'heavy2', 'heavy3', 'special', 'special2', 'super', 'air', 'air2', 'crouchLight', 'crouchHeavy', 'throw', 'throwHit', 'bump', 'bite', 'claw'];
-  const LOW = { crouchHeavy: 1 }, HIGH = { air: 1, air2: 1 };
+  const ATTACKS = ['light', 'light2', 'light3', 'light4', 'heavy', 'heavy2', 'heavy3', 'special', 'special2', 'super', 'air', 'air2', 'airKick', 'kick', 'crouchLight', 'crouchHeavy', 'crouchKick', 'throw', 'throwHit', 'bump', 'bite', 'claw'];
+  const LOW = { crouchHeavy: 1, crouchKick: 1 }, HIGH = { air: 1, air2: 1, airKick: 1 };
+  const AIRS = ['air', 'air2', 'airKick'];
   function makeFighter(C, slot) {
     const f = {
       C, slot, form: C.form0, x: 0, y: 0, vx: 0, vy: 0, face: 1, hp: C.stats.hp, maxhp: C.stats.hp,
@@ -188,7 +189,7 @@
     if (an.loopFrom !== undefined) { f.fi = an.loopFrom; return enter(f); }
     if (f.anim === 'transform') { f.form = 'wolf'; f.hp = Math.min(f.maxhp, f.hp + 15); f.dmgMul *= 1.2; f.defMul *= 0.9; f.speedMul *= 1.05; sim.callout('狼化！', f.C.color, 1200); return play(f, 'idle'); }
     if (f.anim === 'down') { if (f.hp <= 0 || sim.phase !== 'fight') { f.fi = an.frames.length - 1; return; } return play(f, 'getup'); }
-    if (f.anim === 'jump' || f.anim === 'air') { if (f.air) { f.fi = an.frames.length - 1; return; } return play(f, 'idle'); }
+    if (f.anim === 'jump' || AIRS.includes(f.anim)) { if (f.air) { f.fi = an.frames.length - 1; return; } return play(f, 'idle'); }
     play(f, f.input.down && !f.air ? 'crouch' : 'idle');
   }
 
@@ -226,6 +227,7 @@
     }
     if (busy(f)) return;
     if (f.air) {
+      if (f.anim === 'jump' && press('light') && I.down && A(f).airKick) return play(f, 'airKick');
       if (f.anim === 'jump' && press('light') && A(f).air) return play(f, 'air');
       if (f.anim === 'jump' && press('heavy') && (A(f).air2 || A(f).air)) return play(f, A(f).air2 ? 'air2' : 'air');
       return;
@@ -250,6 +252,8 @@
     if (f.anim === 'dash' && I[fwd]) return;
     if (I[bwd] && o.threat) { if (f.anim !== 'block') play(f, 'block'); return; }
     const want = I[fwd] ? 'walk' : I[bwd] ? 'back' : 'idle';
+    if (want === 'idle' && f.anim === 'idle2') return;
+    if (want === 'idle' && f.anim === 'idle' && A(f).idle2 && (f.idleT || 0) > 3600 && !o.threat && o.foe && Math.abs(o.foe.x - f.x) > 60) { f.idleT = 0; return play(f, 'idle2'); }
     if (want !== f.anim) play(f, want);
   }
 
@@ -275,11 +279,12 @@
   function land(f) {
     const an = A(f)[f.anim];
     if (f.anim === 'down') { const i = an.frames.findIndex((r) => r.air === 'land'); if (i >= 0) { f.fi = i; f.ft = 0; enter(f); } return; }
-    if (f.anim === 'jump' || f.anim === 'air') { const i = A(f).jump.frames.findIndex((r) => r.air === 'land'); f.anim = 'jump'; f.fi = i; f.ft = 0; f.hitIds = new Set(); enter(f); return; }
+    if (f.anim === 'jump' || AIRS.includes(f.anim)) { const i = A(f).jump.frames.findIndex((r) => r.air === 'land'); f.anim = 'jump'; f.fi = i; f.ft = 0; f.hitIds = new Set(); enter(f); return; }
     if (f.anim === 'hurt') { play(f, 'idle'); }
   }
   function animate(f) {
     if (f.freeze > 0) return;
+    f.idleT = f.anim === 'idle' ? (f.idleT || 0) + TICK : 0;
     const an = A(f)[f.anim];
     let fr = cur(f);
     // physics-driven frame choice while airborne
@@ -290,7 +295,7 @@
       return;
     }
     if (f.air && f.anim === 'down') { const i = an.frames.findIndex((r) => r.air === 'fly'); const last = an.frames.map((r) => r.air).lastIndexOf('fly'); if (f.fi > last) { f.fi = i; } }
-    if (f.air && f.anim === 'air' && f.fi === an.frames.length - 1) return;
+    if (f.air && AIRS.includes(f.anim) && f.fi === an.frames.length - 1) return;
     if (f.air && f.anim === 'down' && fr.air === 'fly' && f.fi === an.frames.map((r) => r.air).lastIndexOf('fly')) return; // hold the last fly frame
     f.ft += TICK;
     let guard = 0;
@@ -505,7 +510,7 @@
     const ai = f.ai;
     if (!ai || !ai.chain || !isAttack(f)) return;
     const fr = cur(f);
-    if (fr.chain && rnd() < 0.5 + 0.4 * ai.level) { f.input.light = f.anim.startsWith('light') || f.anim === 'bump'; f.input.heavy = !f.input.light; ai.chain--; }
+    if (fr.chain && rnd() < 0.5 + 0.4 * ai.level) { f.input.light = f.anim.startsWith('light') || f.anim === 'bump' || f.anim === 'kick'; f.input.heavy = !f.input.light; ai.chain--; }
   }
 
   // ------------------------------------------------------------ simulation state

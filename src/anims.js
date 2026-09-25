@@ -197,16 +197,17 @@
       // defeat: down on one knee, the steel arm on the knee, head hung (sheet B row 6)
       losePose: { hip: [2, -14], lean: 3, fN: [-17, -1], kN: [-2, 2], fF: [22, -2], kF: [18, -12], hN: [17, -13], eN: [10, -22], hF: [-7, -12], sw: 165, swordLayer: 'back', head: [1, 3], face: 'calm' },
       // victory: the steel fist thrown up, then held out glowing, then let down (sheet B row 6)
-      win: { loopFrom: 6, frames: [
+      win: { loopFrom: 8, frames: [
         { d: 120, p: { hN: [2, -38], hF: [-5, -23], sw: 120, swordLayer: 'back', face: 'normal', hair: hp(0.05) } },
         { d: 160, sfx: 'click', p: { hN: [13, -66], eN: [6, -50], head: [1, -1], hair: hp(0.15, { base: 96 }) }, fx: [bolt(14, -66, 3, 0.2, 5)] },
         { d: 220, p: { hair: hp(0.3) }, fx: [bolt(14, -66, 4, 0.5, 6)] },
         { d: 140, p: { hN: [24, -43], eN: [12, -42], face: 'calm', hair: hp(0.45, { base: 120 }) }, fx: [E(21, { x: 12, y: -8 })] },
         { d: 200, p: { hair: hp(0.6) }, fx: [E(21, { x: 12, y: -8, age: 0.5 })] },
         { d: 200, p: { hN: [9, -31], eN: [2, -31], hair: hp(0.75) } },
-        { d: 300, p: { hair: hp(0.9) }, fx: [bolt(8, -31, 3, 0.4, 7)] },
-        { d: 300, p: { hair: hp(1.15) } },
-        { d: 300, p: { hair: hp(1.4) }, fx: [bolt(8, -31, 3, 0.6, 8)] },
+        { d: 260, p: { hN: [6, -28], eN: null, hF: [-4, -22], sw: 130, hip: [0, -20], lean: 2, fN: [-10, -2], fF: [11, -2], hair: hp(0.9, { base: 110 }) } },
+        { d: 300, sfx: 'click', p: { hip: [1, -11], lean: 1, fN: [0, -1], kN: [11, -10], fF: [-4, -1], kF: [6, -11], hN: [4, -13], eN: [-4, -18], hF: [7, -13], eF: [11, -19], sw: 0, grip: 'B', swordLayer: 'front', head: [0, 1], face: 'calm', hair: hp(1.05, { base: 100, droop: 92, wave: 0.8 }) } },
+        { d: 700, p: { hair: hp(1.3) } },
+        { d: 700, p: { hip: [1, -10], hair: hp(1.6) } },
       ] },
     };
     const A = movement(JK_S, V, JK_KEYS);
@@ -216,12 +217,20 @@
       { d: 420, p: { full: true } },
       { d: 420, p: { full: true, dy: 1 } },
     ], S, K) };
+    A.idle2 = { label: '構え直し', frames: seq([
+      { d: 140, p: { hF: [2, -34], sw: 175, swordLayer: 'front', hN: [-6, -27], eN: null, head: [0, 0], hair: hp(0.1, { base: 110 }) } },
+      { d: 220, p: { hF: [6, -42], sw: -140, head: [1, -1], hair: hp(0.3, { base: 140, wave: 1.8 }) } },
+      { d: 380, p: { hair: hp(0.55, { base: 150, wave: 2 }) } },
+      { d: 220, p: { head: [-1, 0], hair: hp(0.8, { base: 120 }) } },
+      { d: 200, p: { hF: [-2, -30], sw: 100, swordLayer: 'back', hair: hp(1.0, { base: 106 }) } },
+      { d: 120, p: Object.assign({}, S, { hair: hp(1.2) }) },
+    ], S, K) };
     // ---------------------------------------------------------------- Z chain (sheet A row 4 フルコンボ)
     // 義手ジャブ
     A.light = { label: '義手ジャブ', frames: seq([
       { d: 50, ph: 'ANTICIPATION', p: Object.assign({ hN: [-7, -37], eN: [-10, -33], lean: -1, hip: [-1, -27], head: [-1, 0], hair: hp(0.1, { base: 96 }) }, punchBase) },
-      { d: 50, ph: 'HIT', sfx: 'swish', hb: [10, -46, 34, -31], dmg: 5, stun: 260, kb: 2.2, p: { hip: [3, -26], lean: 3, fF: [16, -2], fN: [-10, -2], hN: [28, -39], eN: null, head: [2, 0], face: 'shout', hair: hp(0.25, { base: 150, droop: 100, wave: 1.6 }) }, fx: [bolt(29, -39, 4, 0.15, 3, { n: 4, len: 6, a0: -120, a1: 60 })] },
-      { d: 60, ph: 'HOLD', hb: [10, -46, 34, -31], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true, p: { hair: hp(0.4) }, fx: [bolt(29, -39, 5, 0.5, 4, { n: 3, len: 5, a0: -120, a1: 60 })] },
+      { d: 50, ph: 'HIT', sfx: 'swish', hb: [10, -46, 34, -31], dmg: 5, stun: 260, kb: 2.2, p: { hip: [3, -26], lean: 3, fF: [16, -2], fN: [-10, -2], hN: [28, -39], eN: null, head: [2, 0], face: 'shout', hair: hp(0.25, { base: 150, droop: 100, wave: 1.6 }) }, fx: [bolt(29, -39, 4, 0.15, 3, { n: 4, len: 6, a0: -120, a1: 60, mat: 'fire' }), { type: 'chips', x: 31, y: -40, d: 7, n: 6, a0: -140, a1: 40, age: 0.1, seed: 7, mat: 'fire' }] },
+      { d: 60, ph: 'HOLD', hb: [10, -46, 34, -31], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true, p: { hair: hp(0.4) }, fx: [bolt(29, -39, 5, 0.5, 4, { n: 3, len: 5, a0: -120, a1: 60, mat: 'fire' }), { type: 'chips', x: 31, y: -40, d: 10, n: 6, a0: -140, a1: 40, age: 0.55, seed: 7, mat: 'fire' }] },
       { d: 70, ph: 'RECOVER', chain: true, cancel: true, p: { hN: [12, -36], face: 'normal', lean: 1, hip: [1, -27], hair: hp(0.6, { base: 112 }) } },
       { d: 60, ph: 'OVERSHOOT', p: Object.assign({}, S, { hair: hp(0.8) }) },
     ], S, K), nextLight: 'light2', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
@@ -233,14 +242,14 @@
       { d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { hN: [24, -39], face: 'normal', hair: hp(0.55) } },
       { d: 90, ph: 'RECOVER', chain: true, p: { hN: [6, -32], lean: 1, hip: [2, -27], fF: [12, -2], fN: [-9, -2], head: [1, 0], hair: hp(0.7, { base: 112 }) } },
       { d: 60, ph: 'OVERSHOOT', p: Object.assign({}, S, { hair: hp(0.85) }) },
-    ], S, K), nextLight: 'light3', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
+    ], S, K), nextLight: 'kick', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
     // 肩タックル: what is left of a punch when the arm is gone
     A.bump = { label: '肩タックル', frames: seq([
       { d: 90, ph: 'ANTICIPATION', p: Object.assign({ lean: -2, hip: [-1, -27], face: 'shout', head: [-1, 0] }, punchBase) },
       { d: 60, ph: 'HIT', ghost: true, dx: 6, sfx: 'heavy', shake: 1, hb: [4, -40, 22, -18], dmg: 6, stun: 300, kb: 4, pd: 1.2, p: { hip: [4, -25], lean: 3, fF: [14, -2], fN: [-6, -2], hN: [4, -30], head: [2, 0], hair: hp(0.3, { base: 160 }) }, fx: [hitAt(20, -30, 0, 4)] },
       { d: 90, ph: 'HOLD', hb: [4, -40, 22, -18], dmg: 6, stun: 300, kb: 4, pd: 1.2, chain: true, p: {} },
       { d: 120, ph: 'RECOVER', chain: true, p: Object.assign({}, S, { hair: hp(0.7) }) },
-    ], S, K), nextLight: 'light3', nextHeavy: 'heavy' };
+    ], S, K), nextLight: 'kick', nextHeavy: 'heavy' };
     // 横薙ぎ: the sword comes around from behind the hip in one flat cut
     A.light3 = { label: '横薙ぎ', frames: seq([
       { d: 80, ph: 'ANTICIPATION', p: { hF: [-9, -31], sw: 200, swordLayer: 'back', lean: -3, hip: [-3, -27], fN: [-11, -2], fF: [8, -2], head: [-2, 0], hN: [5, -31], eN: null, hair: hp(0.1, { base: 88, wave: 1.4 }) } },
@@ -259,6 +268,15 @@
       { d: 120, ph: 'RECOVER', p: Object.assign({}, S, { fF: [13, -2], kF: null, lean: 1, hair: hp(0.8, { base: 110 }) }) },
       { d: 60, ph: 'OVERSHOOT', p: Object.assign({}, S, { hair: hp(0.95) }) },
     ], S, K) };
+    // 義足ミドルキック: the chrome leg snaps out at waist height with a cyan smear (sheet C combo, sheet A row 2)
+    A.kick = { label: '義足ミドル', frames: seq([
+      { d: 60, ph: 'ANTICIPATION', p: Object.assign({ hip: [-1, -26], lean: -2, fN: [-8, -2], fF: [3, -10], kF: [8, -19], hN: [-8, -34], eN: null, head: [-1, 0], hair: hp(0.1, { base: 92, wave: 1.4 }) }, punchBase) },
+      { d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [8, -46, 34, -20], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, p: { hip: [3, -26], lean: -3, fN: [-10, -2], fF: [27, -30], kF: [14, -30], hN: [-12, -30], head: [-1, 1], face: 'shout', skirtSwing: 3, hair: hp(0.3, { base: 70, droop: 70, wave: 1.8 }) }, fx: [{ type: 'arc', c: [4, -26], r0: 12, r1: 28, a0: 50, a1: -30, age: 0, mat: 'ice' }, hitAt(30, -30, 0, 6, 'ice')] },
+      { d: 80, ph: 'HOLD', hb: [8, -46, 34, -20], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, chain: true, cancel: true, p: { fF: [28, -31], kF: [15, -30], hair: hp(0.45) }, fx: [{ type: 'arc', c: [4, -26], r0: 12, r1: 28, a0: 50, a1: -30, age: 0.5, mat: 'ice' }, hitAt(30, -30, 0.5, 6, 'ice')] },
+      { d: 80, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { fF: [18, -18], kF: [12, -20], lean: -1, face: 'normal', hair: hp(0.6, { base: 100 }) } },
+      { d: 100, ph: 'RECOVER', chain: true, p: Object.assign({}, S, { fF: [13, -2], kF: null, lean: 1, hair: hp(0.8, { base: 110 }) }) },
+      { d: 50, ph: 'OVERSHOOT', p: Object.assign({}, S, { hair: hp(0.95) }) },
+    ], S, K), nextLight: 'light3', nextHeavy: 'heavy', altWhenBroken: { leg: 'light3' } };
     // ---------------------------------------------------------------- X chain (sword)
     // 袈裟斬: two hands, over the shoulder, a lunge (Gemini crescent)
     A.heavy = { label: '袈裟斬', frames: seq([
@@ -297,7 +315,7 @@
       { d: 60, ph: 'HIT', sfx: 'swish', hb: [8, -34, 32, -20], dmg: 5, stun: 280, kb: 2.5, p: Object.assign({}, V.crouch, { hip: [4, -15], lean: 5, fF: [16, -2], hN: [26, -27], eN: null, face: 'shout', head: [2, 1], hair: hp(0.3, { base: 150 }) }), fx: [bolt(28, -27, 4, 0.15, 6, { n: 4, len: 6, a0: -120, a1: 60 })] },
       { d: 70, ph: 'HOLD', hb: [8, -34, 32, -20], dmg: 5, stun: 280, kb: 2.5, chain: true, cancel: true, p: { hair: hp(0.45) }, fx: [bolt(28, -27, 5, 0.5, 7, { n: 3, len: 5, a0: -120, a1: 60 })] },
       { d: 100, ph: 'RECOVER', p: Object.assign({}, V.crouch, { eN: null, face: 'normal', hair: hp(0.65) }) },
-    ], S, K), altWhenBroken: { arm: 'crouchHeavy' } };
+    ], S, K), nextLight: 'crouchKick', altWhenBroken: { arm: 'crouchHeavy' } };
     // 足払い: the blade skims the ground (Gemini sweep effect)
     A.crouchHeavy = { label: '足払い', frames: seq([
       { d: 70, ph: 'ANTICIPATION', p: Object.assign({}, V.crouch, { hF: [-2, -20], sw: 190, swordLayer: 'back', hair: hp(0.1, { base: 120 }) }) },
@@ -305,6 +323,13 @@
       { d: 90, ph: 'HIT', hbAbs: SBOX(12, { x: 4 }), dmg: 7, stun: 340, kb: 3, kd: true, p: { hF: [19, -12], sw: 24 }, fx: [SFX(12, { x: 4, age: 0.4 })] },
       { d: 120, ph: 'RECOVER', p: Object.assign({}, V.crouch, { face: 'normal', hair: hp(0.6) }), fx: [SFX(12, { x: 4, age: 0.8 })] },
     ], S, K) };
+    // 炎の足払い: the chrome leg sweeps the ground trailing fire (sheet C combo finisher)
+    A.crouchKick = { label: '炎の足払い', frames: seq([
+      { d: 60, ph: 'ANTICIPATION', p: Object.assign({}, V.crouch, { hip: [-1, -15], lean: 1, fF: [6, -2], kF: [10, -10], hN: [-6, -16], eN: null, hair: hp(0.1, { base: 118 }) }) },
+      { d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [6, -16, 36, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2, p: Object.assign({}, V.crouch, { hip: [4, -13], lean: 5, fN: [-12, -2], fF: [30, -3], kF: [16, -8], hN: [-8, -14], face: 'shout', head: [2, 1], skirtSwing: 3, hair: hp(0.3, { base: 150, wave: 1.6 }) }), fx: [{ type: 'chips', x: 30, y: -4, d: 9, n: 8, a0: -160, a1: -20, age: 0.1, seed: 6, mat: 'fire' }, { type: 'bolt', x: 30, y: -4, r: 5, len: 6, n: 4, a0: -170, a1: -10, age: 0.15, seed: 8, mat: 'fire' }, hitAt(32, -6, 0, 6, 'fire')] },
+      { d: 90, ph: 'HOLD', hb: [6, -16, 36, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2, p: { fF: [32, -3], kF: [17, -8] }, fx: [{ type: 'chips', x: 32, y: -4, d: 12, n: 8, a0: -160, a1: -20, age: 0.55, seed: 6, mat: 'fire' }, hitAt(32, -6, 0.5, 6, 'fire')] },
+      { d: 130, ph: 'RECOVER', p: Object.assign({}, V.crouch, { kF: null, face: 'normal', hair: hp(0.65) }) },
+    ], S, K), altWhenBroken: { leg: 'crouchHeavy' } };
     // ---------------------------------------------------------------- air (sheet B row 3)
     // 空中義手
     A.air = { label: '空中義手', frames: seq([
@@ -319,6 +344,13 @@
       { d: 40, ph: 'SMEAR', sfx: 'swish', hbAbs: SBOX(1, { x: 6, y: -10 }), dmg: 8, stun: 320, kb: 3, p: { hF: [16, -24], sw: 55, face: 'shout', lean: 2, hair: hp(0.35) }, fx: [SFX(1, { x: 6, y: -10 })] },
       { d: 80, ph: 'HIT', hbAbs: SBOX(1, { x: 6, y: -10 }), dmg: 8, stun: 320, kb: 3, p: { hF: [15, -18], sw: 75 }, fx: [SFX(1, { x: 6, y: -10, age: 0.4 })] },
       { d: 260, ph: 'FOLLOW THROUGH', p: { face: 'normal' }, fx: [SFX(1, { x: 6, y: -10, age: 0.8 })] },
+    ], S, K) };
+    // 空中義足: a diagonal dive kick with the chrome leg (sheet B / C jump rows)
+    A.airKick = { label: '空中義足', frames: seq([
+      { d: 50, ph: 'ANTICIPATION', p: { fN: [-4, -10], fF: [4, -14], kF: [8, -20], hN: [-8, -34], eN: null, hF: [-6, -22], sw: 130, swordLayer: 'back', hair: hp(0.2, { base: 40, droop: 30 }) } },
+      { d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [6, -34, 30, -6], dmg: 8, stun: 340, kb: 3, p: { fF: [24, -12], kF: [12, -22], fN: [-8, -14], lean: 6, head: [2, 1], face: 'shout', skirtSwing: 3, hair: hp(0.35, { base: 30, wave: 1.6 }) }, fx: [{ type: 'arc', c: [6, -24], r0: 10, r1: 24, a0: 20, a1: 100, age: 0, mat: 'ice' }, hitAt(27, -14, 0, 4, 'ice')] },
+      { d: 90, ph: 'HOLD', hb: [6, -34, 30, -6], dmg: 8, stun: 340, kb: 3, p: {}, fx: [hitAt(27, -14, 0.5, 4, 'ice')] },
+      { d: 260, ph: 'FOLLOW THROUGH', p: { face: 'normal', fF: [14, -10], kF: [10, -18] } },
     ], S, K) };
     // ---------------------------------------------------------------- specials
     // 居合・一閃: a low dash, a rising cut on the way through, then the sword comes over for the big crescent (sheet A row 5)
