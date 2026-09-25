@@ -75,6 +75,11 @@
   };
   // hit box of a cell's effect at the sheet scale (×2.78 = 111 px standing / 40 px action figure), relative to the feet
   const R = 2.78;
-  FX.sheetBox = function (char, i, o = {}) { const e = FRAMES[char][i].eff; return [Math.round(e[0] * R + (o.x || 0)), Math.round(e[1] * R + (o.y || 0)), Math.round(e[2] * R + (o.x || 0)), Math.round(e[3] * R + (o.y || 0))]; };
+  FX.sheetBox = function (char, i, o = {}) {
+    let [x0, y0, x1, y1] = FRAMES[char][i].eff;
+    if (o.flip) [x0, x1] = [-x1, -x0];
+    return [Math.round(x0 * R + (o.x || 0)), Math.round(y0 * R + (o.y || 0)), Math.round(x1 * R + (o.x || 0)), Math.round(y1 * R + (o.y || 0))];
+  };
+  FX.sheetPart = effect;
   FX.sheetScale = R;
 })(typeof window !== 'undefined' ? window : globalThis);

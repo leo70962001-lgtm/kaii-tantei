@@ -6,7 +6,7 @@ const { Canvas } = require('./png');
 require('../src/px.js');
 require('../src/fx.js');
 require('../src/rig.js');
-for (const f of ['jk', 'vamp', 'maid', 'cast-data', 'cast', 'frames-jk', 'sheetfx']) { try { require('../src/' + f + '.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; } }
+for (const f of ['jk', 'vamp', 'maid', 'cast-data', 'cast', 'frames-jk', 'frames-jk2', 'frames-jk3', 'sheetfx']) { try { require('../src/' + f + '.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; } }
 const PX = globalThis.PX;
 const CH = { jk: globalThis.JK, vamp: globalThis.VAMP, maid: globalThis.MAID, wolf: globalThis.WOLF };
 

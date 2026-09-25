@@ -135,8 +135,8 @@
   }
 
   // ------------------------------------------------------------ fighters
-  const ATTACKS = ['light', 'light2', 'heavy', 'heavy2', 'heavy3', 'special', 'air', 'crouchLight', 'bump', 'bite', 'claw'];
-  const LOW = { crouchLight: 1 }, HIGH = { air: 1 };
+  const ATTACKS = ['light', 'light2', 'light3', 'light4', 'heavy', 'heavy2', 'heavy3', 'special', 'special2', 'air', 'air2', 'crouchLight', 'crouchHeavy', 'throw', 'throwHit', 'bump', 'bite', 'claw'];
+  const LOW = { crouchHeavy: 1 }, HIGH = { air: 1, air2: 1 };
   function makeFighter(C, slot) {
     const f = {
       C, slot, form: C.form0, x: 0, y: 0, vx: 0, vy: 0, face: 1, hp: C.stats.hp, maxhp: C.stats.hp,
@@ -169,6 +169,7 @@
     if (fr.shake) sim.shake = Math.max(sim.shake, fr.shake);
     if (fr.sfx) sfx(fr.sfx);
     if (fr.spawn === 'bat') spawnBat(f);
+    if (fr.spawn === 'shot') spawnShot(f);
     if (fr.form) f.formNext = fr.form;
     if ((f.anim === 'walk' || f.anim === 'back') && (f.fi === 1 || f.fi === 4)) sfx('step');
   }
@@ -200,29 +201,33 @@
     if (isAttack(f)) {
       // chains and cancels inside attack windows
       const an = A(f)[f.anim];
-      if (fr.cancel && press('special') && !f.air && A(f).special) return play(f, 'special');
+      if (fr.cancel && press('special') && !f.air) { const sp = I.down && A(f).special2 ? 'special2' : 'special'; if (A(f)[sp]) return play(f, sp); }
       if (fr.chain && (press('light') || press('heavy'))) {
-        if (an.next && !f.air) return play(f, an.next);
+        const nx = press('light') ? (an.nextLight || an.next) : (an.nextHeavy || an.next);
+        if (nx && !f.air && A(f)[nx]) return play(f, nx);
         if (!f.air && press('light') && f.anim !== 'light' && A(f).light) return play(f, 'light');
       }
       return;
     }
     if (busy(f)) return;
     if (f.air) {
-      if (f.anim === 'jump' && (press('light') || press('heavy')) && A(f).air) return play(f, 'air');
+      if (f.anim === 'jump' && press('light') && A(f).air) return play(f, 'air');
+      if (f.anim === 'jump' && press('heavy') && (A(f).air2 || A(f).air)) return play(f, A(f).air2 ? 'air2' : 'air');
       return;
     }
     // grounded, free
     if (press('up')) { f.jumpDir = I[fwd] ? 1 : I[bwd] ? -1 : 0; return play(f, 'jump'); }
-    if (press('special') && A(f).special) return play(f, 'special');
+    if (press('special')) { const sp = I.down && A(f).special2 ? 'special2' : 'special'; if (A(f)[sp]) return play(f, sp); }
     if (I.down) {
-      if (press('light') || press('heavy')) return play(f, 'crouchLight');
+      if (press('light')) return play(f, 'crouchLight');
+      if (press('heavy')) return play(f, A(f).crouchHeavy ? 'crouchHeavy' : 'crouchLight');
       const blk = I[bwd] && o.threat;
       if (blk) { if (f.anim !== 'blockLow') play(f, 'blockLow'); return; }
       if (f.anim !== 'crouch') play(f, 'crouch');
       return;
     }
     if (press('light')) return play(f, 'light');
+    if (press('heavy') && I[fwd] && A(f).throw && o.foe && !o.foe.air && !o.foe.held && Math.abs(o.foe.x - f.x) < 50 && !['down', 'getup', 'throwHit'].includes(o.foe.anim)) return play(f, 'throw');
     if (press('heavy')) return play(f, 'heavy');
     if (f.dashReq) { const d = f.dashReq; f.dashReq = null; if (d === fwd) return play(f, 'dash'); return play(f, 'backdash'); }
     if (f.anim === 'dash' && I[fwd]) return;
@@ -312,6 +317,12 @@
       const hz = hurtboxes(def);
       const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
       if (!zones.length || cur(def).inv) continue;
+      if (fr.throw) {
+        if (def.air || def.held || ['down', 'getup', 'throwHit', 'throw'].includes(def.anim)) continue;
+        def.held = att; def.stun = 0; def.vx = 0; def.vy = 0; def.freeze = 0;
+        play(def, 'hurt'); play(att, 'throwHit'); sfx('hit'); sim.spark(def.x, G - 60, 'hit');
+        continue;
+      }
       att.hitIds.add(fr.hitId);
       const cx = (Math.max(hb[0], Math.min(...zones.map((z) => hz[z][0]))) + Math.min(hb[2], Math.max(...zones.map((z) => hz[z][2])))) / 2;
       const cy = (Math.max(hb[1], Math.min(...zones.map((z) => hz[z][1]))) + Math.min(hb[3], Math.max(...zones.map((z) => hz[z][3])))) / 2;
@@ -331,13 +342,13 @@
     for (const p of sim.projs) {
       if (p.dead) continue;
       const def = sim.fighters[1 - p.owner.slot];
-      const hb = [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
+      const hb = p.kind === 'shot' ? [p.x - 14, G - p.y - 10, p.x + 14, G - p.y + 10] : [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
       const hz = hurtboxes(def);
       const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
       if (!zones.length || cur(def).inv) continue;
       p.dead = true;
-      const fr = { dmg: 9, stun: 320, kb: 3, kbUp: 0, kd: false, pd: 1.3, anim: 'bat' };
-      if (blocking(def, { anim: 'mid' })) { def.hp = Math.max(1, def.hp - 1); play(def, 'blockHit'); def.vx = -def.face * 2 * KB; sim.spark(p.x, G - p.y, 'block'); sfx('block'); continue; }
+      const fr = p.kind === 'shot' ? { dmg: 11, stun: 400, kb: 4, kbUp: 3, kd: true, pd: 1.3, anim: 'shot' } : { dmg: 9, stun: 320, kb: 3, kbUp: 0, kd: false, pd: 1.3, anim: 'bat' };
+      if (blocking(def, { anim: 'mid' })) { def.hp = Math.max(1, def.hp - (p.kind === 'shot' ? 2 : 1)); play(def, 'blockHit'); def.vx = -def.face * 2 * KB; sim.spark(p.x, G - p.y, 'block'); sfx('block'); continue; }
       hitFighter(p.owner, def, fr, zones, p.x, G - p.y);
     }
   }
@@ -396,6 +407,24 @@
     f.batOut = true;
     sim.projs.push({ owner: f, x: f.x + 29 * f.face, y: 65, vx: 6.1 * f.face, life: 70, flap: 0, t: 0 });
   }
+  function spawnShot(f) {
+    sim.projs.push({ owner: f, kind: 'shot', x: f.x + 36 * f.face, y: 60, vx: 6.6 * f.face, life: 56, flap: 0, t: 0 });
+  }
+  // a grabbed fighter rides along with the thrower until the release frame, which is the actual hit
+  function holdTick(f) {
+    const att = f.held;
+    if (!att) return;
+    const fr = cur(att);
+    if (att.anim !== 'throwHit' || att.hp <= 0) { f.held = null; if (f.anim === 'hurt') play(f, 'idle'); return; }
+    f.x = clamp(att.x + att.face * (fr.holdX ?? 40), sim.camX + 22, sim.camX + VW - 22); f.y = fr.holdY || 0; f.face = -att.face;
+    f.air = false; f.vx = 0; f.vy = 0; f.stun = 100; f.freeze = 0;
+    if (f.anim !== 'hurt') play(f, 'hurt');
+    f.fi = 0; f.ft = 0;
+    if (fr.release && !att.hitIds.has('release')) {
+      att.hitIds.add('release'); f.held = null;
+      hitFighter(att, f, fr, ['body'], f.x, G - f.y - 50);
+    }
+  }
 
   // ------------------------------------------------------------ CPU
   function think(f, foe) {
@@ -415,7 +444,7 @@
     if (foeAtt && d < 126 && r < 0.35 + 0.45 * lvl) { hold({ [away]: true, down: rnd() < 0.4 }, 10 + Math.floor(rnd() * 10)); return; }
     if (foe.anim === 'down' && d < 90) { hold({ [away]: true }, 10); return; }
     if (d > reach + 25) {
-      if (r < 0.06 * lvl && f.C.id !== 'maid') { I.special = true; hold({}, 6); return; }
+      if (r < 0.06 * lvl && f.C.id !== 'maid') { I.special = true; if (A(f).special2 && rnd() < 0.7) { I.down = true; hold({ down: true }, 6); } else hold({}, 6); return; }
       if (r < 0.14) { I[dir] = true; hold({ [dir]: true }, 6); ai.tapTwice = 1; return; }
       if (r < 0.2 && d < 162) { hold({ up: true, [dir]: true }, 3); return; }
       if (ai.tapTwice) { ai.tapTwice = 0; I[dir] = true; hold({ [dir]: true }, 14); return; }
@@ -424,9 +453,10 @@
     }
     // in range
     const p = rnd();
-    if (p < 0.34) { I.light = true; hold({ light: false }, 14); ai.chain = 2; }
+    if (p < 0.1 && d < 44 && A(f).throw && !foe.air) { I[dir] = true; I.heavy = true; hold({ [dir]: true }, 4); }
+    else if (p < 0.34) { I.light = true; hold({ light: false }, 14); ai.chain = 3; }
     else if (p < 0.55) { I.heavy = true; hold({}, 16); ai.chain = 2; }
-    else if (p < 0.65) { I.down = true; I.light = true; hold({ down: true }, 12); }
+    else if (p < 0.65) { I.down = true; if (rnd() < 0.5) I.light = true; else I.heavy = true; hold({ down: true }, 12); }
     else if (p < 0.72 + 0.1 * lvl) { I.special = true; hold({}, 8); }
     else if (p < 0.86) { hold({ [away]: true }, 12 + Math.floor(rnd() * 12)); }
     else { hold({ up: true, [dir]: true }, 4); }
@@ -436,7 +466,7 @@
     const ai = f.ai;
     if (!ai || !ai.chain || !isAttack(f)) return;
     const fr = cur(f);
-    if (fr.chain && rnd() < 0.5 + 0.4 * ai.level) { f.input.light = f.anim.startsWith('light'); f.input.heavy = !f.input.light; ai.chain--; }
+    if (fr.chain && rnd() < 0.5 + 0.4 * ai.level) { f.input.light = f.anim.startsWith('light') || f.anim === 'bump'; f.input.heavy = !f.input.light; ai.chain--; }
   }
 
   // ------------------------------------------------------------ simulation state
@@ -503,7 +533,7 @@
         const foe = f === a ? b : a;
         if (f.ai && active) { think(f, foe); chainThink(f); }
         else if (f.ai) for (const k of Object.keys(f.input)) f.input[k] = false;
-        if (active && !f.koed) control(f, { threat: threatOf(foe) });
+        if (active && !f.koed) control(f, { threat: threatOf(foe), foe: foe });
         f.prev = Object.assign({}, f.input);
         if (f.stun > 0) f.stun = Math.max(0, f.stun - TICK);
         if (f.comboT > 0) { f.comboT -= TICK; if (f.comboT <= 0) f.combo = 0; }
@@ -518,11 +548,13 @@
         if (!busy(f) && !f.air && f.anim !== 'crouch' && f.anim !== 'blockLow') f.face = foe.x >= f.x ? 1 : -1;
         animate(f);
       }
+      for (const f of sim.fighters) holdTick(f);
       if (active) resolveHits();
       // projectiles
       for (const p of sim.projs) {
         if (p.dead) continue;
-        p.x += p.vx; p.t++; p.flap = (p.t >> 3) & 1; p.y = 65 + Math.sin(p.t * 0.25) * 5 * (p.owner.blind ? 3 : 1);
+        p.x += p.vx; p.t++;
+        if (p.kind === 'shot') { p.y = 60; } else { p.flap = (p.t >> 3) & 1; p.y = 65 + Math.sin(p.t * 0.25) * 5 * (p.owner.blind ? 3 : 1); }
         if (--p.life <= 0 || p.x < sim.camX - 30 || p.x > sim.camX + VW + 30) p.dead = true;
       }
       for (const p of sim.projs) if (p.dead && p.owner.batOut) p.owner.batOut = false;
@@ -665,6 +697,24 @@
   window.addEventListener('resize', fit);
   if (window.ResizeObserver) new ResizeObserver(fit).observe(holder);
 
+  // the energy shot: the Gemini sheet's projectile cell (effect pixels only), flipped to fly +x
+  const shotImgs = {};
+  function shotImg(face, t) {
+    const key = face + ':' + ((t >> 2) & 1);
+    if (shotImgs[key]) return shotImgs[key];
+    const part = window.FX.sheetPart('jk2', 32);
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = 0; y < part.h; y++) for (let x = 0; x < part.w; x++) if (part.px[y * part.w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, c = new Uint32Array(w * h);
+    const flicker = (t >> 2) & 1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const v = part.px[(y + y0) * part.w + (x + x0)];
+      if (!v) continue;
+      if (flicker && ((x + y) & 3) === 0) continue;
+      c[y * w + (face > 0 ? w - 1 - x : x)] = v;
+    }
+    return (shotImgs[key] = toCanvas(c, w, h));
+  }
   const batImgs = {};
   function batImg(flap, face, angry) {
     const key = flap + ':' + face + ':' + (angry ? 1 : 0);
@@ -759,7 +809,11 @@
     lx.drawImage(NEAR, -camX, 0);
     const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
     for (const f of fs) drawFighter(f, camX);
-    for (const p of sim.projs) if (!p.dead) lx.drawImage(batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), Math.round(p.x - camX - 12), Math.round(G - p.y - 7));
+    for (const p of sim.projs) {
+      if (p.dead) continue;
+      if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t); lx.drawImage(im, Math.round(p.x - camX - im.width / 2), Math.round(G - p.y - im.height / 2)); continue; }
+      lx.drawImage(batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), Math.round(p.x - camX - 12), Math.round(G - p.y - 7));
+    }
     for (const p of sim.particles) {
       if (p.ring) { lx.strokeStyle = p.col; lx.globalAlpha = p.life / 12; lx.beginPath(); lx.arc(p.x - camX, p.y, p.r * (1.6 - p.life / 12), 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; continue; }
       lx.fillStyle = p.col; lx.fillRect(Math.round(p.x - camX), Math.round(p.y), p.size || 1, p.size || 1);
