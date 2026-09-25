@@ -88,7 +88,7 @@
     const ang = Math.atan2(vy, vx) - Math.atan2(ry, rx);
     const q = 1 / (part.res || 1);
     const rl = (Math.hypot(rx, ry) || 1) * q, vl = Math.hypot(vx, vy);
-    const k = Math.max(0.82, Math.min(1.3, vl / rl));
+    const k = 1;   // rigid parts: the picture's sizes are kept as drawn (the rig's IK keeps joint distances constant)
     // stretch along the rest axis: rotate into the axis frame, scale, rotate back
     const ra = Math.atan2(ry, rx);
     const st = mul(mul(R(ra), S(k, 1)), R(-ra));
