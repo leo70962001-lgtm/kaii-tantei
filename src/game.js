@@ -1,0 +1,862 @@
+// game.js — 怪異探偵部 fighting game: fixed-step simulation (input, movement, hit boxes, part damage,
+// projectiles, CPU), the round/screen flow, and the pixel renderer with a text HUD on top.
+(function () {
+  'use strict';
+  const { PX, STAGE, ANIMS, RIG } = window;
+  const G = STAGE.GROUND, TICK = 1000 / 60, W = STAGE.W, VW = STAGE.VW, VH = STAGE.H;
+  const clamp = PX.clamp;
+  const rnd = Math.random;
+
+  // ------------------------------------------------------------ roster
+  const ROSTER = [
+    { id: 'jk', R: window.JK, forms: { jk: ANIMS.jk() }, form0: 'jk', color: '#ff5a6e',
+      stats: { walk: 1.7, back: 1.35, dash: 4.2, jumpV: 5.2, hp: 100, def: 0.78, dmg: 1 },
+      onBreak: { arm: (f) => { f.dmgMul *= 0.9; }, leg: (f) => { f.speedMul *= 0.75; f.jumpMul *= 0.85; }, blade: (f) => { f.dmgMul *= 0.85; }, uniform: (f) => { f.defMul *= 1.1; } },
+    },
+    { id: 'vamp', R: window.VAMP, forms: { vamp: ANIMS.vamp() }, form0: 'vamp', color: '#ffd24a',
+      stats: { walk: 1.9, back: 1.5, dash: 4.5, jumpV: 5.4, hp: 92, def: 0.8, dmg: 1 },
+      onBreak: { glasses: (f) => { f.blind = true; }, laptop: (f) => { f.speedMul *= 1.15; f.dmgMul *= 0.95; f.face_ = 'rage'; }, slippers: (f) => { f.speedMul *= 0.85; }, ahoge: (f) => { f.defMul *= 1.1; } },
+    },
+    { id: 'maid', R: window.MAID, forms: { maid: ANIMS.maid(), wolf: ANIMS.wolf() }, form0: 'maid', color: '#c9a6ff',
+      stats: { walk: 1.8, back: 1.4, dash: 4.4, jumpV: 5.3, hp: 100, def: 0.8, dmg: 1 },
+      wolfStats: { walk: 2.2, back: 1.5, dash: 5, jumpV: 5.8 },
+      onBreak: { headdress: (f) => { f.defMul *= 1.05; }, apron: (f) => { f.defMul *= 1.05; }, ribbon: (f) => { f.wantTransform = true; }, shoes: (f) => { f.speedMul *= 0.9; } },
+    },
+  ];
+  for (const C of ROSTER) for (const [form, A] of Object.entries(C.forms)) for (const [id, an] of Object.entries(A)) { an.id = id; an.form = form; }
+  const byId = (id) => ROSTER.find((c) => c.id === id);
+
+  // ------------------------------------------------------------ frame cache (rendered on demand)
+  function toCanvas(c32, w, h) {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d'); const id = ctx.createImageData(w, h);
+    new Uint32Array(id.data.buffer).set(c32); ctx.putImageData(id, 0, 0); return cv;
+  }
+  const cache = new Map();
+  function maskOf(f) {
+    let m = 0;
+    f.C.R.PARTS.forEach((p, i) => { if (f.parts[p.id].broken) m |= 1 << i; });
+    if (f.batOut) m |= 64;
+    return m;
+  }
+  function frameImg(f, an, fi) {
+    const key = f.C.id + ':' + an.form + ':' + an.id + ':' + fi + ':' + maskOf(f);
+    let e = cache.get(key);
+    if (e) return e;
+    const fr = an.frames[fi];
+    const pose = Object.assign({}, fr.pose, { broken: brokenOf(f) });
+    if (f.batOut) pose.noBat = true;
+    if (f.face_ && pose.face === 'normal') pose.face = f.face_;
+    const b = f.C.R.render(pose, {});
+    const fl = PX.flipX(b);
+    const sil = new Uint32Array(b.c.length), tint = PX.hex(f.C.color);
+    const inkc = PX.rgba(6, 8, 24, 255);
+    for (let i = 0; i < b.c.length; i++) if (b.c[i] && !(b.f[i] & 2)) sil[i] = tint;
+    const silL = new Uint32Array(sil.length);
+    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) silL[y * b.w + (b.w - 1 - x)] = sil[y * b.w + x];
+    const sh = new Uint32Array(b.c.length);
+    for (let i = 0; i < b.c.length; i++) if (sil[i]) sh[i] = inkc;
+    const shL = new Uint32Array(sh.length);
+    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) shL[y * b.w + (b.w - 1 - x)] = sh[y * b.w + x];
+    e = { R: toCanvas(b.c, b.w, b.h), L: toCanvas(fl.c, fl.w, fl.h), GR: toCanvas(sil, b.w, b.h), GL: toCanvas(silL, b.w, b.h), SR: toCanvas(sh, b.w, b.h), SL: toCanvas(shL, b.w, b.h) };
+    cache.set(key, e);
+    return e;
+  }
+  function brokenOf(f) { const o = {}; for (const p of f.C.R.PARTS) if (f.parts[p.id].broken) o[p.id] = 1; return o; }
+  // portraits: the head bitmap alone
+  const portraits = new Map();
+  function portrait(f) {
+    const key = f.C.id + ':' + f.form;
+    if (portraits.has(key)) return portraits.get(key);
+    const R = f.C.R;
+    const buf = new PX.Buf(26, 22);
+    const rows = f.form === 'wolf' ? R.WHEAD.normal : R.HEAD.normal;
+    const mat = f.form === 'wolf' ? R.M.fur : R.M.hair;
+    RIG.place(buf, mat, rows, R.KEY, [13, 20], f.form === 'wolf' ? [8, 13] : [R.id === 'vamp' ? 16 : R.id === 'maid' ? 12 : 14, 16]);
+    PX.outline(buf);
+    const cv = toCanvas(buf.c, buf.w, buf.h);
+    portraits.set(key, cv);
+    return cv;
+  }
+
+  // ------------------------------------------------------------ sound
+  let ac = null, soundOn = true;
+  function ensureAudio() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+  }
+  function noiseBuf(dur) { const b = ac.createBuffer(1, Math.floor(ac.sampleRate * dur), ac.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function burst(dur, f0, f1, q, vol, type = 'bandpass') {
+    const src = ac.createBufferSource(); src.buffer = noiseBuf(dur);
+    const fl = ac.createBiquadFilter(); fl.type = type; fl.Q.value = q; const g = ac.createGain(); const t = ac.currentTime;
+    fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(fl).connect(g).connect(ac.destination); src.start();
+  }
+  function tone(dur, f0, f1, vol, type = 'sine') {
+    const o = ac.createOscillator(); o.type = type; const g = ac.createGain(); const t = ac.currentTime;
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(t + dur);
+  }
+  function sfx(kind) {
+    if (!soundOn || !ac) return;
+    try {
+      if (kind === 'swish') burst(0.16, 900, 3600, 1.4, 0.2);
+      else if (kind === 'heavy') burst(0.3, 500, 2400, 1.1, 0.28);
+      else if (kind === 'slam') { burst(0.28, 500, 90, 0.8, 0.35, 'lowpass'); tone(0.22, 120, 45, 0.35); }
+      else if (kind === 'roar') { tone(0.7, 110, 70, 0.22, 'sawtooth'); burst(0.6, 700, 200, 0.6, 0.18); }
+      else if (kind === 'click') { tone(0.05, 2400, 1800, 0.12, 'square'); tone(0.08, 1200, 900, 0.08, 'triangle'); }
+      else if (kind === 'dash') burst(0.22, 4000, 700, 0.9, 0.22);
+      else if (kind === 'burst') { burst(0.35, 2600, 200, 0.7, 0.3); tone(0.3, 180, 50, 0.25, 'triangle'); }
+      else if (kind === 'charge') tone(0.3, 300, 900, 0.06, 'triangle');
+      else if (kind === 'land') burst(0.1, 500, 150, 0.8, 0.12, 'lowpass');
+      else if (kind === 'step') burst(0.05, 400, 200, 1, 0.04, 'lowpass');
+      else if (kind === 'hit') { burst(0.12, 1800, 600, 1.2, 0.2); tone(0.1, 220, 110, 0.14, 'square'); }
+      else if (kind === 'hit2') { burst(0.18, 1200, 300, 1.0, 0.28); tone(0.14, 160, 70, 0.2, 'square'); }
+      else if (kind === 'block') { tone(0.08, 900, 600, 0.12, 'square'); burst(0.08, 2500, 1500, 2, 0.1); }
+      else if (kind === 'break') { burst(0.4, 3200, 400, 0.6, 0.35); tone(0.35, 900, 120, 0.2, 'sawtooth'); tone(0.12, 2200, 1800, 0.1, 'square'); }
+      else if (kind === 'ko') { burst(0.6, 400, 60, 0.7, 0.4, 'lowpass'); tone(0.5, 90, 30, 0.4); }
+      else if (kind === 'sel') tone(0.06, 800, 1200, 0.1, 'square');
+      else if (kind === 'ok') { tone(0.08, 600, 1200, 0.12, 'square'); tone(0.12, 1200, 1800, 0.08, 'square'); }
+      else if (kind === 'go') { tone(0.2, 440, 880, 0.15, 'square'); }
+    } catch (e) { /* optional */ }
+  }
+
+  // ------------------------------------------------------------ fighters
+  const ATTACKS = ['light', 'light2', 'heavy', 'heavy2', 'heavy3', 'special', 'air', 'crouchLight', 'bump', 'bite', 'claw'];
+  const LOW = { crouchLight: 1 }, HIGH = { air: 1 };
+  function makeFighter(C, slot) {
+    const f = {
+      C, slot, form: C.form0, x: 0, y: 0, vx: 0, vy: 0, face: 1, hp: C.stats.hp, maxhp: C.stats.hp,
+      parts: {}, anim: null, fi: 0, ft: 0, air: false, hitIds: new Set(), stun: 0, freeze: 0, combo: 0, comboT: 0,
+      input: {}, prev: {}, ai: null, dmgMul: C.stats.dmg, defMul: C.stats.def, speedMul: 1, jumpMul: 1, breaks: 0,
+      trail: [], queue: null, tapT: 0, tapDir: 0, batOut: false, wantTransform: false, face_: null, blind: false, koed: false, wins: 0, flashT: 0,
+    };
+    for (const p of C.R.PARTS) f.parts[p.id] = { hp: p.hp, max: p.hp, broken: false };
+    return f;
+  }
+  const A = (f) => f.C.forms[f.form];
+  const cur = (f) => A(f)[f.anim].frames[f.fi];
+  const isAttack = (f) => ATTACKS.includes(f.anim) || f.anim === 'transform';
+  const stats = (f) => (f.form === 'wolf' && f.C.wolfStats ? Object.assign({}, f.C.stats, f.C.wolfStats) : f.C.stats);
+  function busy(f) {
+    return isAttack(f) || ['hurt', 'hurtLow', 'down', 'getup', 'blockHit', 'stagger', 'lose', 'win', 'backdash'].includes(f.anim) || (f.anim === 'jump' && (cur(f).air === 'squat' || cur(f).air === 'land'));
+  }
+
+  function play(f, name) {
+    let an = A(f)[name];
+    if (!an) an = A(f).idle;
+    if (an.altWhenBroken) for (const [pid, alt] of Object.entries(an.altWhenBroken)) if (f.parts[pid] && f.parts[pid].broken && A(f)[alt]) { an = A(f)[alt]; break; }
+    f.anim = an.id; f.fi = 0; f.ft = 0; f.hitIds = new Set(); f.queue = null;
+    enter(f);
+  }
+  function enter(f) {
+    const fr = cur(f);
+    if (fr.ghost) { f.trail.push({ an: A(f)[f.anim], fi: f.fi, x: f.x, y: f.y + (fr.lift || 0), face: f.face, t: sim.t, mask: maskOf(f) }); if (f.trail.length > 5) f.trail.shift(); }
+    if (fr.dx) f.x = clamp(f.x + fr.dx * f.face, 14, W - 14);
+    if (fr.shake) sim.shake = Math.max(sim.shake, fr.shake);
+    if (fr.sfx) sfx(fr.sfx);
+    if (fr.spawn === 'bat') spawnBat(f);
+    if (fr.form) f.formNext = fr.form;
+    if ((f.anim === 'walk' || f.anim === 'back') && (f.fi === 1 || f.fi === 4)) sfx('step');
+  }
+  function next(f) {
+    const an = A(f)[f.anim];
+    f.fi++;
+    if (f.fi < an.frames.length) return enter(f);
+    // the animation ended
+    f.fi = an.frames.length - 1;
+    if (an.loop) { f.fi = 0; return enter(f); }
+    if (an.loopFrom !== undefined) { f.fi = an.loopFrom; return enter(f); }
+    if (f.anim === 'transform') { f.form = 'wolf'; f.hp = Math.min(f.maxhp, f.hp + 15); f.dmgMul *= 1.2; f.defMul *= 0.9; f.speedMul *= 1.05; sim.callout('狼化！', f.C.color, 1200); return play(f, 'idle'); }
+    if (f.anim === 'down') { if (f.hp <= 0 || sim.phase !== 'fight') { f.fi = an.frames.length - 1; return; } return play(f, 'getup'); }
+    if (f.anim === 'jump' || f.anim === 'air') { if (f.air) { f.fi = an.frames.length - 1; return; } return play(f, 'idle'); }
+    play(f, f.input.down && !f.air ? 'crouch' : 'idle');
+  }
+
+  // per-tick control from the input struct (player or CPU)
+  function control(f, o) {
+    const I = f.input, P = f.prev;
+    const press = (k) => I[k] && !P[k];
+    const fwd = f.face > 0 ? 'right' : 'left', bwd = f.face > 0 ? 'left' : 'right';
+    const fr = cur(f);
+    const st = stats(f);
+    // double tap → dash / backdash
+    for (const d of ['left', 'right']) if (press(d)) { if (f.tapDir === d && sim.t - f.tapT < 260) f.dashReq = d; f.tapDir = d; f.tapT = sim.t; }
+    if (f.wantTransform && !busy(f) && !f.air && f.form !== 'wolf') { f.wantTransform = false; return play(f, 'transform'); }
+    if (f.freeze > 0) return;
+    if (isAttack(f)) {
+      // chains and cancels inside attack windows
+      const an = A(f)[f.anim];
+      if (fr.cancel && press('special') && !f.air && A(f).special) return play(f, 'special');
+      if (fr.chain && (press('light') || press('heavy'))) {
+        if (an.next && !f.air) return play(f, an.next);
+        if (!f.air && press('light') && f.anim !== 'light' && A(f).light) return play(f, 'light');
+      }
+      return;
+    }
+    if (busy(f)) return;
+    if (f.air) {
+      if (f.anim === 'jump' && (press('light') || press('heavy')) && A(f).air) return play(f, 'air');
+      return;
+    }
+    // grounded, free
+    if (press('up')) { f.jumpDir = I[fwd] ? 1 : I[bwd] ? -1 : 0; return play(f, 'jump'); }
+    if (press('special') && A(f).special) return play(f, 'special');
+    if (I.down) {
+      if (press('light') || press('heavy')) return play(f, 'crouchLight');
+      const blk = I[bwd] && o.threat;
+      if (blk) { if (f.anim !== 'blockLow') play(f, 'blockLow'); return; }
+      if (f.anim !== 'crouch') play(f, 'crouch');
+      return;
+    }
+    if (press('light')) return play(f, 'light');
+    if (press('heavy')) return play(f, 'heavy');
+    if (f.dashReq) { const d = f.dashReq; f.dashReq = null; if (d === fwd) return play(f, 'dash'); return play(f, 'backdash'); }
+    if (f.anim === 'dash' && I[fwd]) return;
+    if (I[bwd] && o.threat) { if (f.anim !== 'block') play(f, 'block'); return; }
+    const want = I[fwd] ? 'walk' : I[bwd] ? 'back' : 'idle';
+    if (want !== f.anim) play(f, want);
+  }
+
+  function physics(f) {
+    const st = stats(f), fr = cur(f);
+    if (f.freeze > 0) { f.freeze--; return; }
+    const spd = f.speedMul;
+    if (!f.air) {
+      if (f.anim === 'walk') f.x += st.walk * spd * f.face;
+      else if (f.anim === 'back') f.x -= st.back * spd * f.face;
+      else if (f.anim === 'dash') f.x += st.dash * spd * f.face;
+      else if (f.anim === 'backdash') f.x -= (f.fi === 0 ? 3.5 : 2.2) * f.face;
+      // launch after the squat
+      if (f.anim === 'jump' && fr.air === 'squat' && f.ft + TICK >= fr.dur) { f.air = true; f.vy = st.jumpV * f.jumpMul; f.vx = (f.jumpDir || 0) * 2.1 * f.face * spd; f.y = 0.01; }
+      // knockback slides
+      if (f.vx) { f.x += f.vx; f.vx *= 0.82; if (Math.abs(f.vx) < 0.05) f.vx = 0; }
+    } else {
+      f.y += f.vy; f.vy -= 0.28; f.x += f.vx;
+      if (f.y <= 0) { f.y = 0; f.air = false; f.vy = 0; f.vx = 0; land(f); }
+    }
+    f.x = clamp(f.x, sim.camX + 12, sim.camX + VW - 12);
+  }
+  function land(f) {
+    const an = A(f)[f.anim];
+    if (f.anim === 'down') { const i = an.frames.findIndex((r) => r.air === 'land'); if (i >= 0) { f.fi = i; f.ft = 0; enter(f); } return; }
+    if (f.anim === 'jump' || f.anim === 'air') { const i = A(f).jump.frames.findIndex((r) => r.air === 'land'); f.anim = 'jump'; f.fi = i; f.ft = 0; f.hitIds = new Set(); enter(f); return; }
+    if (f.anim === 'hurt') { play(f, 'idle'); }
+  }
+  function animate(f) {
+    if (f.freeze > 0) return;
+    const an = A(f)[f.anim];
+    let fr = cur(f);
+    // physics-driven frame choice while airborne
+    if (f.air && f.anim === 'jump') {
+      const want = f.vy > 0.6 ? 'rise' : f.vy > -0.6 ? 'apex' : 'fall';
+      const i = an.frames.findIndex((r) => r.air === want);
+      if (i >= 0 && i !== f.fi) { f.fi = i; f.ft = 0; }
+      return;
+    }
+    if (f.air && f.anim === 'down') { const i = an.frames.findIndex((r) => r.air === 'fly'); const last = an.frames.map((r) => r.air).lastIndexOf('fly'); if (f.fi > last) { f.fi = i; } }
+    if (f.air && f.anim === 'air' && f.fi === an.frames.length - 1) return;
+    if (f.air && f.anim === 'down' && fr.air === 'fly' && f.fi === an.frames.map((r) => r.air).lastIndexOf('fly')) return; // hold the last fly frame
+    f.ft += TICK;
+    let guard = 0;
+    while (f.ft >= cur(f).dur && guard++ < 8) {
+      f.ft -= cur(f).dur;
+      if (f.anim === 'down' && cur(f).air === 'lying' && (f.hp <= 0 || sim.phase !== 'fight')) { f.ft = 0; return; }
+      next(f);
+    }
+  }
+
+  // ------------------------------------------------------------ hits
+  function worldBox(f, b, lift) {
+    const y0 = G - f.y - (lift || 0);
+    return f.face > 0 ? [f.x + b[0], y0 + b[1], f.x + b[2], y0 + b[3]] : [f.x - b[2], y0 + b[1], f.x - b[0], y0 + b[3]];
+  }
+  const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  function hurtboxes(f) {
+    const fr = cur(f);
+    const bx = f.C.R.boxes(fr.pose);
+    const out = {};
+    for (const z of ['head', 'body', 'legs']) out[z] = worldBox(f, bx[z], fr.lift);
+    return out;
+  }
+  function blocking(f, att) {
+    const I = f.input;
+    const bwd = f.face > 0 ? 'left' : 'right';
+    const level = LOW[att.anim] ? 'low' : HIGH[att.anim] ? 'high' : 'mid';
+    if (f.anim === 'blockLow' || (f.anim === 'blockHit' && f.low)) return level !== 'high';
+    if (f.anim === 'block' || (f.anim === 'blockHit' && !f.low)) return level !== 'low';
+    if (busy(f) || f.air) return false;
+    if (!I[bwd]) return false;
+    if (I.down) return level !== 'high';
+    return level !== 'low';
+  }
+  function resolveHits() {
+    const [a, b] = sim.fighters;
+    for (const [att, def] of [[a, b], [b, a]]) {
+      const fr = cur(att);
+      if (!fr.hb || att.hitIds.has(fr.hitId) || att.freeze > 0) continue;
+      const hb = worldBox(att, fr.hb, fr.lift);
+      const hz = hurtboxes(def);
+      const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
+      if (!zones.length || cur(def).inv) continue;
+      att.hitIds.add(fr.hitId);
+      const cx = (Math.max(hb[0], Math.min(...zones.map((z) => hz[z][0]))) + Math.min(hb[2], Math.max(...zones.map((z) => hz[z][2])))) / 2;
+      const cy = (Math.max(hb[1], Math.min(...zones.map((z) => hz[z][1]))) + Math.min(hb[3], Math.max(...zones.map((z) => hz[z][3])))) / 2;
+      if (blocking(def, att)) {
+        def.low = !!def.input.down;
+        const chip = fr.dmg * 0.08;
+        def.hp = Math.max(1, def.hp - chip);
+        play(def, 'blockHit'); def.low = !!def.input.down;
+        def.vx = -def.face * fr.kb * 0.9; att.freeze = 3; def.freeze = 3;
+        if (def.x <= sim.camX + 13 || def.x >= sim.camX + VW - 13) att.vx = -att.face * fr.kb * 0.8;
+        sim.spark(cx, cy, 'block'); sfx('block');
+        continue;
+      }
+      hitFighter(att, def, fr, zones, cx, cy);
+    }
+    // projectiles
+    for (const p of sim.projs) {
+      if (p.dead) continue;
+      const def = sim.fighters[1 - p.owner.slot];
+      const hb = [p.x - 6, G - p.y - 5, p.x + 6, G - p.y + 5];
+      const hz = hurtboxes(def);
+      const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
+      if (!zones.length || cur(def).inv) continue;
+      p.dead = true;
+      const fr = { dmg: 9, stun: 320, kb: 3, kbUp: 0, kd: false, pd: 1.3, anim: 'bat' };
+      if (blocking(def, { anim: 'mid' })) { def.hp = Math.max(1, def.hp - 1); play(def, 'blockHit'); def.vx = -def.face * 2; sim.spark(p.x, G - p.y, 'block'); sfx('block'); continue; }
+      hitFighter(p.owner, def, fr, zones, p.x, G - p.y);
+    }
+  }
+  function hitFighter(att, def, fr, zones, cx, cy) {
+    const dmg = fr.dmg * att.dmgMul * def.defMul;
+    const wasHurt = def.stun > 0 || ['hurt', 'hurtLow', 'down'].includes(def.anim) || def.air;
+    def.hp = Math.max(0, def.hp - dmg);
+    att.combo = wasHurt ? att.combo + 1 : 1; att.comboT = 900;
+    if (att.combo >= 2) sim.comboText(att, att.combo);
+    def.freeze = fr.kd ? 7 : 4; att.freeze = fr.kd ? 6 : 3;
+    sim.spark(cx, cy, fr.kd ? 'big' : 'hit'); sfx(fr.kd ? 'hit2' : 'hit');
+    sim.shake = Math.max(sim.shake, fr.kd ? 3 : 1);
+    def.flashT = 4;
+    // part damage: every part whose zone was struck; weapons only when their owner was attacking
+    for (const P of def.C.R.PARTS) {
+      const s = def.parts[P.id];
+      if (s.broken || !zones.includes(P.zone)) continue;
+      if (P.attacking && !isAttack(def)) continue;
+      s.hp -= dmg * (fr.pd || 1) * (P.attacking ? 1.6 : 1) * 0.7;
+      if (s.hp <= 0) breakPart(att, def, P);
+    }
+    if (def.hp <= 0) { knockdown(def, att, fr, true); return; }
+    if (fr.kd || def.air || def.anim === 'down') knockdown(def, att, fr, false);
+    else {
+      def.stun = fr.stun;
+      def.vx = -def.face * fr.kb;
+      if (def.x <= sim.camX + 13 || def.x >= sim.camX + VW - 13) att.vx = -att.face * fr.kb * 0.6;
+      play(def, def.anim === 'crouch' || def.anim === 'crouchLight' || def.anim === 'blockLow' ? 'hurtLow' : 'hurt');
+    }
+  }
+  function knockdown(def, att, fr, ko) {
+    def.air = true; def.y = Math.max(def.y, 0.01);
+    def.vy = Math.max(2.4, (fr.kbUp || 0) * 0.8) + (ko ? 0.6 : 0);
+    def.vx = -def.face * (fr.kb || 3) * 1.1;
+    def.stun = 0;
+    play(def, 'down');
+    if (ko) { def.koed = true; sim.ko(def, att); }
+  }
+  function breakPart(att, def, P) {
+    const s = def.parts[P.id];
+    s.broken = true; s.hp = 0; def.breaks++;
+    const hook = def.C.onBreak && def.C.onBreak[P.id];
+    if (hook) hook(def);
+    // structural damage and a burst of debris in the part's colours
+    def.hp = Math.max(0, def.hp - 4);
+    const an = def.C.R.anchors(cur(def).pose)[P.id] || [0, -30];
+    const wx = def.x + an[0] * def.face, wy = G - def.y + an[1];
+    sim.debris(wx, wy, def, P);
+    sim.shake = Math.max(sim.shake, 4);
+    sfx('break');
+    sim.callout('PART BREAK! ' + P.label, '#ffd24a', 1300, def);
+    if (def.hp <= 0 && !def.koed) { def.koed = true; knockdown(def, att, { kb: 4, kbUp: 3 }, true); }
+  }
+  function spawnBat(f) {
+    f.batOut = true;
+    sim.projs.push({ owner: f, x: f.x + 16 * f.face, y: 36, vx: 3.4 * f.face, life: 70, flap: 0, t: 0 });
+  }
+
+  // ------------------------------------------------------------ CPU
+  function think(f, foe) {
+    const ai = f.ai;
+    const I = f.input;
+    for (const k of Object.keys(I)) I[k] = false;
+    if (ai.wait > 0) { ai.wait--; if (ai.hold) Object.assign(I, ai.hold); return; }
+    const dx = foe.x - f.x, d = Math.abs(dx), dir = dx > 0 ? 'right' : 'left', away = dx > 0 ? 'left' : 'right';
+    const foeAtt = isAttack(foe) && !!cur(foe).hb || (isAttack(foe) && foe.fi < 2);
+    const reach = f.form === 'wolf' ? 40 : f.C.id === 'jk' ? 42 : 34;
+    const lvl = ai.level;
+    const r = rnd();
+    const hold = (keys, ticks) => { ai.hold = keys; ai.wait = ticks; Object.assign(I, keys); };
+    if (busy(f) || f.air) { if (f.air && d < 40 && r < 0.4 * lvl) I.light = true; return; }
+    // defend
+    if (foeAtt && d < 70 && r < 0.35 + 0.45 * lvl) { hold({ [away]: true, down: rnd() < 0.4 }, 10 + Math.floor(rnd() * 10)); return; }
+    if (foe.anim === 'down' && d < 50) { hold({ [away]: true }, 10); return; }
+    if (d > reach + 14) {
+      if (r < 0.06 * lvl && f.C.id !== 'maid') { I.special = true; hold({}, 6); return; }
+      if (r < 0.14) { I[dir] = true; hold({ [dir]: true }, 6); ai.tapTwice = 1; return; }
+      if (r < 0.2 && d < 90) { hold({ up: true, [dir]: true }, 3); return; }
+      if (ai.tapTwice) { ai.tapTwice = 0; I[dir] = true; hold({ [dir]: true }, 14); return; }
+      hold({ [dir]: true }, 8 + Math.floor(rnd() * 10));
+      return;
+    }
+    // in range
+    const p = rnd();
+    if (p < 0.34) { I.light = true; hold({ light: false }, 14); ai.chain = 2; }
+    else if (p < 0.55) { I.heavy = true; hold({}, 16); ai.chain = 2; }
+    else if (p < 0.65) { I.down = true; I.light = true; hold({ down: true }, 12); }
+    else if (p < 0.72 + 0.1 * lvl) { I.special = true; hold({}, 8); }
+    else if (p < 0.86) { hold({ [away]: true }, 12 + Math.floor(rnd() * 12)); }
+    else { hold({ up: true, [dir]: true }, 4); }
+  }
+  function chainThink(f) {
+    // press the next button in a chain window
+    const ai = f.ai;
+    if (!ai || !ai.chain || !isAttack(f)) return;
+    const fr = cur(f);
+    if (fr.chain && rnd() < 0.5 + 0.4 * ai.level) { f.input.light = f.anim.startsWith('light'); f.input.heavy = !f.input.light; ai.chain--; }
+  }
+
+  // ------------------------------------------------------------ simulation state
+  const sim = {
+    t: 0, phase: 'title', fighters: [], projs: [], particles: [], texts: [], camX: 80, camTarget: 80, shake: 0, timer: 60000, round: 1, mode: '1p', sel: [0, 0], selStep: 0, koT: 0, slow: 1, level: 0.6,
+    introT: 0, resultT: 0, winner: null, demoT: 0,
+    callout(text, color, ms, f) { this.texts.push({ text, color, t: ms, life: ms, f, kind: 'big' }); },
+    comboText(f, n) { this.texts = this.texts.filter((t) => !(t.kind === 'combo' && t.f === f)); this.texts.push({ text: n + ' HITS', color: f.C.color, t: 800, life: 800, f, kind: 'combo' }); },
+    spark(x, y, kind) {
+      const n = kind === 'big' ? 18 : kind === 'block' ? 8 : 12;
+      const cols = kind === 'block' ? ['#ffffff', '#9fe3ff', '#5aa3d4'] : ['#ffffff', '#fff2a0', '#ffb040', '#ff6a3a'];
+      for (let i = 0; i < n; i++) { const a = rnd() * Math.PI * 2, s = (kind === 'big' ? 2.2 : 1.5) * (0.4 + rnd()); this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.6, life: 14 + rnd() * 10, col: cols[Math.floor(rnd() * cols.length)], g: 0.08, size: rnd() < 0.3 ? 2 : 1 }); }
+      this.particles.push({ x, y, ring: 1, life: 8, col: kind === 'block' ? '#9fe3ff' : '#ffffff', r: kind === 'big' ? 6 : 4 });
+    },
+    debris(x, y, f, P) {
+      const M = f.C.R.M;
+      const pal = { arm: ['#e4ebf5', '#a9b5cc', '#6a7590', '#ff9a3a'], leg: ['#e4ebf5', '#a9b5cc', '#414a62', '#ff9a3a'], blade: ['#d9e0ee', '#7a8398', '#2f3446', '#ffffff'], uniform: ['#ffffff', '#d3d8e8', '#ff6a5c', '#8fa4d0'],
+        glasses: ['#ff4040', '#d01c1c', '#c8fbff', '#ffffff'], laptop: ['#e8ebf2', '#b6bccb', '#505766', '#62d8ff'], slippers: ['#ffe66a', '#f2bc34', '#bc861e', '#ffffff'], ahoge: ['#ffdc62', '#eaa92e', '#fff8d0', '#b8721a'],
+        headdress: ['#ffffff', '#d9dcea', '#a4a9c4', '#ffffff'], apron: ['#ffffff', '#d9dcea', '#a4a9c4', '#fbfbfe'], ribbon: ['#ff5c6c', '#cc2840', '#ffb0b8', '#ffffff'], shoes: ['#4a4860', '#2e2c40', '#7c7a92', '#ffffff'] }[P.id] || ['#ffffff', '#cccccc', '#888888', '#ffd24a'];
+      for (let i = 0; i < 22; i++) { const a = -Math.PI * (0.15 + rnd() * 0.7), s = 1.2 + rnd() * 2.4; this.particles.push({ x: x + (rnd() - 0.5) * 6, y: y + (rnd() - 0.5) * 6, vx: Math.cos(a) * s * (rnd() < 0.5 ? 1 : -1), vy: Math.sin(a) * s, life: 30 + rnd() * 30, col: pal[Math.floor(rnd() * pal.length)], g: 0.16, size: rnd() < 0.45 ? 2 : 1, bounce: true }); }
+      this.particles.push({ x, y, ring: 1, life: 12, col: '#ffd24a', r: 10 });
+      this.particles.push({ x, y, ring: 1, life: 9, col: '#ffffff', r: 5 });
+    },
+    ko(def, att) { this.phase = 'ko'; this.koT = 0; this.slow = 0.35; sfx('ko'); this.callout('K.O.', '#ff5a5a', 1600); },
+  };
+
+  function threatOf(foe) { return isAttack(foe) && foe.fi <= A(foe)[foe.anim].frames.findIndex((r) => r.hb) + 1 || sim.projs.some((p) => !p.dead && p.owner === foe); }
+
+  function startMatch(p1Id, p2Id, mode) {
+    sim.fighters = [makeFighter(byId(p1Id), 0), makeFighter(byId(p2Id), 1)];
+    sim.mode = mode; sim.round = 1;
+    sim.fighters[0].wins = 0; sim.fighters[1].wins = 0;
+    if (mode !== '2p') sim.fighters[1].ai = { level: sim.level, wait: 0, hold: null };
+    if (mode === 'demo') sim.fighters[0].ai = { level: sim.level, wait: 0, hold: null };
+    startRound();
+  }
+  function startRound() {
+    const [a, b] = sim.fighters;
+    for (const f of [a, b]) {
+      f.hp = f.maxhp; f.x = f.slot === 0 ? W / 2 - 46 : W / 2 + 46; f.y = 0; f.vx = f.vy = 0; f.air = false; f.stun = 0; f.freeze = 0; f.combo = 0; f.koed = false; f.trail = []; f.batOut = false; f.face = f.slot === 0 ? 1 : -1;
+      f.input = {}; f.prev = {}; f.queue = null;
+      if (f.ai) f.ai.wait = 0;
+      play(f, 'idle');
+    }
+    sim.projs = []; sim.particles = []; sim.texts = [];
+    sim.timer = 60000; sim.phase = 'intro'; sim.introT = 0; sim.slow = 1; sim.camX = W / 2 - VW / 2; sim.camTarget = sim.camX;
+  }
+
+  function step() {
+    sim.t += TICK;
+    const [a, b] = sim.fighters.length ? sim.fighters : [null, null];
+    if (sim.phase === 'intro') {
+      sim.introT += TICK;
+      if (sim.introT > 1800) { sim.phase = 'fight'; sim.callout('FIGHT!', '#ffffff', 700); sfx('go'); }
+    }
+    if (sim.phase === 'fight') {
+      sim.timer = Math.max(0, sim.timer - TICK);
+      if (sim.timer === 0) { sim.phase = 'ko'; sim.koT = 0; sim.slow = 1; sim.callout('TIME UP', '#ffffff', 1500); }
+    }
+    if (!a) return;
+    if (sim.phase === 'fight' || sim.phase === 'intro' || sim.phase === 'ko') {
+      const active = sim.phase === 'fight';
+      for (const f of [a, b]) {
+        const foe = f === a ? b : a;
+        if (f.ai && active) { think(f, foe); chainThink(f); }
+        else if (f.ai) for (const k of Object.keys(f.input)) f.input[k] = false;
+        if (active && !f.koed) control(f, { threat: threatOf(foe) });
+        f.prev = Object.assign({}, f.input);
+        if (f.stun > 0) f.stun = Math.max(0, f.stun - TICK);
+        if (f.comboT > 0) { f.comboT -= TICK; if (f.comboT <= 0) f.combo = 0; }
+        if (f.flashT > 0) f.flashT--;
+      }
+      for (const f of [a, b]) physics(f);
+      // keep them apart
+      const dx = b.x - a.x;
+      if (Math.abs(dx) < 16 && !a.air && !b.air && a.anim !== 'down' && b.anim !== 'down') { const push = (16 - Math.abs(dx)) / 2 * (dx >= 0 ? 1 : -1); a.x -= push; b.x += push; }
+      for (const f of [a, b]) {
+        const foe = f === a ? b : a;
+        if (!busy(f) && !f.air && f.anim !== 'crouch' && f.anim !== 'blockLow') f.face = foe.x >= f.x ? 1 : -1;
+        animate(f);
+      }
+      if (active) resolveHits();
+      // projectiles
+      for (const p of sim.projs) {
+        if (p.dead) continue;
+        p.x += p.vx; p.t++; p.flap = (p.t >> 3) & 1; p.y = 36 + Math.sin(p.t * 0.25) * 3 * (p.owner.blind ? 3 : 1);
+        if (--p.life <= 0 || p.x < sim.camX - 20 || p.x > sim.camX + VW + 20) p.dead = true;
+      }
+      for (const p of sim.projs) if (p.dead && p.owner.batOut) p.owner.batOut = false;
+      sim.projs = sim.projs.filter((p) => !p.dead);
+      if (sim.phase === 'ko') {
+        sim.koT += TICK;
+        if (sim.koT > 900) sim.slow = 1;
+        if (sim.koT > 2600) endRound();
+      }
+    }
+    // camera follows the midpoint
+    if (a && b) {
+      const mid = (a.x + b.x) / 2;
+      sim.camTarget = clamp(mid - VW / 2, 0, W - VW);
+      sim.camX += (sim.camTarget - sim.camX) * 0.12;
+    }
+    for (const p of sim.particles) {
+      p.life--;
+      if (p.ring) continue;
+      p.x += p.vx; p.y += p.vy; p.vy += p.g || 0;
+      if (p.bounce && p.y > G - 1) { p.y = G - 1; p.vy *= -0.4; p.vx *= 0.6; }
+    }
+    sim.particles = sim.particles.filter((p) => p.life > 0);
+    for (const t of sim.texts) t.t -= TICK;
+    sim.texts = sim.texts.filter((t) => t.t > 0);
+    if (sim.shake > 0) sim.shake = Math.max(0, sim.shake - 0.25);
+  }
+  function endRound() {
+    const [a, b] = sim.fighters;
+    let winner = null;
+    if (a.hp <= 0 && b.hp <= 0) winner = null;
+    else if (a.hp <= 0) winner = b; else if (b.hp <= 0) winner = a;
+    else winner = a.hp === b.hp ? null : a.hp > b.hp ? a : b;
+    if (winner) winner.wins++;
+    sim.phase = 'result'; sim.resultT = 0; sim.winner = winner;
+    for (const f of [a, b]) { f.input = {}; if (f === winner && !f.air && f.anim !== 'down') play(f, 'win'); else if (f !== winner && f.hp > 0 && f.anim !== 'down') play(f, 'lose'); }
+    sim.callout(winner ? (winner.slot === 0 ? 'P1' : (sim.mode === '2p' ? 'P2' : 'CPU')) + ' WIN' : 'DRAW', winner ? winner.C.color : '#ffffff', 2200);
+  }
+  function afterResult() {
+    const [a, b] = sim.fighters;
+    if (a.wins >= 2 || b.wins >= 2) { sim.phase = 'end'; sim.resultT = 0; return; }
+    sim.round++;
+    startRound();
+  }
+
+  // ------------------------------------------------------------ input
+  const KEYS = {
+    ArrowLeft: [0, 'left'], ArrowRight: [0, 'right'], ArrowUp: [0, 'up'], ArrowDown: [0, 'down'], z: [0, 'light'], x: [0, 'heavy'], c: [0, 'special'],
+    a: [1, 'left'], d: [1, 'right'], w: [1, 'up'], s: [1, 'down'], j: [1, 'light'], k: [1, 'heavy'], l: [1, 'special'],
+  };
+  const held = [{}, {}];
+  let uiPress = null;
+  window.addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea, select')) return;
+    ensureAudio();
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const m = KEYS[k];
+    if (m) { e.preventDefault(); if (!held[m[0]][m[1]]) uiPress = uiPress || { slot: m[0], key: m[1] }; held[m[0]][m[1]] = true; }
+    if (e.key === 'Enter') { e.preventDefault(); uiPress = { slot: 0, key: 'start' }; }
+    if (e.key === 'Escape') { uiPress = { slot: 0, key: 'esc' }; }
+    if (k === 'm') { soundOn = !soundOn; }
+    if (k === 'p' && sim.phase === 'fight') { sim.paused = !sim.paused; }
+  });
+  window.addEventListener('keyup', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; const m = KEYS[k]; if (m) held[m[0]][m[1]] = false; });
+  window.addEventListener('blur', () => { for (const h of held) for (const k of Object.keys(h)) h[k] = false; });
+  // touch pad: hold buttons for P1
+  document.querySelectorAll('[data-hold]').forEach((b) => {
+    const k = b.dataset.hold;
+    const on = (e) => { e.preventDefault(); ensureAudio(); if (!held[0][k]) uiPress = uiPress || { slot: 0, key: k }; held[0][k] = true; };
+    const off = () => { held[0][k] = false; };
+    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+  });
+  document.querySelectorAll('[data-press]').forEach((b) => b.addEventListener('click', () => { ensureAudio(); uiPress = { slot: 0, key: b.dataset.press }; }));
+
+  function applyInput() {
+    for (const f of sim.fighters) if (!f.ai) { for (const k of ['left', 'right', 'up', 'down', 'light', 'heavy', 'special']) f.input[k] = !!held[f.slot][k]; }
+  }
+
+  // ------------------------------------------------------------ screens
+  const MODES = [['1p', '1P vs CPU'], ['2p', '1P vs 2P'], ['demo', 'CPU vs CPU（觀戰）']];
+  let modeI = 0;
+  const LEVELS = [['かんたん', 0.3], ['ふつう', 0.6], ['つよい', 0.95]];
+  let levelI = 1;
+  function uiStep() {
+    const p = uiPress; uiPress = null;
+    if (!p) return;
+    if (sim.phase === 'title') {
+      if (p.key === 'up') { modeI = (modeI + MODES.length - 1) % MODES.length; sfx('sel'); }
+      else if (p.key === 'down') { modeI = (modeI + 1) % MODES.length; sfx('sel'); }
+      else if (p.key === 'left') { levelI = (levelI + LEVELS.length - 1) % LEVELS.length; sfx('sel'); }
+      else if (p.key === 'right') { levelI = (levelI + 1) % LEVELS.length; sfx('sel'); }
+      else if (['start', 'light', 'heavy', 'special'].includes(p.key)) { sim.phase = 'select'; sim.sel = [0, 1]; sim.selStep = 0; sfx('ok'); }
+      return;
+    }
+    if (sim.phase === 'select') {
+      const mode = MODES[modeI][0];
+      const who = sim.selStep === 0 ? 0 : 1;
+      const slotOk = mode === '2p' ? p.slot === who : p.slot === 0;
+      if (p.key === 'esc') { sim.phase = 'title'; return; }
+      if (!slotOk && p.key !== 'start') return;
+      if (p.key === 'left') { sim.sel[who] = (sim.sel[who] + 2) % 3; sfx('sel'); }
+      else if (p.key === 'right') { sim.sel[who] = (sim.sel[who] + 1) % 3; sfx('sel'); }
+      else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
+        sfx('ok');
+        if (sim.selStep === 0) {
+          sim.selStep = 1;
+          if (mode !== '2p') { sim.sel[1] = mode === 'demo' ? Math.floor(rnd() * 3) : Math.floor(rnd() * 3); }
+          if (mode !== '2p') { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
+        } else { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
+      }
+      return;
+    }
+    if (sim.phase === 'result' && sim.resultT > 1200 && ['start', 'light', 'heavy', 'special'].includes(p.key)) { afterResult(); return; }
+    if (sim.phase === 'end' && sim.resultT > 800 && ['start', 'light', 'heavy', 'special'].includes(p.key)) { sim.phase = 'title'; sfx('ok'); return; }
+    if (p.key === 'esc') { sim.phase = 'title'; }
+  }
+
+  // ------------------------------------------------------------ drawing
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const low = document.createElement('canvas'); low.width = VW; low.height = VH;
+  const lx = low.getContext('2d');
+  const BG = STAGE.paint();
+  const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
+  let scale = 3;
+  const holder = document.getElementById('stage');
+  function fit() {
+    const dpr = window.devicePixelRatio || 1;
+    const availCss = holder.clientWidth - 12;
+    const intScale = Math.floor((availCss * dpr) / VW);
+    const fill = intScale >= 1 && (intScale * VW) / dpr >= availCss * 0.8;
+    scale = fill ? intScale : Math.max(1, (availCss * dpr) / VW);
+    cv.width = Math.round(VW * scale); cv.height = Math.round(VH * scale);
+    cv.style.width = (cv.width / dpr) + 'px'; cv.style.height = (cv.height / dpr) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(holder);
+
+  const batImgs = {};
+  function batImg(flap, face, angry) {
+    const key = flap + ':' + face + ':' + (angry ? 1 : 0);
+    if (batImgs[key]) return batImgs[key];
+    const buf = new PX.Buf(16, 10);
+    window.VAMP.bat(buf, [8, 5], flap, { flip: face < 0, angry });
+    PX.outline(buf);
+    return (batImgs[key] = toCanvas(buf.c, buf.w, buf.h));
+  }
+
+  function drawFighter(f, camX) {
+    const an = A(f)[f.anim], fr = cur(f);
+    const S = f.C.R.SIZE;
+    const img = frameImg(f, an, f.fi);
+    const lift = f.y + (fr.lift || 0);
+    const sx = Math.round(f.x - camX), sy = Math.round(G - lift);
+    const oxL = S.w - 1 - S.ox;
+    // shadow on the ground
+    if (!fr.pose.hidden) {
+      const w = Math.max(6, 12 - f.y * 0.15);
+      lx.fillStyle = 'rgba(4,6,20,0.55)';
+      for (let r = 0; r < 3; r++) { const ww = Math.round(w - Math.abs(r - 1) * 3); lx.fillRect(sx - ww, G - 1 + r, ww * 2, 1); }
+      if (lift >= 0) { lx.save(); lx.globalAlpha = 0.35; lx.setTransform(1, 0, -f.face * 0.5, -0.07, Math.round(sx - (f.face > 0 ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07); lx.drawImage(f.face > 0 ? img.SR : img.SL, 0, 0); lx.restore(); }
+    }
+    // afterimages
+    for (const g of f.trail) {
+      const age = (sim.t - g.t) / 200;
+      if (age >= 1) continue;
+      const gi = (() => { const key = f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask; const e = cache.get(key); return e; })();
+      if (!gi) continue;
+      lx.globalAlpha = 0.4 * (1 - age);
+      lx.drawImage(g.face > 0 ? gi.GR : gi.GL, Math.round(g.x - camX - (g.face > 0 ? S.ox : oxL)), Math.round(G - g.y - S.oy));
+      lx.globalAlpha = 1;
+    }
+    f.trail = f.trail.filter((g) => sim.t - g.t < 200);
+    lx.drawImage(f.face > 0 ? img.R : img.L, sx - (f.face > 0 ? S.ox : oxL), sy - S.oy);
+    if (f.flashT > 0 && f.flashT % 2 === 0) { lx.globalCompositeOperation = 'source-atop'; lx.fillStyle = 'rgba(255,255,255,0.0)'; lx.globalCompositeOperation = 'source-over'; }
+  }
+
+  function bar(x, y, w, h, frac, col, back, right) {
+    lx.fillStyle = '#05060f'; lx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    lx.fillStyle = back; lx.fillRect(x, y, w, h);
+    const fw = Math.round(w * clamp(frac, 0, 1));
+    lx.fillStyle = col; lx.fillRect(right ? x + w - fw : x, y, fw, h);
+    lx.fillStyle = 'rgba(255,255,255,0.35)'; lx.fillRect(right ? x + w - fw : x, y, fw, 1);
+  }
+  const ICONS = {
+    arm: ['..###..', '.#.#.#.', '.#####.', '..###..', '..#.#..', '.##.##.', '.#...#.'],
+    leg: ['..###..', '..#.#..', '..###..', '..#.#..', '..###..', '..#.##.', '.#####.'],
+    blade: ['......#', '.....##', '....##.', '...##..', '.###...', '.##....', '#......'],
+    cloth: ['.#...#.', '#######', '#.....#', '.#...#.', '.#...#.', '.#...#.', '.#####.'],
+    glass: ['.......', '###.###', '#.#.#.#', '#.###.#', '###.###', '.......', '.......'],
+    laptop: ['.#####.', '.#...#.', '.#...#.', '.#####.', '#######', '#.....#', '#######'],
+    shoe: ['.......', '...##..', '..#.#..', '.##.##.', '#....##', '#######', '.......'],
+    hair: ['...#...', '..##...', '..#....', '.##....', '.#.....', '##.....', '#......'],
+    band: ['.#.#.#.', '#######', '#######', '.......', '.......', '.......', '.......'],
+    seal: ['..###..', '.#...#.', '#..#..#', '#.###.#', '#..#..#', '.#...#.', '..###..'],
+  };
+  function icon(name, x, y, col) {
+    const rows = ICONS[name] || ICONS.seal;
+    lx.fillStyle = col;
+    rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] === '#') lx.fillRect(x + i, y + j, 1, 1); });
+  }
+  function hudPixels() {
+    const [a, b] = sim.fighters;
+    if (!a) return;
+    for (const f of [a, b]) {
+      const right = f.slot === 1;
+      const x0 = right ? VW - 8 - 118 : 8 + 28;
+      bar(x0, 8, 118, 6, f.hp / f.maxhp, f.hp / f.maxhp > 0.3 ? '#ffd24a' : '#ff5a5a', '#5a1a24', right);
+      // damaged overlay: the part of the bar lost recently
+      const pr = portrait(f);
+      lx.drawImage(pr, right ? VW - 8 - 26 : 8, 3);
+      // part icons
+      f.C.R.PARTS.forEach((P, i) => {
+        const s = f.parts[P.id];
+        const ix = right ? VW - 8 - 118 + 118 - 9 - i * 11 : x0 + i * 11;
+        const col = s.broken ? '#ff4a4a' : s.hp / s.max < 0.5 ? '#ffb040' : '#cfe0ff';
+        lx.fillStyle = 'rgba(5,6,15,0.7)'; lx.fillRect(ix - 1, 16, 9, 9);
+        icon(P.icon, ix, 17, s.broken ? '#6a2a2a' : col);
+        if (s.broken) { lx.fillStyle = '#ff4a4a'; lx.fillRect(ix, 17, 1, 1); lx.fillRect(ix + 6, 17, 1, 1); lx.fillRect(ix + 1, 18, 1, 1); lx.fillRect(ix + 5, 18, 1, 1); lx.fillRect(ix + 2, 19, 1, 1); lx.fillRect(ix + 4, 19, 1, 1); lx.fillRect(ix + 3, 20, 1, 1); lx.fillRect(ix + 2, 21, 1, 1); lx.fillRect(ix + 4, 21, 1, 1); lx.fillRect(ix + 1, 22, 1, 1); lx.fillRect(ix + 5, 22, 1, 1); lx.fillRect(ix, 23, 1, 1); lx.fillRect(ix + 6, 23, 1, 1); }
+        else { lx.fillStyle = '#05060f'; lx.fillRect(ix - 1, 25, 9, 2); lx.fillStyle = col; lx.fillRect(ix - 1, 25, Math.round(9 * s.hp / s.max), 1); }
+      });
+      // round wins
+      for (let i = 0; i < 2; i++) { lx.fillStyle = i < f.wins ? f.C.color : '#2a2e52'; const wx = right ? VW - 8 - 118 + 118 - 4 - i * 6 : x0 + 118 - 4 - 6 + i * 6 - 6; lx.fillRect(right ? VW - 8 - 26 - 4 - i * 6 : 8 + 28 + i * 6 - 6 + 6, 30, 4, 3); }
+    }
+  }
+
+  function drawWorld() {
+    const camX = Math.round(sim.camX);
+    const sx = sim.shake > 0.2 ? Math.round((rnd() * 2 - 1) * sim.shake) : 0, sy = sim.shake > 0.2 ? Math.round((rnd() * 2 - 1) * sim.shake * 0.5) : 0;
+    lx.setTransform(1, 0, 0, 1, sx, sy);
+    lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
+    lx.drawImage(NEAR, -camX, 0);
+    const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
+    for (const f of fs) drawFighter(f, camX);
+    for (const p of sim.projs) if (!p.dead) lx.drawImage(batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), Math.round(p.x - camX - 8), Math.round(G - p.y - 5));
+    for (const p of sim.particles) {
+      if (p.ring) { lx.strokeStyle = p.col; lx.globalAlpha = p.life / 12; lx.beginPath(); lx.arc(p.x - camX, p.y, p.r * (1.6 - p.life / 12), 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; continue; }
+      lx.fillStyle = p.col; lx.fillRect(Math.round(p.x - camX), Math.round(p.y), p.size || 1, p.size || 1);
+    }
+    lx.setTransform(1, 0, 0, 1, 0, 0);
+    if (sim.phase !== 'title' && sim.phase !== 'select') hudPixels();
+  }
+
+  // text HUD on the scaled canvas
+  const FONT = '"DotGothic16", "Noto Sans TC", monospace';
+  function text(str, x, y, size, col, align = 'center', shadow = true) {
+    ctx.font = size * scale + 'px ' + FONT; ctx.textAlign = align; ctx.textBaseline = 'middle';
+    if (shadow) { ctx.fillStyle = '#05060f'; ctx.fillText(str, x * scale + scale, y * scale + scale); }
+    ctx.fillStyle = col; ctx.fillText(str, x * scale, y * scale);
+  }
+  function drawHudText() {
+    const [a, b] = sim.fighters;
+    if (!a) return;
+    text(a.C.R.name + (a.form === 'wolf' ? '（狼）' : ''), 36, 34, 8, '#e8ebf8', 'left');
+    text(b.C.R.name + (b.form === 'wolf' ? '（狼）' : ''), VW - 36, 34, 8, '#e8ebf8', 'right');
+    text(Math.ceil(sim.timer / 1000).toString().padStart(2, '0'), VW / 2, 14, 14, sim.timer < 10000 ? '#ff5a5a' : '#ffffff');
+    text('ROUND ' + sim.round, VW / 2, 27, 7, '#b9c2ea');
+    for (const t of sim.texts) {
+      const k = t.t / t.life;
+      if (t.kind === 'combo') { const f = t.f; text(t.text, f.slot === 0 ? 40 : VW - 40, 60 + (1 - k) * 4, 10, t.color, f.slot === 0 ? 'left' : 'right'); continue; }
+      const pop = k > 0.85 ? 1 + (k - 0.85) * 6 : 1;
+      ctx.save(); ctx.globalAlpha = k < 0.2 ? k / 0.2 : 1;
+      const y = t.text.startsWith('PART') ? 52 : t.text === 'FIGHT!' || t.text === 'K.O.' ? 84 : 72;
+      text(t.text, VW / 2, y, (t.text.length > 12 ? 11 : 16) * pop, t.color);
+      ctx.restore();
+    }
+    if (sim.phase === 'intro') { const k = sim.introT; if (k < 1200) text('ROUND ' + sim.round, VW / 2, 80, 18, '#ffd24a'); }
+    if (sim.phase === 'result' && sim.resultT > 1200) text('PRESS Z / ENTER', VW / 2, 150, 8, '#b9c2ea');
+    if (sim.phase === 'end') {
+      const w = sim.fighters.find((f) => f.wins >= 2);
+      ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(0, 60 * scale, cv.width, 70 * scale);
+      text((w ? (w.slot === 0 ? 'P1 ' : (sim.mode === '2p' ? 'P2 ' : 'CPU ')) + w.C.R.name : '') + ' WINS', VW / 2, 84, 16, w ? w.C.color : '#fff');
+      text('破壞部位 ' + sim.fighters[0].breaks + ' / ' + sim.fighters[1].breaks + '   PRESS Z / ENTER', VW / 2, 106, 8, '#e8ebf8');
+    }
+    if (sim.paused) text('PAUSE', VW / 2, 90, 16, '#ffffff');
+  }
+  function drawTitle() {
+    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.drawImage(FAR, -20, 0); lx.drawImage(NEAR, -80, 0);
+    lx.fillStyle = 'rgba(5,6,15,0.45)'; lx.fillRect(0, 0, VW, VH);
+    // three club members standing in a row
+    if (!sim.titleCast) {
+      sim.titleCast = ROSTER.map((C) => makeFighter(C, 0));
+      sim.titleCast.forEach((f, i) => { f.x = 44 + i * 52; play(f, 'idle'); });
+    }
+    sim.titleCast.forEach((f) => { f.face = 1; animate(f); drawFighter(f, 0); });
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    text('怪異探偵部', VW / 2, 34, 30, '#ffffff');
+    text('KAII TANTEI-BU — PART BREAK FIGHTERS', VW / 2, 52, 7, '#ffd24a');
+    const mx = 232;
+    MODES.forEach((m, i) => text((i === modeI ? '▶ ' : '   ') + m[1], mx, 112 + i * 12, 9, i === modeI ? '#ffd24a' : '#b9c2ea'));
+    text('CPU 強度 ◀ ' + LEVELS[levelI][0] + ' ▶', mx, 152, 8, '#e8ebf8');
+    text('Z / ENTER で開始', mx, 166, 7, '#b9c2ea');
+    text('東京鬼高校・怪異探偵部', 92, 172, 7, '#8f97b8');
+  }
+  function drawSelect() {
+    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.drawImage(FAR, -40, 0); lx.drawImage(NEAR, -120, 0);
+    lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
+    if (!sim.selCast) { sim.selCast = ROSTER.map((C) => makeFighter(C, 0)); sim.selCast.forEach((f) => play(f, 'idle')); }
+    const mode = MODES[modeI][0];
+    sim.selCast.forEach((f, i) => {
+      f.x = 64 + i * 96; f.face = 1;
+      const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
+      if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, i === 0 ? 'light' : i === 1 ? 'light' : 'heavy');
+      animate(f);
+      if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
+      drawFighter(f, 0);
+      lx.fillStyle = chosen ? f.C.color : 'rgba(255,255,255,0.15)'; lx.fillRect(f.x - 26, G + 4, 52, 2);
+    });
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), VW / 2, 16, 14, '#ffd24a');
+    sim.selCast.forEach((f, i) => {
+      const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
+      text(f.C.R.name, f.x, 168, 9, chosen ? f.C.color : '#b9c2ea');
+      text(f.C.R.height + ' · ' + f.C.R.PARTS.map((p) => p.label).join('/'), f.x, 176, 5.5, '#8f97b8');
+      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', f.x - 28, 100, 8, ROSTER[sim.sel[0]].color);
+    });
+    text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 30, 7, '#b9c2ea');
+  }
+
+  let last = performance.now(), acc = 0;
+  function frame(now) {
+    const dt = Math.min(80, now - last); last = now;
+    uiStep();
+    if (sim.phase === 'title') { drawTitle(); requestAnimationFrame(frame); return; }
+    if (sim.phase === 'select') { drawSelect(); requestAnimationFrame(frame); return; }
+    if (!sim.paused) {
+      acc += dt * sim.slow;
+      let n = 0;
+      while (acc >= TICK && n++ < 4) { applyInput(); step(); acc -= TICK; if (sim.phase === 'result' || sim.phase === 'end') sim.resultT += TICK; }
+    }
+    if (sim.phase === 'result' || sim.phase === 'end') { for (const f of sim.fighters) { animate(f); physics(f); } for (const p of sim.particles) { p.life--; if (!p.ring) { p.x += p.vx; p.y += p.vy; p.vy += p.g || 0; } } sim.particles = sim.particles.filter((p) => p.life > 0); for (const t of sim.texts) t.t -= dt; sim.texts = sim.texts.filter((t) => t.t > 0); }
+    drawWorld();
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    drawHudText();
+    requestAnimationFrame(frame);
+  }
+  fit();
+  // warm the cache for the idle frames so the first fight does not stutter
+  requestAnimationFrame((t) => { last = t; frame(t); });
+
+  window.__game = { sim, ROSTER, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas };
+})();

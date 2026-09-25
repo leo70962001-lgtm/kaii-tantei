@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>怪異探偵部 PART BREAK</title>
+<meta name="description" content="改造JK、吸血鬼ニート、狼人メイド的部位破壞點陣格鬥遊戲">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --paper: #0c0f25; --panel: #121638; --ink: #e8ebf8; --ink-2: #9ea6cc; --rule: #262c55;
+    --shu: #ff5a6e; --shu-ink: #1a0610; --kin: #ffd24a; --plate: #1b2150; --plate-top: #34407e; --plate-ink: #e8ebf8;
+    --stage-edge: #03040e; --focus: #ffd24a;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --paper: #eceff7; --panel: #f8f9fd; --ink: #161b3d; --ink-2: #4c5582; --rule: #cfd5e8; --shu: #c32f3c; --shu-ink: #fff; --kin: #d9862a; --plate: #1f2550; --plate-top: #3b4580; --plate-ink: #eef1fb; --stage-edge: #0d1030; --focus: #3764bf; color-scheme: light; }
+  }
+  :root[data-theme="light"] { --paper: #eceff7; --panel: #f8f9fd; --ink: #161b3d; --ink-2: #4c5582; --rule: #cfd5e8; --shu: #c32f3c; --shu-ink: #fff; --kin: #d9862a; --plate: #1f2550; --plate-top: #3b4580; --plate-ink: #eef1fb; --stage-edge: #0d1030; --focus: #3764bf; color-scheme: light; }
+  html, body { background: var(--paper); margin: 0; }
+  body { color: var(--ink); font: 15px/1.6 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; padding: 16px 16px 40px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { display: grid; gap: 6px; margin-bottom: 14px; }
+  .brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .seal { width: 40px; height: 40px; display: grid; place-items: center; background: var(--shu); color: var(--shu-ink); font: 22px/1 "DotGothic16", monospace;
+    clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+  h1 { margin: 0; font: 400 clamp(24px, 4vw, 34px)/1.1 "DotGothic16", "Noto Sans TC", monospace; letter-spacing: 0.06em; }
+  .sub { margin: 0; color: var(--ink-2); max-width: 70ch; }
+  .band { height: 8px; margin-top: 4px; background: repeating-linear-gradient(90deg, var(--shu) 0 16px, var(--kin) 16px 20px, #1b2150 20px 36px); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .stage { position: relative; width: 100%; background: var(--stage-edge); padding: 6px; box-sizing: border-box; display: grid; place-items: center; outline: none;
+    clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)); }
+  #cv { display: block; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; }
+  .pad { display: none; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; }
+  @media (pointer: coarse) { .pad { display: flex; } }
+  .pad .grp { display: flex; gap: 6px; }
+  .pad button { min-width: 52px; min-height: 48px; font-size: 16px; }
+  .panel { display: grid; gap: 16px; background: var(--panel); border: 1px solid var(--rule); padding: 16px; }
+  .panel h2 { margin: 0 0 8px; font: 400 14px/1 "DotGothic16", monospace; letter-spacing: 0.12em; color: var(--ink-2); }
+  button { font: inherit; color: var(--plate-ink); background: var(--plate); border: 0; cursor: pointer; box-shadow: inset 0 1px 0 var(--plate-top), inset 0 -2px 0 rgba(0,0,0,.35); padding: 8px 10px; border-radius: 0; }
+  button:hover { background: var(--plate-top); }
+  button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; color: var(--ink-2); margin: 0; }
+  .keys dt { font: 13px/1.5 "DotGothic16", monospace; color: var(--ink); white-space: nowrap; }
+  .keys dd { margin: 0; }
+  kbd { font: 12px/1 "DotGothic16", monospace; border: 1px solid var(--rule); border-bottom-width: 2px; padding: 2px 5px; background: var(--paper); color: var(--ink); }
+  .cast { display: grid; gap: 10px; }
+  .cast .c { display: grid; grid-template-columns: 8px 1fr; gap: 10px; align-items: start; font-size: 13px; color: var(--ink-2); }
+  .cast .c i { display: block; width: 8px; height: 100%; min-height: 40px; }
+  .cast b { display: block; color: var(--ink); font: 15px/1.4 "DotGothic16", "Noto Sans TC", monospace; }
+  .notes { color: var(--ink-2); font-size: 13px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="seal" aria-hidden="true">鬼</span><h1>怪異探偵部　PART BREAK</h1></div>
+    <p class="sub">東京鬼高校・怪異探偵部の三人——改造人間のJK、吸血鬼のニート、狼人のメイド——手繪點陣格鬥。每個角色有四個可破壞部位：打壞義手就打不出重拳、打碎筆電她會暴走、撕掉女僕的封印緞帶……狼會出來。</p>
+    <div class="band" aria-hidden="true"></div>
+  </header>
+  <div class="layout">
+    <section aria-label="遊戲畫面">
+      <div class="stage" id="stage" tabindex="0" aria-label="格鬥遊戲畫面，用鍵盤操作">
+        <canvas id="cv" width="960" height="540"></canvas>
+      </div>
+      <div class="pad" aria-label="觸控操作">
+        <div class="grp"><button type="button" data-hold="left" aria-label="左">◀</button><button type="button" data-hold="down" aria-label="下">▼</button><button type="button" data-hold="right" aria-label="右">▶</button></div>
+        <div class="grp"><button type="button" data-hold="up">跳</button><button type="button" data-hold="light">小</button><button type="button" data-hold="heavy">大</button><button type="button" data-hold="special">必殺</button><button type="button" data-press="start">START</button></div>
+      </div>
+    </section>
+    <aside class="panel" aria-label="說明">
+      <div>
+        <h2>操作 1P</h2>
+        <dl class="keys">
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>移動／按住後退＝防禦。連按兩下前＝衝刺、後＝後跳</dd>
+          <dt><kbd>↑</kbd></dt><dd>跳躍（空中按攻擊＝空中技）</dd>
+          <dt><kbd>↓</kbd></dt><dd>蹲下／蹲下攻擊＝下段（要蹲防）</dd>
+          <dt><kbd>Z</kbd> <kbd>X</kbd></dt><dd>小攻擊／大攻擊，命中後連按接連段</dd>
+          <dt><kbd>C</kbd></dt><dd>必殺技（連段中可取消）</dd>
+          <dt><kbd>Enter</kbd></dt><dd>開始／決定　<kbd>P</kbd> 暫停　<kbd>M</kbd> 音效</dd>
+        </dl>
+      </div>
+      <div>
+        <h2>操作 2P</h2>
+        <dl class="keys">
+          <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>移動</dd>
+          <dt><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></dt><dd>小／大／必殺</dd>
+        </dl>
+      </div>
+      <div>
+        <h2>部位破壞</h2>
+        <div class="cast">
+          <div class="c"><i style="background:#ff5a6e"></i><div><b>改造人間（JK）170cm</b>義手・義足・刀・制服。義手壞了重拳變肩撞；義足壞了變慢；刀斷了變短。刀只在她攻擊時被打才會受損。</div></div>
+          <div class="c"><i style="background:#ffd24a"></i><div><b>吸血鬼（ニート）152cm</b>眼鏡・筆電・拖鞋・呆毛。筆電碎了就改用牙齒和爪子，速度變快。必殺技把使い魔（蝙蝠貓）射出去。</div></div>
+          <div class="c"><i style="background:#c9a6ff"></i><div><b>狼人（メイド）165cm</b>頭飾・圍裙・封印・皮鞋。封印緞帶被打斷就會狼化：體型變大、攻擊變重、回一點血。</div></div>
+        </div>
+      </div>
+      <p class="notes">被打中的部位（頭／身／腳）決定哪個零件受損；血條下面的圖示變黃是快壞、紅叉是已破壞。每破壞一個部位額外扣 5 點 HP。兩勝制、每回合 60 秒。</p>
+    </aside>
+  </div>
+</div>
+<script src="src/px.js"></script>
+<script src="src/fx.js"></script>
+<script src="src/rig.js"></script>
+<script src="src/jk.js"></script>
+<script src="src/vamp.js"></script>
+<script src="src/maid.js"></script>
+<script src="src/anims.js"></script>
+<script src="src/stage.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>
