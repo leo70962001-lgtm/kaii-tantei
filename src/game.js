@@ -9,18 +9,9 @@
 
   // ------------------------------------------------------------ roster
   const ROSTER = [
-    { id: 'jk', R: window.JK, forms: { jk: ANIMS.jk() }, form0: 'jk', color: '#ff5a6e',
+    { id: 'jk', R: window.JKS, forms: { jk: window.JKS.moves() }, form0: 'jk', color: '#ff5a6e',
       stats: { walk: 3.1, back: 2.4, dash: 7.6, jumpV: 9.4, hp: 100, def: 0.66, dmg: 1 },
       onBreak: { arm: (f) => { f.dmgMul *= 0.9; }, leg: (f) => { f.speedMul *= 0.75; f.jumpMul *= 0.85; }, blade: (f) => { f.dmgMul *= 0.85; loseSword(f); }, uniform: (f) => { f.defMul *= 1.1; } },
-    },
-    { id: 'vamp', R: window.VAMP, forms: { vamp: ANIMS.vamp() }, form0: 'vamp', color: '#ffd24a',
-      stats: { walk: 3.4, back: 2.7, dash: 8.1, jumpV: 9.7, hp: 92, def: 0.68, dmg: 1 },
-      onBreak: { glasses: (f) => { f.blind = true; }, laptop: (f) => { f.speedMul *= 1.15; f.dmgMul *= 0.95; f.face_ = 'rage'; }, slippers: (f) => { f.speedMul *= 0.85; }, ahoge: (f) => { f.defMul *= 1.1; } },
-    },
-    { id: 'maid', R: window.MAID, forms: { maid: ANIMS.maid(), wolf: ANIMS.wolf() }, form0: 'maid', color: '#c9a6ff',
-      stats: { walk: 3.2, back: 2.5, dash: 7.9, jumpV: 9.5, hp: 100, def: 0.68, dmg: 1 },
-      wolfStats: { walk: 4.0, back: 2.7, dash: 9, jumpV: 10.4 },
-      onBreak: { headdress: (f) => { f.defMul *= 1.05; }, apron: (f) => { f.defMul *= 1.05; }, ribbon: (f) => { f.wantTransform = true; }, shoes: (f) => { f.speedMul *= 0.9; } },
     },
   ];
   for (const C of ROSTER) for (const [form, A] of Object.entries(C.forms)) for (const [id, an] of Object.entries(A)) { an.id = id; an.form = form; }
@@ -44,30 +35,12 @@
     return m;
   }
   function frameImg(f, an, fi) {
+    const fr = an.frames[fi], sp = fr.sprite;
     const key = f.C.id + ':' + an.form + ':' + an.id + ':' + fi + ':' + maskOf(f);
     let e = cache.get(key);
     if (e) return e;
-    const fr = an.frames[fi];
-    const pose = Object.assign({}, fr.pose, { broken: brokenOf(f) });
-    if (f.batOut) pose.noBat = true;
-    if (f.swordLost) pose.noSword = true;
-    if (f.face_ && pose.face === 'normal') pose.face = f.face_;
-    const b = f.C.R.render(pose, {});
-    const fl = PX.flipX(b);
-    const sil = new Uint32Array(b.c.length), tint = PX.hex(f.C.color);
-    const inkc = PX.rgba(6, 8, 24, 255);
-    for (let i = 0; i < b.c.length; i++) if (b.c[i] && !(b.f[i] & 2)) sil[i] = tint;
-    const silL = new Uint32Array(sil.length);
-    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) silL[y * b.w + (b.w - 1 - x)] = sil[y * b.w + x];
-    const sh = new Uint32Array(b.c.length);
-    for (let i = 0; i < b.c.length; i++) if (sil[i]) sh[i] = inkc;
-    const shL = new Uint32Array(sh.length);
-    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) shL[y * b.w + (b.w - 1 - x)] = sh[y * b.w + x];
-    const fxc = new Uint32Array(b.c.length); let anyFx = false;
-    for (let i = 0; i < b.c.length; i++) if (b.c[i] && (b.f[i] & 2)) { fxc[i] = b.c[i]; anyFx = true; }
-    let FR = null, FL = null;
-    if (anyFx) { const fxl = new Uint32Array(fxc.length); for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) fxl[y * b.w + (b.w - 1 - x)] = fxc[y * b.w + x]; FR = toCanvas(fxc, b.w, b.h); FL = toCanvas(fxl, b.w, b.h); }
-    e = { R: toCanvas(b.c, b.w, b.h), L: toCanvas(fl.c, fl.w, fl.h), GR: toCanvas(sil, b.w, b.h), GL: toCanvas(silL, b.w, b.h), SR: toCanvas(sh, b.w, b.h), SL: toCanvas(shL, b.w, b.h), FR, FL };
+    e = sp ? window.SPR.frame(sp.tag, sp.i, { comp: sp.comp, crop: sp.crop, tint: f.C.color })
+      : { R: null, L: null, FR: null, FL: null, SR: null, SL: null, GR: null, GL: null, WR: null, WL: null, w: 0, h: 0, ox: 0, oy: 0, oxL: 0 };
     cache.set(key, e);
     return e;
   }
@@ -81,13 +54,9 @@
     const buf = new PX.Buf(38, 34);
     const C = window.CAST && window.CAST[f.C.id];
     if (C && f.form !== 'wolf') {
-      const [x0, y0, x1, y1] = C.body.headBox, hw = x1 - x0 + 1, hh = y1 - y0 + 1, src = RIG.imgData(C.body);
+      const [x0, y0, x1, y1] = C.body.headBox, hw = x1 - x0 + 1, hh = y1 - y0 + 1, src = window.SPR.decode(C.body.d, C.body.w, C.body.h);
       const s = Math.max(1, hw / 36, hh / 32);
       for (let y = 0; y < 34; y++) for (let x = 0; x < 38; x++) { const sx = x0 + Math.floor((x - (38 - hw / s) / 2) * s), sy = y0 + Math.floor((y - (34 - hh / s)) * s); if (sx < x0 || sx > x1 || sy < y0 || sy > y1) continue; const c = src[sy * C.body.w + sx]; if (c) buf.set(x, y, c, 0, 1, 1); }
-    } else {
-      const rows = f.form === 'wolf' ? R.WHEAD.normal : R.HEAD.normal;
-      const mat = f.form === 'wolf' ? R.M.fur : R.M.hair;
-      RIG.place(buf, mat, rows, R.KEY, [19, 32], f.form === 'wolf' ? R.WHEAD_NECK : R.HEAD_NECK);
     }
     PX.outline(buf);
     const cv = toCanvas(buf.c, buf.w, buf.h);
@@ -314,7 +283,7 @@
   const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   function hurtboxes(f) {
     const fr = cur(f);
-    const bx = f.C.R.boxes(fr.pose);
+    const bx = f.C.R.boxes(fr);
     const out = {};
     for (const z of ['head', 'body', 'legs']) out[z] = worldBox(f, bx[z], fr.lift);
     return out;
@@ -418,7 +387,7 @@
     if (hook) hook(def);
     // structural damage and a burst of debris in the part's colours
     def.hp = Math.max(0, def.hp - 4);
-    const an = def.C.R.anchors(cur(def).pose)[P.id] || [0, -54];
+    const an = def.C.R.anchors(cur(def))[P.id] || [0, -54];
     const wx = def.x + an[0] * def.face, wy = G - def.y + an[1];
     sim.debris(wx, wy, def, P);
     sim.shake = Math.max(sim.shake, 4);
@@ -526,7 +495,6 @@
       this.particles.push({ x, y, ring: 1, life: 8, col: kind === 'block' ? '#9fe3ff' : '#ffffff', r: kind === 'big' ? 11 : 7 });
     },
     debris(x, y, f, P) {
-      const M = f.C.R.M;
       const pal = { arm: ['#e4ebf5', '#a9b5cc', '#6a7590', '#ff9a3a'], leg: ['#e4ebf5', '#a9b5cc', '#414a62', '#ff9a3a'], blade: ['#d9e0ee', '#7a8398', '#2f3446', '#ffffff'], uniform: ['#ffffff', '#d3d8e8', '#ff6a5c', '#8fa4d0'],
         glasses: ['#ff4040', '#d01c1c', '#c8fbff', '#ffffff'], laptop: ['#e8ebf2', '#b6bccb', '#505766', '#62d8ff'], slippers: ['#ffe66a', '#f2bc34', '#bc861e', '#ffffff'], ahoge: ['#ffdc62', '#eaa92e', '#fff8d0', '#b8721a'],
         headdress: ['#ffffff', '#d9dcea', '#a4a9c4', '#ffffff'], apron: ['#ffffff', '#d9dcea', '#a4a9c4', '#fbfbfe'], ribbon: ['#ff5c6c', '#cc2840', '#ffb0b8', '#ffffff'], shoes: ['#4a4860', '#2e2c40', '#7c7a92', '#ffffff'] }[P.id] || ['#ffffff', '#cccccc', '#888888', '#ffd24a'];
@@ -664,7 +632,6 @@
     ensureAudio();
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (k === 'g' && !e.repeat && glc) { wantGL = !wantGL; if (!wantGL) gl = null; glc.style.display = wantGL ? '' : 'none'; }
-    if (k === 'b' && !e.repeat) usePuppet = !usePuppet;
     const m = KEYS[k];
     if (m) { e.preventDefault(); if (!held[m[0]][m[1]]) { uiPress = uiPress || { slot: m[0], key: m[1] }; stick[m[0]][m[1]] = true; } held[m[0]][m[1]] = true; }
     if (e.key === 'Enter') { e.preventDefault(); uiPress = { slot: 0, key: 'start' }; }
@@ -735,7 +702,6 @@
   const ctx = cv.getContext('2d');
   const glc = document.getElementById('gl');
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
-  let usePuppet = !/\bpuppet=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
     try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, RS }); }
@@ -767,25 +733,18 @@
   function shotImg(face, t) {
     const key = face + ':' + ((t >> 2) & 1);
     if (shotImgs[key]) return shotImgs[key];
-    const part = window.FX.sheetPart('jk4', 0, { whole: true, sc: 2 });
-    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
-    for (let y = 0; y < part.h; y++) for (let x = 0; x < part.w; x++) if (part.px[y * part.w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-    const w = x1 - x0 + 1, h = y1 - y0 + 1, c = new Uint32Array(w * h);
-    const flicker = (t >> 2) & 1;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const v = part.px[(y + y0) * part.w + (x + x0)];
-      if (!v) continue;
-      if (flicker && ((x + y) & 3) === 0) continue;
-      c[y * w + (face > 0 ? x : w - 1 - x)] = v;
-    }
-    return (shotImgs[key] = toCanvas(c, w, h));
+    const fr = window.SPR.frame('A', 36);
+    const src = face > 0 ? (fr.FR || fr.R) : (fr.FL || fr.L);
+    const c2 = document.createElement('canvas'); c2.width = fr.w; c2.height = fr.h; const g2 = c2.getContext('2d'); g2.drawImage(src, 0, 0);
+    if ((t >> 2) & 1) { const id = g2.getImageData(0, 0, fr.w, fr.h), d = id.data; for (let p = 0; p < fr.w * fr.h; p++) if (((p % fr.w) + Math.floor(p / fr.w)) % 4 === 0) d[p * 4 + 3] = 0; g2.putImageData(id, 0, 0); }
+    return (shotImgs[key] = c2);
   }
   const batImgs = {};
   function batImg(flap, face, angry) {
     const key = flap + ':' + face + ':' + (angry ? 1 : 0);
     if (batImgs[key]) return batImgs[key];
     const buf = new PX.Buf(24, 14);
-    window.VAMP.bat(buf, [12, 7], flap, { flip: face < 0, angry });
+    if (window.VAMP) window.VAMP.bat(buf, [12, 7], flap, { flip: face < 0, angry });
     PX.outline(buf);
     return (batImgs[key] = toCanvas(buf.c, buf.w, buf.h));
   }
@@ -795,60 +754,27 @@
   // low canvas, src/gl.js turns it into textured planes in a three.js scene.
   function fighterList(list, f, camX) {
     const an = A(f)[f.anim], fr = cur(f);
-    const S = f.C.R.SIZE;
     const img = frameImg(f, an, f.fi);
     const lift = f.y + (fr.lift || 0);
     const sx = Math.round(f.x - camX), sy = Math.round(G - lift);
-    const oxL = S.w - 1 - S.ox;
     const right = f.face > 0;
-    // the cutout puppet: parts bound to the interpolated skeleton (JK only, not for the standing picture)
-    const PUP = window.PUPPET, puppet = usePuppet && PUP && f.C.id === 'jk' && !fr.pose.full && !fr.pose.hidden;
-    const mirX = (m) => [-m[0], m[1], -m[2], m[3], -m[4], m[5]];
-    const toScreen = (m, ox, oy, face) => { const q = face > 0 ? m : mirX(m); return [q[0], q[1], q[2], q[3], q[4] + ox, q[5] + oy]; };
-    const brk = brokenOf(f);
+    const ox = right ? img.ox : img.oxL, oy = img.oy;
     if (!fr.pose.hidden) {
       list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(11, 22 - f.y * 0.15) });
-      if (lift >= 0) {
-        if (puppet) {
-          const sk = PUP.skeleton(an, f.fi, f.ft); f.sk = sk;
-          const sh = [1, 0, -f.face * 0.5, -0.07, sx + 0.5 * f.face * lift, G + 0.07 * lift];
-          for (const it of PUP.place(sk.J, Object.assign({}, sk.p, { noSword: !!f.swordLost || sk.p.noSword, lag: f._lag || 0 }), 'dark', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(sh, right ? it.m : mirX(it.m)), a: 0.35 });
-        } else list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - (right ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07], a: 0.35 });
-      }
+      if (lift >= 0 && img.SR) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - ox + oy * f.face * 0.5 + lift * f.face * 0.5), G + oy * 0.07 + lift * 0.07], a: 0.35 });
     }
+    // afterimages (tinted silhouettes of earlier ghost frames)
     for (const g of f.trail) {
       const age = (sim.t - g.t) / 200;
       if (age >= 1) continue;
-      const gfr = g.an.frames[g.fi];
-      if (usePuppet && PUP && g.sk && f.C.id === 'jk' && !gfr.pose.full && !gfr.pose.hidden) {
-        const gx = Math.round(g.x - camX), gy = Math.round(G - g.y);
-        for (const it of PUP.place(g.sk.J, g.sk.p, f.C.color, brk)) list.push({ k: 'skew', img: it.img, m: toScreen(it.m, gx, gy, g.face), a: 0.4 * (1 - age) });
-        continue;
-      }
       const gi = cache.get(f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask);
-      if (!gi) continue;
-      list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? S.ox : oxL)), y: Math.round(G - g.y - S.oy), a: 0.4 * (1 - age) });
+      if (!gi || !gi.GR) continue;
+      list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? gi.ox : gi.oxL)), y: Math.round(G - g.y - gi.oy), a: 0.4 * (1 - age) });
     }
     f.trail = f.trail.filter((g) => sim.t - g.t < 200);
-    if (puppet) {
-      const sk = f.sk && f.sk.an === an && f.sk.fi === f.fi && f.sk.ft === f.ft ? f.sk : PUP.skeleton(an, f.fi, f.ft);
-      sk.an = an; sk.fi = f.fi; sk.ft = f.ft; f.sk = sk;
-      // motion lag: how fast the head moves forward this frame (world + pose), smoothed
-      const vx = (f.x - (f._lx ?? f.x)) * f.face + (sk.J.neck[0] - (f._ln ?? sk.J.neck[0]));
-      f._lx = f.x; f._ln = sk.J.neck[0];
-      const target = Math.max(-0.45, Math.min(0.45, vx * 0.05));
-      f._lag = (f._lag || 0) + (target - (f._lag || 0)) * 0.3;
-      sk.p = Object.assign({}, sk.p, { noSword: !!f.swordLost || sk.p.noSword, lag: f._lag });
-      // reflection on the road, then the body, then the frame's effects (bloom sources) on top
-      const rf = [1, 0, 0, -1, sx, 2 * G - sy];
-      for (const it of PUP.place(sk.J, sk.p, 'cv', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(rf, right ? it.m : mirX(it.m)), a: 0.2 });
-      for (const it of PUP.place(sk.J, sk.p, sk.p.flash ? 'white' : 'cv', brk)) list.push({ k: 'skew', img: it.img, m: toScreen(it.m, sx, sy, f.face), a: 1 });
-      const fxi = right ? img.FR : img.FL;
-      if (fxi) list.push({ k: 'img', img: fxi, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, glow: true });
-    } else {
-      f.sk = null;
-      list.push({ k: 'img', img: right ? img.R : img.L, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, fx: right ? img.FR : img.FL, refl: !fr.pose.hidden });
-    }
+    if (fr.pose.hidden || !img.R) return;
+    const flash = !!fr.pose.flash || (f.flashT > 0 && f.flashT % 2 === 0);
+    list.push({ k: 'img', img: flash ? (right ? img.WR : img.WL) : (right ? img.R : img.L), x: sx - ox, y: sy - oy, a: 1, fx: right ? img.FR : img.FL, refl: true });
   }
   function draw2D(list) {
     for (const it of list) {
@@ -920,10 +846,11 @@
       list.push({ k: 'img', img: batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), x: Math.round(p.x - camX - 12), y: Math.round(G - p.y - 7), a: 1 });
     }
     for (const sw of sim.props) {
-      if (sw.dead || !window.PUPPET) continue;
-      const part = window.PUPPET.build().sword, PUP = window.PUPPET;
-      const m = PUP.mul(PUP.mul(PUP.T(Math.round(sw.x - camX), Math.round(G - sw.y)), PUP.R(sw.rot * Math.PI / 180)), PUP.T(-part.pivot[0], -part.pivot[1]));
-      if (!sw.landed) list.push({ k: 'blob', x: Math.round(sw.x - camX), y: G - 2, w: 9 });
+      if (sw.dead || !window.SPR) continue;
+      const part = window.SPR.sword(); if (!part) continue;
+      const a = sw.rot * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), px = Math.round(sw.x - camX), py = Math.round(G - sw.y);
+      const m = [cs, sn, -sn, cs, px - (cs * part.pivot[0] - sn * part.pivot[1]), py - (sn * part.pivot[0] + cs * part.pivot[1])];
+      if (!sw.landed) list.push({ k: 'blob', x: px, y: G - 2, w: 9 });
       list.push({ k: 'skew', img: part.cv, m, a: 1 });
     }
     for (const p of sim.particles) {
