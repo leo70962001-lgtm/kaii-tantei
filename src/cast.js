@@ -245,7 +245,7 @@
   })();
 
   // ================================================================ sheet scale: render big, shrink by SM
-  const SM = 0.36, UP = 1 / SM;
+  const SM = 1, UP = 1 / SM;
   const JOINTS = ['hip', 'kN', 'kF', 'bat', 'hN', 'hF', 'eN', 'eF', 'fN', 'fF'];
   function upPose(p) {
     const o = Object.assign({}, p);
@@ -274,7 +274,7 @@
     }
     return out;
   }
-  for (const R of [root.VAMP, root.MAID]) {
+  for (const R of (SM === 1 ? [] : [root.VAMP, root.MAID])) {
     if (!R || R.shrunk) continue;
     const bigRender = R.render, bigBoxes = R.boxes, bigAnchors = R.anchors, bigSize = R.SIZE;
     const SIZE = { w: Math.round(bigSize.w * SM), h: Math.round(bigSize.h * SM), ox: Math.round(bigSize.ox * SM), oy: Math.round(bigSize.oy * SM) };

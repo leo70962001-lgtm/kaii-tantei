@@ -4,9 +4,9 @@
 'use strict';
 const { Canvas } = require('./png');
 require('../src/px.js'); require('../src/fx.js'); require('../src/rig.js');
-require('../src/jk.js'); require('../src/vamp.js'); require('../src/maid.js'); require('../src/cast-data.js'); try { require('../src/cast.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; } require('../src/anims.js'); try { require('../src/frames-jk.js'); require('../src/jk-frames.js'); require('../src/jk-frames-anims.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
+require('../src/jk.js'); require('../src/vamp.js'); require('../src/maid.js'); require('../src/cast-data.js'); try { require('../src/cast.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; } require('../src/anims.js'); try { require('../src/frames-jk.js'); require('../src/sheetfx.js'); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }
 const PX = globalThis.PX, A = globalThis.ANIMS;
-const CH = { jk: [globalThis.JK, A.jkFrames || A.jk], vamp: [globalThis.VAMP, A.vamp], maid: [globalThis.MAID, A.maid], wolf: [globalThis.MAID, A.wolf] };
+const CH = { jk: [globalThis.JK, A.jk], vamp: [globalThis.VAMP, A.vamp], maid: [globalThis.MAID, A.maid], wolf: [globalThis.MAID, A.wolf] };
 const out = process.argv[2] || 'anim.png';
 const [C, build] = CH[process.argv[3] || 'jk'];
 const anims = build();

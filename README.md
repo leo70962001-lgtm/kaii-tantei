@@ -27,14 +27,12 @@ node server.js 5200
 被打中的部位（頭／身／腳）決定哪個零件受損；武器（刀、筆電）只在持有者攻擊時被打才會受損。
 每破壞一個部位額外扣 4 點 HP。兩勝制、每回合 60 秒。
 
-## 動作表流程（Gemini 生成 → 遊戲影格）
+## 目前狀態：先只做 JK
 
-1. 用 Gemini 生成一張「同一角色、多個攻擊姿勢、帶特效、單色背景」的點陣動作表（例：ref/jk_actions.jpg）。
-2. `python ref/frames.py ref/xxx_actions.jpg <角色> 4` — 以 4px 像素格重採樣、依連通區塊切成一格一格、找出腳底錨點、把「效果」與「人物」分開（效果範圍 = 判定框），輸出 `src/frames-<角色>.js` 與檢查圖 `ref/<角色>_act_cells.png`。
-3. 在 `src/<角色>-frames-anims.js` 把格子編號指定給招式（`act(i)` 帶效果、`fig(i)` 只有人物），判定框直接用 `eff(i)`。
-4. 站姿全身圖（ref/cast.jpg）另用 `python ref/extract.py` 切成 HUD／選角用的頭像與骨架版身體。
-
-目前改造 JK 全部影格來自動作表；吸血鬼與女僕還沒有動作表，先用縮小的骨架版佔位。
+- 舞台 480×270、JK 約 110px：頭髮、臉、制服、裙子是站姿圖（ref/cast.jpg）的原始像素，四肢由骨架驅動做出所有動作（`ref/extract.py` 切圖、`src/cast.js` 組裝）。
+- 攻擊的斬擊效果來自 Gemini 動作表（ref/jk_actions.jpg）：`ref/frames.py` 依 4px 像素格切格、把青色效果與人物分開，`ref/clean.py` 去雜點並統一調色盤，`src/sheetfx.js` 把效果 Scale3x 放大三倍疊在對應招式上，判定框就是效果的範圍（`hbAbs`）。
+- 標題選「練習（木人）」可對著不動的 JK 練招（計時停止、打倒後自動回血）；「1P vs CPU」是 JK 鏡像戰。
+- 吸血鬼與女僕的程式還在（`src/vamp.js`、`src/maid.js`），但暫時不在選角名單內。
 
 ## 做法
 

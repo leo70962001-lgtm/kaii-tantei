@@ -48,11 +48,12 @@ for s in small:
 cells = big
 cells.sort(key=lambda c: (round((c['box'][1] + c['box'][3]) / 2 / 45), c['box'][0]))
 # effect pixels: cyan / light blue / electric white; figure pixels: the rest
-def is_effect(p):
+def is_seed(p):
     r, g, b = p
-    if b > 150 and b > r + 40 and g > 105: return True          # cyan-blue glow
-    if r > 200 and g > 205 and b > 215: return True             # white core (the shirt is handled by connectivity below)
-    return False
+    return b > 150 and b > r + 40 and g > 105                    # cyan-blue glow: certain effect
+def is_bluish(p):
+    r, g, b = p
+    return (b > r + 30 and b > g + 5 and b > 90) or (0.3 * r + 0.59 * g + 0.11 * b > 200 and max(p) - min(p) < 40)  # darker effect blues / white cores, only when grown from a seed
 out = []
 S = 3
 sheet = native.resize((W * S, H * S), Image.NEAREST).convert('RGBA'); d = ImageDraw.Draw(sheet)
@@ -61,7 +62,16 @@ for i, c in enumerate(cells):
     cell = Image.new('RGBA', (w, h), (0, 0, 0, 0)); o = cell.load()
     for (x, y) in c['pts']: o[x - x0, y - y0] = px[x, y] + (255,)
     # figure = non-effect pixels that sit in the largest 8-connected blob of non-effect pixels
-    eff = [[o[x, y][3] > 0 and is_effect(o[x, y][:3]) for x in range(w)] for y in range(h)]
+    # effect = cyan seeds grown through blue / white neighbours (the skirt's blue is never touched by a seed)
+    eff = [[o[x, y][3] > 0 and is_seed(o[x, y][:3]) for x in range(w)] for y in range(h)]
+    grow = [(x, y) for y in range(h) for x in range(w) if eff[y][x]]
+    while grow:
+        gx, gy = grow.pop()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                nx, ny = gx + dx, gy + dy
+                if 0 <= nx < w and 0 <= ny < h and not eff[ny][nx] and o[nx, ny][3] > 0 and is_bluish(o[nx, ny][:3]):
+                    eff[ny][nx] = True; grow.append((nx, ny))
     seen = [[False] * w for _ in range(h)]; blobs = []
     for y in range(h):
         for x in range(w):

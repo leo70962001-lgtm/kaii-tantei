@@ -122,7 +122,7 @@
     return { w, h, c };
   }
   let FAR = null, NEAR = null;
-  function paint() { if (!FAR) { FAR = half(paintFar()); NEAR = half(paintNear()); } return { far: FAR, near: NEAR }; }
+  function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); } return { far: FAR, near: NEAR }; }
 
-  root.STAGE = { W: W >> 1, H: H >> 1, VW: VW >> 1, GROUND: GROUND >> 1, FAR_W: FAR_W >> 1, paint, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
+  root.STAGE = { W, H, VW, GROUND, FAR_W, paint, half, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);
