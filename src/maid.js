@@ -43,33 +43,30 @@
   // ---------------------------------------------------------------- maid head
   const HEAD = {
     normal: [
-      '...TThThTT......',
-      '..bbTTTTTbb.....',
-      '.bbbbbbbbbbb....',
-      '.babbbbbbbbbb...',
-      'BBabbbbbbbbbbb..',
-      'BBbbbbbbbbcSSb..',
-      'BBBbbbbbbbcSSSSs',
-      'BBBbbbbbbbcSSSSS',
+      '.....TThThT.....',
+      '....bbTTTTTbb...',
+      '...bbbbbbbbbbb..',
+      '..Bbabbbbbbbbbb.',
+      '.BBbbbbbbbcSSSb.',
       'BBBbbbbbbbcSkSkS',
-      '.BBbbbbbbbcSoSoS',
-      '..Bbbbbbbbc.SSSs',
-      '..bbbbbbbbcSSSmS',
-      '...cbbbbbbctSSS.',
-      '....cbbbb..tSS..',
-      '.....ccb..qQq...',
-      '...........SS...',
+      'BBBbbbbbbbcSoSoS',
+      '.BBbbbbbbbcSSSSs',
+      '..BbbbbbbbcSSmS.',
+      '...bbbbbbbctSSS.',
+      '....cbbbbb.tSS..',
+      '.....ccbb.qQq...',
+      '..........SS....',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[11, 7, 'k'], [12, 7, 'S'], [14, 7, 'k'], [14, 11, 'm'], [15, 11, 'm'], [14, 12, 'm']]);
-  HEAD.hurt = fv([[12, 9, 'k'], [14, 9, 'k'], [12, 8, 'S'], [14, 8, 'S'], [14, 11, 'm'], [14, 12, 'm']]);
-  HEAD.calm = fv([[12, 9, 'k'], [14, 9, 'k'], [12, 8, 'S'], [14, 8, 'S']]);
-  HEAD.grin = fv([[13, 11, 'm'], [14, 11, 'm'], [15, 11, 'm']]);
+  HEAD.shout = fv([[12, 5, 'k'], [13, 5, 'k'], [13, 8, 'm'], [14, 8, 'm'], [13, 9, 'm']]);
+  HEAD.hurt = fv([[12, 6, 'k'], [14, 6, 'k'], [12, 5, 'S'], [14, 5, 'S'], [13, 8, 'm'], [13, 9, 'm']]);
+  HEAD.calm = fv([[12, 6, 'k'], [14, 6, 'k'], [12, 5, 'S'], [14, 5, 'S']]);
+  HEAD.grin = fv([[12, 8, 'm'], [13, 8, 'm'], [14, 8, 'm']]);
   const NOBAND = (rows) => rows.map((r, j) => (j === 0 ? r.replace(/[Th]/g, '.') : j === 1 ? r.replace('TTTTT', 'bbbbb') : r));
-  const NORIBBON = (rows) => rows.map((r, j) => (j === 14 ? r.replace('qQq', '.S.') : r));
-  const HEAD_NECK = [12, 15];
-  const TAIL_ROOT = [1, 9];
+  const NORIBBON = (rows) => rows.map((r, j) => (j === 11 ? r.replace('qQq', '.S.') : r));
+  const HEAD_NECK = [11, 12];
+  const TAIL_ROOT = [1, 8];
 
   // ---------------------------------------------------------------- maid torso: collar, apron bib, dress, waist tie
   const TORSO = {
@@ -90,15 +87,16 @@
   };
   TORSO.noapron = RIG.recolour(TORSO.up, { h: 'K' }).map((r, j) => (j >= 2 && j <= 7 ? r.replace(/T/g, 'K') : j === 10 ? r.replace(/[Th]/g, 'K') : r));
   TORSO.torn = TORSO.noapron.map((r, j) => (j === 3 || j === 6 ? r.replace('KKKKKK', 'KSSKKS') : j === 8 ? r.replace('KKKKKKKKKK', 'KKSSKKKSKK') : r));
-  const TORSO_HIP = [7, 11];
+  for (const k of ['up', 'noapron', 'torn']) TORSO[k] = RIG.tall(TORSO[k], [3, 5, 8]);
+  const TORSO_HIP = [7, 14];
   const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
 
   // dress skirt with an apron panel in front and a frilled hem
   function skirtRows(apron, swing = 0) {
     const rows = [];
-    const H = 10;
+    const H = 13;
     for (let j = 0; j < H; j++) {
-      const w = 10 + Math.round(j * 1.1);
+      const w = 10 + Math.round(j * 0.9);
       const left = Math.round(9 - w / 2 + swing * (j / (H - 1)));
       let r = '';
       for (let i = 0; i < 22; i++) {
@@ -116,8 +114,8 @@
   const SKIRT_HIP = [9, 0];
 
   const FOOT = {
-    shoe: ['.eEE...', 'eEEEEE.', 'eEEEEEE', 'EEEEEEE'].map((r) => r.replace(/E/g, 'e').replace(/^(.)e/, '$1l')),
-    tights: ['.hTT...', 'hTTTT..', 'hTTTTT.', 'HHHHHH.'],
+    shoe: ['.eEE....', 'eEEEEE..', 'eEEEEEEE', 'EEEEEEEE'].map((r) => r.replace(/E/g, 'e').replace(/^(.)e/, '$1l')),
+    tights: ['.hTT....', 'hTTTT...', 'hTTTTTT.', 'HHHHHHH.'],
   };
   const FOOT_ANK = [2, 0];
 
@@ -159,7 +157,8 @@
       '...KKKKKKKKKKK....',
     ],
   };
-  const WTORSO_HIP = [8, 11];
+  WTORSO.up = RIG.tall(WTORSO.up, [4, 7]);
+  const WTORSO_HIP = [8, 13];
   const WTORSO_SH = { N: [3, 3], F: [14, 3], neck: [9, 0] };
   const PAW = ['.wFF...', 'wFFFFF.', 'wFFFFFF', 'gggCgCC'];
   const CLAW = ['CvC', 'fFf', 'fff'];
@@ -172,17 +171,17 @@
   ];
 
   const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 10, thigh: 12, shin: 12, upper: 6.5, fore: 6.5, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 15, headW: 13 };
-  const WSPEC = { hipTorso: WTORSO_HIP, sh: WTORSO_SH, torsoRows: WTORSO.up, torsoPivot: 10, thigh: 14, shin: 13, upper: 9, fore: 9, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 3, headH: 14, headW: 18 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 13, thigh: 17, shin: 17, upper: 8.5, fore: 8.5, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 11 };
+  const WSPEC = { hipTorso: WTORSO_HIP, sh: WTORSO_SH, torsoRows: WTORSO.up, torsoPivot: 12, thigh: 18, shin: 18, upper: 11, fore: 11, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 3, headH: 14, headW: 18 };
   const DEF = {
-    hip: [0, -26], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-7, -2], fF: [7, -2], feetN: 'shoe', feetF: 'shoe',
-    hN: [-3, -28], hF: [9, -30], form: 'maid',
+    hip: [0, -37], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-8, -2], fF: [9, -2], feetN: 'shoe', feetF: 'shoe',
+    hN: [-3, -42], hF: [9, -44], form: 'maid',
     hair: { base: 100, droop: 92, wave: 1, phase: 0, len: 12 },
     tail: { base: 150, droop: 120, wave: 1.2, phase: 0, len: 20 },
     broken: {},
   };
-  const WDEF = { hip: [0, -28], lean: 3, fN: [-9, -2], fF: [9, -2], hN: [3, -18], hF: [13, -26] };
+  const WDEF = { hip: [0, -40], lean: 3, fN: [-10, -2], fF: [11, -2], hN: [3, -32], hF: [13, -40] };
 
   function render(pose, opts = {}) {
     const p = Object.assign({}, DEF, pose);
@@ -215,13 +214,13 @@
     return opts.flip ? PX.flipX(buf) : buf;
   }
   function arm(buf, sh, el, hd) {
-    RIG.stroke(buf, M.dress, sh, el, 1.4);
-    RIG.stroke(buf, M.dress, el, hd, 1.2, { band: (i) => (i.t > 0.72 ? [M.white, 1] : null) });
-    RIG.hand(buf, M.skin, hd, 2);
+    RIG.stroke(buf, M.dress, sh, el, 1.8);
+    RIG.stroke(buf, M.dress, el, hd, 1.5, { band: (i) => (i.t > 0.72 ? [M.white, 1] : null) });
+    RIG.hand(buf, M.skin, hd, 3);
   }
   function leg(buf, hip, knee, foot, fvn) {
-    RIG.stroke(buf, M.tights, hip, knee, 1.8);
-    RIG.stroke(buf, M.tights, knee, [foot[0], foot[1] - 1], 1.5);
+    RIG.stroke(buf, M.tights, hip, knee, 2.2);
+    RIG.stroke(buf, M.tights, knee, [foot[0], foot[1] - 1], 1.9);
     RIG.place(buf, fvn === 'tights' ? M.tights : M.shoe, FOOT[fvn] || FOOT.shoe, KEY, foot, FOOT_ANK);
   }
 
@@ -247,8 +246,8 @@
     return opts.flip ? PX.flipX(buf) : buf;
   }
   function wolfArm(buf, sh, el, hd, q) {
-    RIG.stroke(buf, M.fur, sh, el, 2.7);
-    RIG.stroke(buf, M.fur, el, hd, 2.3);
+    RIG.stroke(buf, M.fur, sh, el, 3.0);
+    RIG.stroke(buf, M.fur, el, hd, 2.6);
     // claws: three bone spikes along the hand's direction
     const d = [hd[0] - el[0], hd[1] - el[1]], L = Math.hypot(d[0], d[1]) || 1, u = [d[0] / L, d[1] / L], n = [-u[1], u[0]];
     const cl = new Part(buf, M.claw);
@@ -260,8 +259,8 @@
     RIG.hand(buf, M.fur, hd, 3, (i) => (i.j === 0 ? 1 : i.j === 2 ? 3 : 2));
   }
   function wolfLeg(buf, hip, knee, foot) {
-    RIG.stroke(buf, M.fur, hip, knee, 2.9);
-    RIG.stroke(buf, M.fur, knee, [foot[0], foot[1] - 1], 2.2);
+    RIG.stroke(buf, M.fur, hip, knee, 3.2);
+    RIG.stroke(buf, M.fur, knee, [foot[0], foot[1] - 1], 2.5);
     RIG.place(buf, M.fur, PAW, KEY, foot, [2, 0]);
   }
 
@@ -273,11 +272,11 @@
   function anchors(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
-    return { headdress: [J.neck[0] - 2, J.neck[1] - 15], apron: [J.hip[0] + 2, J.hip[1] - 4], ribbon: [J.neck[0], J.neck[1] + 1], shoes: [J.fN[0], J.fN[1]] };
+    return { headdress: [J.neck[0] - 2, J.neck[1] - 12], apron: [J.hip[0] + 2, J.hip[1] - 4], ribbon: [J.neck[0], J.neck[1] - 1], shoes: [J.fN[0], J.fN[1]] };
   }
 
   root.MAID = {
     id: 'maid', name: '狼人メイド', title: '狼人のメイド（偽娘）', en: 'WEREWOLF MAID', height: '165cm', tint: '#c9a6ff',
-    M, KEY, HEAD, TORSO, WHEAD, WTORSO, FOOT, SIZE, DEF, WDEF, SPEC, WSPEC, PARTS, render, boxes, anchors, skirtRows,
+    M, KEY, HEAD, HEAD_NECK, TORSO, WHEAD, WTORSO, FOOT, SIZE, DEF, WDEF, SPEC, WSPEC, PARTS, render, boxes, anchors, skirtRows,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

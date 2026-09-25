@@ -39,36 +39,32 @@
   // ---------------------------------------------------------------- head: a cloud of hair, small face, red glasses
   const HEAD = {
     normal: [
-      '..........a...........',
-      '.........aa...........',
-      '........aab...........',
-      '......aaaaaaaaa.......',
-      '....aaaaabbbbbbba.....',
-      '...aabbbbbbbbbbbbba...',
-      '..aabbbbbbbbbbbbbbba..',
-      '..abbbbbbbbbbbbSSSbba.',
-      '..abbbbbbbbbbbSSSSSSb.',
-      '..abbbbbbbbbbgggggggg.',
-      '..abbbbbbbbbbgeSgeSgs.',
-      '..aabbbbbbbbbcSSSSSSs.',
-      '...abbbbbbbbbcSSSmfS..',
-      '...aabbbbbbbbccSSSS...',
-      '....abbbbbbbbbc.SS....',
-      '....aabbbbbbbb..SS....',
-      '.....abbbbbbbb........',
+      '.......a.........',
+      '......aa.........',
+      '....aaaaaaaa.....',
+      '..aabbbbbbbbba...',
+      '.aabbbbbbbbbbba..',
+      '.abbbbbbbbbbSSSb.',
+      '.abbbbbbbbbcSSSSs',
+      '.abbbbbbbbbgegegs',
+      '..abbbbbbbbcSSSSs',
+      '..abbbbbbbbcSmfS.',
+      '...abbbbbbbccSSS.',
+      '....abbbbbbb.SS..',
+      '.....abbbbbb.SS..',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[17, 12, 'm'], [18, 12, 'm'], [17, 13, 'm'], [18, 13, 'f']]);
-  HEAD.hurt = fv([[14, 10, 'k'], [15, 10, 'k'], [17, 10, 'k'], [18, 10, 'k'], [16, 12, 'm'], [17, 12, 'm'], [18, 12, 'm']]);
-  HEAD.calm = fv([[14, 10, 'k'], [15, 10, 'k'], [17, 10, 'k'], [18, 10, 'S'], [17, 12, 'S'], [18, 12, 'S']]);
-  HEAD.grin = fv([[16, 12, 'm'], [17, 12, 'f'], [18, 12, 'm']]);
-  HEAD.rage = fv([[13, 9, 'k'], [14, 9, 'k'], [16, 9, 'k'], [17, 9, 'k'], [18, 9, 'k'], [19, 9, 'S'], [16, 12, 'm'], [17, 12, 'f'], [18, 12, 'm'], [17, 13, 'm']]);
+  HEAD.shout = fv([[13, 9, 'm'], [14, 9, 'm'], [13, 10, 'm'], [14, 10, 'f']]);
+  HEAD.hurt = fv([[12, 7, 'k'], [14, 7, 'k'], [13, 9, 'm'], [14, 9, 'm'], [13, 10, 'm']]);
+  HEAD.calm = fv([[12, 7, 'k'], [14, 7, 'k'], [13, 9, 'S'], [14, 9, 'S']]);
+  HEAD.grin = fv([[12, 9, 'm'], [13, 9, 'f'], [14, 9, 'm']]);
+  HEAD.rage = fv([[12, 6, 'k'], [13, 6, 'k'], [14, 6, 'k'], [15, 6, 'k'], [12, 9, 'm'], [13, 9, 'f'], [14, 9, 'm'], [13, 10, 'm']]);
   // without glasses: the frame row becomes brow/skin, eyes squint
-  const NOGLASS = (rows) => rows.map((r, j) => (j === 9 ? r.replace('gggggggg', 'SSkkSkkS') : j === 10 ? r.replace(/g/g, 'S') : r));
-  const NOAHOGE = (rows) => rows.map((r, j) => (j < 3 ? r.replace(/[ab]/g, '.') : r));
-  const HEAD_NECK = [16, 16];
-  const HAIR_ROOT = [6, 13];
+  const NOGLASS = (rows) => rows.map((r, j) => (j === 7 ? r.replace('gegeg', 'SkSkS') : r));
+  const NOAHOGE = (rows) => rows.map((r, j) => (j < 2 ? r.replace(/[ab]/g, '.') : r));
+  const HEAD_NECK = [13, 12];
+  const HAIR_ROOT = [5, 10];
 
   // ---------------------------------------------------------------- torso: zipped track jacket, bare midriff, waistband
   const TORSO = {
@@ -88,7 +84,8 @@
       '..rrrrrrrrrr..',
     ],
   };
-  const TORSO_HIP = [7, 12];
+  TORSO.up = RIG.tall(TORSO.up, [5, 9]);
+  const TORSO_HIP = [7, 14];
   const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
 
   const FOOT = {
@@ -167,11 +164,11 @@
   ];
 
   const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 11, thigh: 12, shin: 11, upper: 6, fore: 6, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 15, headW: 14 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 13, thigh: 16, shin: 16, upper: 8, fore: 8, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 12 };
   const DEF = {
-    hip: [0, -24], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-7, -2], fF: [7, -2], feetN: 'slip', feetF: 'slip',
-    hN: [8, -26], hF: [10, -25], la: 0, lapOpen: false, lapLayer: 'front',
+    hip: [0, -34], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-8, -2], fF: [9, -2], feetN: 'slip', feetF: 'slip',
+    hN: [8, -38], hF: [10, -37], la: 0, lapOpen: false, lapLayer: 'front',
     bat: [-14, -44], flap: 0,
     hair: { base: 110, droop: 92, wave: 1.6, phase: 0, len: 26 },
     broken: {},
@@ -211,14 +208,14 @@
   }
   function arm(buf, sh, el, hd) {
     const stripe = (i) => (Math.abs(i.u) < 0.3 ? [M.white, 1] : null);
-    RIG.stroke(buf, M.red, sh, el, 1.5, { band: stripe });
-    RIG.stroke(buf, M.red, el, hd, 1.3, { band: (i) => (i.t > 0.8 ? [M.red, 3] : stripe(i)) });
-    RIG.hand(buf, M.skin, hd, 2);
+    RIG.stroke(buf, M.red, sh, el, 1.8, { band: stripe });
+    RIG.stroke(buf, M.red, el, hd, 1.6, { band: (i) => (i.t > 0.8 ? [M.red, 3] : stripe(i)) });
+    RIG.hand(buf, M.skin, hd, 3);
   }
   function leg(buf, hip, knee, foot, fvn) {
     const stripe = (i) => (Math.abs(i.u - 0.05) < 0.28 ? [M.white, 1] : null);
-    RIG.stroke(buf, M.red, hip, knee, 1.9, { band: stripe });
-    RIG.stroke(buf, M.red, knee, [foot[0], foot[1] - 1], 1.7, { band: stripe });
+    RIG.stroke(buf, M.red, hip, knee, 2.4, { band: stripe });
+    RIG.stroke(buf, M.red, knee, [foot[0], foot[1] - 1], 2.1, { band: stripe });
     RIG.place(buf, fvn === 'bare' ? M.skin : M.slip, FOOT[fvn] || FOOT.slip, KEY, foot, FOOT_ANK);
   }
 
@@ -230,11 +227,11 @@
   function anchors(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
-    return { glasses: [J.neck[0] + 2, J.neck[1] - 7], laptop: [J.hN[0] + 4, J.hN[1]], slippers: [J.fN[0], J.fN[1]], ahoge: [J.neck[0] - 4, J.neck[1] - 16] };
+    return { glasses: [J.neck[0] + 2, J.neck[1] - 5], laptop: [J.hN[0] + 4, J.hN[1]], slippers: [J.fN[0], J.fN[1]], ahoge: [J.neck[0] - 5, J.neck[1] - 12] };
   }
 
   root.VAMP = {
     id: 'vamp', name: '吸血鬼', title: '吸血鬼のニート', en: 'VAMPIRE NEET', height: '152cm', tint: '#ffd24a',
-    M, KEY, HEAD, TORSO, FOOT, SIZE, DEF, SPEC, PARTS, render, boxes, anchors, bat, BAT, BATKEY,
+    M, KEY, HEAD, HEAD_NECK, TORSO, FOOT, SIZE, DEF, SPEC, PARTS, render, boxes, anchors, bat, BAT, BATKEY,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -44,34 +44,30 @@
   // ---------------------------------------------------------------- head (3/4 view, facing +x)
   const HEAD = {
     normal: [
-      '.......bbbbbbb.....',
-      '.....bbbaaabbbb....',
-      '....bbbaabbbbbbb...',
-      '....bbbabbbbbbbbb..',
-      '...cbbbbbbbbbbbbbb.',
-      '...cbbbbbbbbWbbbbb.',
-      '...cbbbbbbbbWbcbbb.',
-      '..ccbbbbbbbbWsSScb.',
-      '..cbbbbbbbbcWSSSSS.',
-      '..cbbbbbbbbcWkkSkS.',
-      '..ccbbbbbbbcWrSSrSs',
-      '..ccbbbbbbbcwSSSSS.',
-      '...cbbbbbbbcwSSSmS.',
-      '...cbbbbbbbcwtSSS..',
-      '...ccbbbbbbcu.tSS..',
-      '....cbbbbbb..qqXq..',
-      '....cbbbbbb...SS...',
+      '.....bbbbbb....',
+      '...bbbaabbbbb..',
+      '..bbbbbbbbbbbb.',
+      '..cbbbbbbbWbbb.',
+      '.ccbbbbbbbWsSS.',
+      '.ccbbbbbbcWkSk.',
+      '.ccbbbbbbcWrSrS',
+      '..cbbbbbbcwSSSs',
+      '..cbbbbbbcwSmS.',
+      '..ccbbbbbcuSSS.',
+      '...cbbbbb.tSS..',
+      '....cbbbb.qXq..',
+      '.....bbb...S...',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[13, 9, 'k'], [14, 9, 'S'], [16, 9, 'k'], [17, 9, 'S'], [16, 12, 'm'], [17, 12, 'm'], [16, 13, 'm']]);
-  HEAD.hurt = fv([[13, 10, 'k'], [14, 10, 'k'], [16, 10, 'k'], [17, 10, 'S'], [13, 9, 'S'], [14, 9, 'S'], [16, 9, 'S'], [16, 12, 'm'], [16, 13, 'm']]);
-  HEAD.calm = fv([[13, 10, 'k'], [14, 10, 'k'], [16, 10, 'k'], [17, 10, 'S'], [13, 9, 'S'], [14, 9, 'S'], [16, 9, 'S']]);
-  HEAD.grin = fv([[15, 12, 'm'], [16, 12, 'm'], [17, 12, 'm']]);
-  const HEAD_NECK = [14, 16];
-  const HAIR_ROOT = [6, 13];  // the nape: the mane hangs from here
+  HEAD.shout = fv([[11, 5, 'k'], [12, 5, 'k'], [12, 8, 'm'], [13, 8, 'm'], [12, 9, 'm']]);
+  HEAD.hurt = fv([[11, 6, 'k'], [13, 6, 'k'], [11, 5, 'S'], [13, 5, 'S'], [12, 8, 'm'], [12, 9, 'm']]);
+  HEAD.calm = fv([[11, 6, 'k'], [13, 6, 'k'], [11, 5, 'S'], [13, 5, 'S']]);
+  HEAD.grin = fv([[11, 8, 'm'], [12, 8, 'm'], [13, 8, 'm']]);
+  const HEAD_NECK = [11, 12];
+  const HAIR_ROOT = [4, 10];  // the nape: the mane hangs from here
   // the near side lock: hangs from the cheek down over the shoulder, drawn after the torso
-  const SIDELOCK = ['wu', 'wu', '.wu', '.wu', '.wu', '..wu', '..w', '..u'];
+  const SIDELOCK = ['wu', 'wu', '.wu', '.wu', '..wu', '..w', '..u'];
 
   // ---------------------------------------------------------------- torso: sailor top, bare midriff, waistband
   const TORSO = {
@@ -94,15 +90,16 @@
     ],
   };
   TORSO.torn = RIG.recolour(TORSO.up, { R: 'v', E: 'x', V: 'x', T: 'h' }).map((r, j) => (j === 3 ? r.replace('vvvvv', 'vxvvx') : j === 11 ? r.replace('ySS', 'yyS') : r));
-  const TORSO_HIP = [7, 14];
+  TORSO.up = RIG.tall(TORSO.up, [6, 10]); TORSO.torn = RIG.tall(TORSO.torn, [6, 10]);
+  const TORSO_HIP = [7, 16];
   const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
 
   // pleated skirt generated with a swing: alternate light/base columns, darker toward the back and the hem
   function skirtRows(swing = 0, flare = 0) {
     const rows = [];
-    const H = 9;
+    const H = 11;
     for (let j = 0; j < H; j++) {
-      const w = 10 + Math.round(j * (1 + flare * 0.4));
+      const w = 10 + Math.round(j * (0.9 + flare * 0.4));
       const left = Math.round(9 - w / 2 + swing * (j / (H - 1)));
       let r = '';
       for (let i = 0; i < 20; i++) {
@@ -121,10 +118,10 @@
 
   const FOOT = {
     flat: [
-      '.oBB...',
-      'oBBBBB.',
-      'oBBBBBB',
-      'OOOOOOO',
+      '.oBB....',
+      'oBBBBB..',
+      'oBBBBBBB',
+      'OOOOOOOO',
     ],
     toe: [
       '.oB....',
@@ -144,11 +141,11 @@
   ];
 
   const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 13, thigh: 13, shin: 13, upper: 7, fore: 7, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 15, headW: 13 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 15, thigh: 18, shin: 18, upper: 9, fore: 9, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 11 };
   const DEF = {
-    hip: [0, -27], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-8, -2], fF: [8, -2], feetN: 'flat', feetF: 'flat',
-    hN: [-4, -27], hF: [11, -28],
+    hip: [0, -38], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-9, -2], fF: [11, -2], feetN: 'flat', feetF: 'flat',
+    hN: [-4, -40], hF: [11, -41],
     sw: 25, blade: 26, grip: 'F', swordLayer: 'back',
     hair: { base: 106, droop: 92, wave: 1, phase: 0, len: 32 },
     broken: {},
@@ -180,7 +177,7 @@
       RIG.place(buf, M.white, J.tb, KEY, J.hip, J.tAnchor);
       // 5. head and the near side lock
       RIG.place(buf, M.hair, HEAD[p.face] || HEAD.normal, KEY, J.neck, HEAD_NECK);
-      RIG.place(buf, M.streak, SIDELOCK, KEY, [headO[0] + 11, headO[1] + 14], [0, 0]);
+      RIG.place(buf, M.streak, SIDELOCK, KEY, [headO[0] + 9, headO[1] + 10], [0, 0]);
       // 6. near arm: the prosthetic
       steelArm(buf, J, p, br.arm);
       if (p.swordLayer === 'front') sword(buf, J.hF, p, br);
@@ -192,13 +189,13 @@
   }
 
   function farArm(buf, J, p) {
-    RIG.stroke(buf, M.white, J.shF, J.eF, 1.5);
-    RIG.stroke(buf, M.skin, J.eF, J.hF, 1.1);
-    RIG.hand(buf, M.skin, J.hF, 2);
+    RIG.stroke(buf, M.white, J.shF, J.eF, 1.8);
+    RIG.stroke(buf, M.skin, J.eF, J.hF, 1.4);
+    RIG.hand(buf, M.skin, J.hF, 3);
   }
   // the steel arm: plated upper arm, a dark elbow joint, a heavy forearm with a seam, a 3x3 fist
   function steelArm(buf, J, p, broken) {
-    RIG.stroke(buf, M.steel, J.shN, J.eN, 1.4, { band: (i) => (i.t < 0.22 ? [M.joint, 2] : Math.abs(i.t - 0.6) < 0.08 ? [M.steel, 3] : null) });
+    RIG.stroke(buf, M.steel, J.shN, J.eN, 1.8, { band: (i) => (i.t < 0.22 ? [M.joint, 2] : Math.abs(i.t - 0.6) < 0.08 ? [M.steel, 3] : null) });
     const el = new Part(buf, M.joint);
     el.add(J.eN[0], J.eN[1], {}); el.add(J.eN[0] + 1, J.eN[1], {}); el.add(J.eN[0], J.eN[1] + 1, {}); el.add(J.eN[0] + 1, J.eN[1] + 1, {});
     el.commit((i) => (i.x === J.eN[0] && i.y === J.eN[1] ? 1 : 3));
@@ -215,11 +212,11 @@
       w.commit((i) => i.t);
       return;
     }
-    RIG.stroke(buf, M.steel, J.eN, J.hN, 1.5, { band: (i) => (Math.abs(i.t - 0.45) < 0.07 ? [M.joint, 3] : i.t > 0.86 ? [M.joint, 2] : null) });
+    RIG.stroke(buf, M.steel, J.eN, J.hN, 1.8, { band: (i) => (Math.abs(i.t - 0.45) < 0.07 ? [M.joint, 3] : i.t > 0.86 ? [M.joint, 2] : null) });
     RIG.hand(buf, M.joint, J.hN, 3, (i) => (i.i === 0 && i.j === 0 ? 0 : i.i === 2 || i.j === 2 ? 3 : 2));
   }
   function steelLeg(buf, hip, knee, foot, fvn, broken) {
-    RIG.stroke(buf, M.steel, hip, knee, 1.9, { band: (i) => (Math.abs(i.t - 0.5) < 0.06 ? [M.joint, 3] : null) });
+    RIG.stroke(buf, M.steel, hip, knee, 2.3, { band: (i) => (Math.abs(i.t - 0.5) < 0.06 ? [M.joint, 3] : null) });
     const ank = [foot[0], foot[1] - 1];
     if (broken) {
       // armour stripped: a thin dark frame with a glowing wire and the knee joint bare
@@ -229,7 +226,7 @@
       w.add(mid[0] + 1, mid[1], { t: 1 }); w.add(mid[0] + 1, mid[1] + 3, { t: 2 });
       w.commit((i) => i.t);
     } else {
-      RIG.stroke(buf, M.steel, knee, ank, 1.7, { band: (i) => (Math.abs(i.t - 0.62) < 0.07 ? [M.joint, 3] : null) });
+      RIG.stroke(buf, M.steel, knee, ank, 2.0, { band: (i) => (Math.abs(i.t - 0.62) < 0.07 ? [M.joint, 3] : null) });
     }
     const kc = new Part(buf, M.joint);
     kc.add(knee[0], knee[1], {}); kc.add(knee[0] + 1, knee[1], {}); kc.add(knee[0], knee[1] - 1, {}); kc.add(knee[0] + 1, knee[1] - 1, {});
@@ -237,8 +234,8 @@
     RIG.place(buf, M.shoe, FOOT[fvn] || FOOT.flat, KEY, foot, FOOT_ANK);
   }
   function sockLeg(buf, hip, knee, foot, fvn) {
-    RIG.stroke(buf, M.sock, hip, knee, 1.9);
-    RIG.stroke(buf, M.sock, knee, [foot[0], foot[1] - 1], 1.6);
+    RIG.stroke(buf, M.sock, hip, knee, 2.3);
+    RIG.stroke(buf, M.sock, knee, [foot[0], foot[1] - 1], 2.0);
     RIG.place(buf, M.shoe, FOOT[fvn] || FOOT.flat, KEY, foot, FOOT_ANK);
   }
 
@@ -284,6 +281,6 @@
 
   root.JK = {
     id: 'jk', name: '改造人間', title: '改造人間の女子高生', en: 'CYBORG JK', height: '170cm', tint: '#ff5a6e',
-    M, KEY, HEAD, TORSO, FOOT, SIZE, DEF, SPEC, PARTS, render, boxes, anchors, skirtRows,
+    M, KEY, HEAD, HEAD_NECK, TORSO, FOOT, SIZE, DEF, SPEC, PARTS, render, boxes, anchors, skirtRows,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

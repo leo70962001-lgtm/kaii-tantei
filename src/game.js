@@ -72,7 +72,7 @@
     const buf = new PX.Buf(26, 22);
     const rows = f.form === 'wolf' ? R.WHEAD.normal : R.HEAD.normal;
     const mat = f.form === 'wolf' ? R.M.fur : R.M.hair;
-    RIG.place(buf, mat, rows, R.KEY, [13, 20], f.form === 'wolf' ? [8, 13] : [R.id === 'vamp' ? 16 : R.id === 'maid' ? 12 : 14, 16]);
+    RIG.place(buf, mat, rows, R.KEY, [13, 18], f.form === 'wolf' ? [8, 13] : R.HEAD_NECK);
     PX.outline(buf);
     const cv = toCanvas(buf.c, buf.w, buf.h);
     portraits.set(key, cv);

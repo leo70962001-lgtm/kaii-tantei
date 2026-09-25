@@ -46,6 +46,8 @@
       return '.'.repeat(pad + s) + r + '.'.repeat(pad - s);
     });
   }
+  // duplicate the given rows (a longer torso without redrawing it)
+  function tall(rows, dup) { const out = []; rows.forEach((r, j) => { out.push(r); if (dup.includes(j)) out.push(r); }); return out; }
   function variant(rows, edits) {
     const out = rows.map((r) => r.split(''));
     for (const [x, y, ch] of edits) if (out[y] && x < out[y].length) out[y][x] = ch;
@@ -105,6 +107,11 @@
   function finish(buf, p, J, opts = {}) {
     if (p.rot) PX.rotateBuf(buf, J.hip[0], J.hip[1] - (opts.rotUp ?? 8), p.rot);
     PX.outline(buf);
+    if (opts.rim ?? PX.PALE_RIM) {
+      // optional pale ring around the whole silhouette (D Ahruon's sheets)
+      const pale = PX.hex(opts.rimCol || PX.PALE_RIM_COL || '#e6eef4');
+      for (let i = 0; i < buf.c.length; i++) if ((buf.f[i] & 4) && !(buf.f[i] & 2)) buf.c[i] = pale;
+    }
     if (p.flash) {
       const hi = PX.hex(opts.flashInk || '#9fb4ff'), wh = PX.hex('#ffffff');
       for (let i = 0; i < buf.c.length; i++) if (buf.c[i] && !(buf.f[i] & 2)) buf.c[i] = (buf.f[i] & 4) ? hi : wh;
@@ -158,5 +165,5 @@
     }
   }
 
-  root.RIG = { stroke, hand, place, shear, variant, recolour, solve, boxes, finish, smear, mane, c };
+  root.RIG = { stroke, hand, place, shear, variant, recolour, tall, solve, boxes, finish, smear, mane, c };
 })(typeof window !== 'undefined' ? window : globalThis);

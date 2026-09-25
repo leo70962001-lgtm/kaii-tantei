@@ -13,6 +13,26 @@
   const { TAU } = PX;
 
   let hitSerial = 1;
+  // longer legs and torsos: hips/knees/hit boxes/body effects move up by SHIFT_Y (half of it in crouches),
+  // hands and elbows by SHIFT_Y + HAND_EXTRA (the taller torso lifts the shoulders)
+  let SHIFT_Y = 0, HAND_EXTRA = 0;
+  const JOINTS = ['hip', 'kN', 'kF', 'bat'], HANDS = ['hN', 'hF', 'eN', 'eF'];
+  function shifted(pose) {
+    if (!SHIFT_Y) return pose;
+    const s = pose.hip && pose.hip[1] > -21 ? Math.round(SHIFT_Y / 2) : SHIFT_Y;
+    const h = s + HAND_EXTRA;
+    const o = Object.assign({}, pose);
+    for (const k of JOINTS) if (Array.isArray(o[k])) o[k] = [o[k][0], o[k][1] + s];
+    for (const k of HANDS) if (Array.isArray(o[k])) o[k] = [o[k][0], o[k][1] + h];
+    if (o.smear) {
+      const sm = Object.assign({}, o.smear);
+      for (const w of ['from', 'to']) if (sm[w]) { sm[w] = Object.assign({}, sm[w]); for (const k of HANDS) if (Array.isArray(sm[w][k])) sm[w][k] = [sm[w][k][0], sm[w][k][1] + h]; }
+      o.smear = sm;
+    }
+    if (o.fx) o.fx = o.fx.map((f) => { const g = Object.assign({}, f); if (typeof g.y === 'number' && g.y < -8) g.y += s; if (Array.isArray(g.c)) g.c = [g.c[0], g.c[1] + s]; return g; });
+    o._s = s;
+    return o;
+  }
   function seq(list, base, keys) {
     const out = [];
     let pose = Object.assign({}, base);
@@ -26,10 +46,11 @@
       let smear = null;
       if (e.sm) { last = { from: pick(prev), to: pick(pose), shape: e.sm, mat: e.smat, inner: e.sinner }; smear = Object.assign({}, last, { age: 0 }); }
       else if (e.sa !== undefined && last) smear = Object.assign({}, last, { age: e.sa });
+      const P = shifted(Object.assign({}, pose, { fx: e.fx || [], smear }));
       out.push({
-        pose: Object.assign({}, pose, { fx: e.fx || [], smear }),
+        pose: P,
         dur: e.d || 50, dx: e.dx || 0, lift: e.lift || 0, ghost: !!e.ghost, shake: e.shake || 0, sfx: e.sfx,
-        hb: e.hb || null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
+        hb: e.hb ? [e.hb[0], e.hb[1] + (P._s || 0), e.hb[2], e.hb[3] + (P._s || 0)] : null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
         chain: !!e.chain, cancel: !!e.cancel, inv: !!e.inv, air: e.air, spawn: e.spawn, phase: e.ph, hitId: e.hb ? (e.hid ? hitId + e.hid * 1000 : hitId) : 0,
         form: e.form,
       });
@@ -128,12 +149,13 @@
 
   // ================================================================ 改造人間 JK
   const JK_S = {
-    hip: [0, -27], lean: 0, fN: [-8, -2], fF: [8, -2], feetN: 'flat', feetF: 'flat',
+    hip: [0, -27], lean: 0, fN: [-9, -2], fF: [11, -2], feetN: 'flat', feetF: 'flat',
     hN: [-4, -27], hF: [11, -28], sw: 25, grip: 'F', swordLayer: 'back', noBlade: false, face: 'normal', head: [0, 0], rot: 0,
     hair: { base: 106, droop: 92, wave: 1, phase: 0, len: 32 }, tail: {},
   };
   const JK_KEYS = ['hF', 'sw'];
   function jkAnims() {
+    SHIFT_Y = -11; HAND_EXTRA = -2;
     const V = {
       stride: 9,
       breath: { hF: [11, -27], sw: 27 },
@@ -177,9 +199,9 @@
     ], S, K) };
     // 義手ストレート: the steel arm's straight punch
     A.heavy = { label: '義手ストレート', frames: seq([
-      { d: 90, ph: 'ANTICIPATION', p: { hN: [-10, -31], eN: [-9, -36], lean: -2, hip: [-1, -27], face: 'shout', head: [-1, 0], hair: hp(0.1, { base: 90 }) } },
-      { d: 60, ph: 'HIT', ghost: true, sfx: 'heavy', shake: 2, hb: [12, -40, 32, -22], dmg: 10, stun: 340, kb: 4, pd: 1.6, p: { hip: [4, -25], lean: 3, fF: [15, -2], fN: [-6, -2], hN: [23, -31], head: [2, 0], hair: hp(0.3, { base: 160, droop: 100 }) }, fx: [hitAt(30, -31, 0, 4), { type: 'bolt', x: 30, y: -31, r: 5, len: 8, n: 3, a0: -120, a1: 40, age: 0.2, seed: 3, mat: 'spark' }] },
-      { d: 90, ph: 'HOLD', hb: [12, -40, 32, -22], dmg: 10, stun: 340, kb: 4, pd: 1.6, p: { hair: hp(0.45) }, fx: [hitAt(30, -31, 0.5, 4)] },
+      { d: 90, ph: 'ANTICIPATION', p: { hN: [-10, -31], eN: [-9, -36], lean: -2, hip: [-1, -27], face: 'shout', head: [-1, 0], hair: hp(0.1, { base: 90 }) }, fx: [{ type: 'bolt', x: -10, y: -31, r: 2, len: 5, n: 3, a0: -180, a1: 180, age: 0.3, seed: 9, mat: 'ice' }] },
+      { d: 60, ph: 'HIT', ghost: true, sfx: 'heavy', shake: 2, hb: [12, -40, 34, -22], dmg: 10, stun: 340, kb: 4, pd: 1.6, p: { hip: [7, -25], lean: 3, fF: [19, -2], fN: [-15, -2], hN: [26, -31], head: [3, 0], hair: hp(0.3, { base: 165, droop: 100, wave: 1.8 }) }, fx: [hitAt(32, -31, 0, 4, 'ice'), { type: 'bolt', x: 32, y: -31, r: 6, len: 10, n: 5, a0: -150, a1: 60, age: 0.1, seed: 3, mat: 'ice' }] },
+      { d: 90, ph: 'HOLD', hb: [12, -40, 34, -22], dmg: 10, stun: 340, kb: 4, pd: 1.6, p: { hair: hp(0.45) }, fx: [hitAt(32, -31, 0.5, 4, 'ice'), { type: 'bolt', x: 32, y: -31, r: 8, len: 9, n: 4, a0: -150, a1: 60, age: 0.5, seed: 5, mat: 'ice' }] },
       { d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { hN: [21, -31], face: 'normal', hair: hp(0.55) } },
       { d: 90, ph: 'RECOVER', chain: true, p: { hN: [6, -29], lean: 1, hip: [2, -27], fF: [11, -2], head: [1, 0], hair: hp(0.7, { base: 112 }) } },
       { d: 60, ph: 'OVERSHOOT', p: { hN: [-4, -27], lean: 0, hip: [0, -27], fF: [8, -2], hair: hp(0.85) } },
@@ -194,7 +216,7 @@
     // 袈裟斬: two hands, over the shoulder, a lunge
     A.heavy2 = { label: '袈裟斬', frames: seq([
       { d: 110, ph: 'ANTICIPATION', p: { grip: 'B', hF: [3, -42], hN: [1, -40], sw: -135, lean: -2, hip: [-1, -27], fF: [10, -4], head: [0, 0], swordLayer: 'front', hair: hp(0.1, { base: 92 }) } },
-      { d: 40, ph: 'SMEAR', sm: 'fan', sfx: 'swish', shake: 2, hb: [10, -50, 46, -8], dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hip: [4, -24], fF: [16, -2], fN: [-10, -2], hF: [19, -22], hN: [16, -25], sw: 42, lean: 3, head: [2, 1], face: 'shout', noBlade: true, hair: hp(0.3, { base: 165, droop: 100 }) } },
+      { d: 40, ph: 'SMEAR', sm: 'fan', sfx: 'swish', shake: 2, hb: [10, -50, 46, -8], dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hip: [6, -24], fF: [21, -2], fN: [-15, -2], hF: [21, -22], hN: [18, -25], sw: 42, lean: 3, head: [2, 1], face: 'shout', noBlade: true, hair: hp(0.3, { base: 170, droop: 100, wave: 1.8 }) } },
       { d: 100, ph: 'HIT', sa: 0.42, hb: [10, -50, 46, -8], dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hF: [19, -17], hN: [16, -20], sw: 66, noBlade: false, hair: hp(0.45) }, fx: [{ type: 'bolt', x: 36, y: -26, r: 5, len: 8, n: 3, a0: -120, a1: 40, age: 0.2, seed: 3 }] },
       { d: 60, ph: 'FOLLOW THROUGH', sa: 0.8, chain: true, cancel: true, p: { hF: [17, -13], hN: [14, -16], sw: 86, face: 'normal', hair: hp(0.55) } },
       { d: 80, ph: 'RECOVER', chain: true, p: { grip: 'F', hip: [1, -26], fF: [11, -2], fN: [-9, -2], hF: [13, -27], hN: [-4, -27], sw: 18, lean: 1, head: [1, 0], swordLayer: 'back', hair: hp(0.7, { base: 110 }) } },
@@ -253,12 +275,13 @@
 
   // ================================================================ 吸血鬼ニート
   const V_S = {
-    hip: [0, -24], lean: 0, fN: [-7, -2], fF: [7, -2], feetN: 'slip', feetF: 'slip',
+    hip: [0, -24], lean: 0, fN: [-8, -2], fF: [9, -2], feetN: 'slip', feetF: 'slip',
     hN: [8, -26], hF: [10, -25], la: 0, lapOpen: false, lapLayer: 'front', noLap: false, face: 'normal', head: [0, 0], rot: 0,
     bat: [-14, -44], flap: 0, hair: { base: 110, droop: 92, wave: 1.6, phase: 0, len: 26 }, tail: {},
   };
   const V_KEYS = ['hN', 'la'];
   function vampAnims() {
+    SHIFT_Y = -10; HAND_EXTRA = -2;
     const V = {
       stride: 7, idleLabel: 'だるい構え',
       breath: { hN: [8, -25], hF: [10, -24], flap: 1, bat: [-14, -46] },
@@ -304,7 +327,7 @@
     ], S, K), next: 'bite' };
     A.heavy = { label: 'ノートPC叩きつけ', frames: seq([
       { d: 110, ph: 'ANTICIPATION', p: { hN: [6, -44], hF: [3, -42], la: -100, lean: -2, hip: [-1, -24], head: [-1, 0], face: 'shout', hair: hp(0.1, { base: 90 }), flap: 1 } },
-      { d: 40, ph: 'SMEAR', sm: 'fan', sfx: 'heavy', shake: 3, hb: [6, -32, 34, 0], dmg: 12, stun: 420, kb: 4, kd: true, pd: 1.5, p: { hip: [3, -21], lean: 4, fF: [14, -2], fN: [-8, -2], hN: [18, -14], hF: [14, -13], la: 60, head: [2, 1], hair: hp(0.3, { base: 165, droop: 100 }) } },
+      { d: 40, ph: 'SMEAR', sm: 'fan', sfx: 'heavy', shake: 3, hb: [6, -32, 34, 0], dmg: 12, stun: 420, kb: 4, kd: true, pd: 1.5, p: { hip: [5, -21], lean: 5, fF: [17, -2], fN: [-12, -2], hN: [20, -12], hF: [16, -11], la: 62, head: [3, 2], hair: hp(0.3, { base: 170, droop: 100, wave: 2 }) } },
       { d: 120, ph: 'HIT', sa: 0.42, hb: [6, -32, 34, 0], dmg: 12, stun: 420, kb: 4, kd: true, pd: 1.5, p: { hN: [19, -10], hF: [15, -9], la: 75, hair: hp(0.45) }, fx: [dust(24, -1, 0.15, 5), { type: 'bolt', x: 26, y: -8, r: 5, len: 8, n: 3, a0: -150, a1: -30, age: 0.2, seed: 3 }] },
       { d: 80, ph: 'FOLLOW THROUGH', sa: 0.8, chain: true, cancel: true, p: { face: 'normal', hair: hp(0.55) }, fx: [dust(24, -1, 0.6, 5)] },
       { d: 110, ph: 'RECOVER', p: { hip: [1, -24], lean: 1, fF: [9, -2], hN: [10, -26], hF: [11, -25], la: 5, head: [0, 0], hair: hp(0.7, { base: 110 }) } },
@@ -351,13 +374,14 @@
 
   // ================================================================ 狼人メイド + 狼
   const M_S = {
-    hip: [0, -26], lean: 0, fN: [-7, -2], fF: [7, -2], feetN: 'shoe', feetF: 'shoe',
+    hip: [0, -26], lean: 0, fN: [-8, -2], fF: [9, -2], feetN: 'shoe', feetF: 'shoe',
     hN: [-3, -28], hF: [9, -30], la: 0, form: 'maid', face: 'normal', head: [0, 0], rot: 0,
     hair: { base: 100, droop: 92, wave: 1, phase: 0, len: 12 }, tail: { base: 150, droop: 120, wave: 1.2, phase: 0, len: 20 },
   };
-  const W_S = Object.assign({}, M_S, { form: 'wolf', hip: [0, -28], lean: 3, fN: [-9, -2], fF: [9, -2], hN: [3, -18], hF: [13, -26] });
+  const W_S = Object.assign({}, M_S, { form: 'wolf', hip: [0, -28], lean: 3, fN: [-10, -2], fF: [11, -2], hN: [3, -18], hF: [13, -26] });
   const M_KEYS = ['hF', 'la', 'hN', 'fF'];
   function maidAnims() {
+    SHIFT_Y = -11; HAND_EXTRA = -3;
     const V = {
       stride: 8, idleLabel: '待機',
       breath: { hN: [-3, -27], hF: [9, -29] },
@@ -394,8 +418,8 @@
     ], S, K) };
     A.heavy = { label: '上段蹴り', frames: seq([
       { d: 90, ph: 'ANTICIPATION', p: { hip: [-1, -25], fF: [3, -6], lean: -2, hN: [-6, -30], hF: [6, -32], head: [-1, 0], hair: hp(0.1, { base: 88 }) } },
-      { d: 50, ph: 'HIT', sm: 'crescent', sfx: 'swish', shake: 1, hb: [10, -52, 34, -28], dmg: 10, stun: 360, kb: 4, pd: 1.3, p: { fF: [25, -40], kF: [13, -29], la: 250, hip: [2, -27], lean: 2, fN: [-8, -2], hN: [-8, -26], hF: [2, -30], face: 'shout', skirtSwing: 3, hair: hp(0.3, { base: 150 }) }, fx: [hitAt(30, -40, 0, 5)] },
-      { d: 90, ph: 'HOLD', sa: 0.5, hb: [10, -52, 34, -28], dmg: 10, stun: 360, kb: 4, pd: 1.3, p: { fF: [26, -38], la: 260 }, fx: [hitAt(30, -40, 0.5, 5)] },
+      { d: 50, ph: 'HIT', sm: 'crescent', sfx: 'swish', shake: 1, hb: [8, -60, 32, -28], dmg: 10, stun: 360, kb: 4, pd: 1.3, p: { fF: [22, -52], kF: [13, -37], la: 250, hip: [1, -27], lean: -2, fN: [-9, -2], hN: [-10, -24], hF: [0, -30], head: [-2, 1], face: 'shout', skirtSwing: 3, hair: hp(0.3, { base: 150, wave: 1.8 }) }, fx: [hitAt(28, -50, 0, 5)] },
+      { d: 90, ph: 'HOLD', sa: 0.5, hb: [8, -60, 32, -28], dmg: 10, stun: 360, kb: 4, pd: 1.3, p: { fF: [24, -49], kF: [14, -35], la: 262 }, fx: [hitAt(28, -50, 0.5, 5)] },
       { d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { fF: [20, -26], kF: [12, -22], face: 'normal', hair: hp(0.5) } },
       { d: 100, ph: 'RECOVER', chain: true, p: Object.assign({}, S, { fF: [10, -2], lean: 1, hair: hp(0.7) }) },
       { d: 60, ph: 'OVERSHOOT', p: Object.assign({}, S, { hair: hp(0.85) }) },
@@ -418,7 +442,7 @@
     ], S, K) };
     A.air = { label: '飛び蹴り', frames: seq([
       { d: 50, ph: 'ANTICIPATION', p: { fN: [-4, -10], fF: [4, -12], hN: [-6, -30], hF: [8, -32], hair: hp(0.2, { base: 40 }) } },
-      { d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [6, -36, 32, -10], dmg: 8, stun: 320, kb: 3, p: { fF: [20, -26], kF: [10, -30], fN: [-6, -14], lean: 3, face: 'shout', skirtSwing: 3 }, fx: [hitAt(26, -26, 0, 4)] },
+      { d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [6, -36, 32, -10], dmg: 8, stun: 320, kb: 3, p: { fF: [27, -22], kF: [13, -27], fN: [-8, -14], lean: 5, head: [2, 1], face: 'shout', skirtSwing: 3, hair: hp(0.3, { base: 30, wave: 1.6 }) }, fx: [hitAt(29, -24, 0, 4)] },
       { d: 80, ph: 'HOLD', hb: [6, -36, 32, -10], dmg: 8, stun: 320, kb: 3, p: {} },
       { d: 260, ph: 'FOLLOW THROUGH', p: { face: 'normal' } },
     ], S, K) };
@@ -440,6 +464,7 @@
     return A;
   }
   function wolfAnims() {
+    SHIFT_Y = -12; HAND_EXTRA = -2;
     const V = {
       stride: 11, idleLabel: '威嚇',
       breath: { hN: [3, -17], hF: [13, -25], head: [1, 1] },
