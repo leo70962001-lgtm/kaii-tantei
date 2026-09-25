@@ -11,7 +11,10 @@
   'use strict';
   const SHEETS = root.SPRITES && root.SPRITES.jk;
   if (!SHEETS) return;
-  const SCALE = { A: 3, B: 3, C: 4 };
+  // the standing picture (110 px tall) is the size base: sheets A/B stand 41 cell px, C 30 → fractional scales
+  const BASE_H = 110;
+  const SCALE = { A: BASE_H / 41, B: BASE_H / 41, C: BASE_H / 30 };
+  const HEAD_H = 27;   // the picture's own head, 1:1
   const hasDoc = typeof document !== 'undefined';
 
   function decode(b64, w, h) {
@@ -48,11 +51,39 @@
     }
     return out;
   }
-  function up(px, w, h, k) {
-    if (k === 3) return scale3x(px, w, h);
-    if (k === 2) return scale2x(px, w, h);
-    if (k === 4) return scale2x(scale2x(px, w, h), w * 2, h * 2);
-    return px.slice();
+  function nearest(px, w, h, W, H) {
+    const out = new Uint32Array(W * H);
+    for (let y = 0; y < H; y++) { const sy = Math.min(h - 1, Math.floor(y * h / H)); for (let x = 0; x < W; x++) out[y * W + x] = px[sy * w + Math.min(w - 1, Math.floor(x * w / W))]; }
+    return out;
+  }
+  // upscale by a fractional factor: the nearest integer smoothing scale (Scale2x / Scale3x / Scale2x²), then a
+  // nearest-neighbour resample to the exact size
+  function up(px, w, h, s) {
+    const kb = s <= 2.5 ? 2 : s <= 3.5 ? 3 : 4;
+    const base = kb === 2 ? scale2x(px, w, h) : kb === 3 ? scale3x(px, w, h) : scale2x(scale2x(px, w, h), w * 2, h * 2);
+    const W = Math.round(w * s), H = Math.round(h * s);
+    return (W === w * kb && H === h * kb) ? base : nearest(base, w * kb, h * kb, W, H);
+  }
+  // the standing picture's head (normal / hurt / shout faces), scaled to HEAD_H, chin point kept
+  const HEADS = {};
+  if (SHEETS.heads) for (const [name, hd] of Object.entries(SHEETS.heads)) {
+    const s = HEAD_H / hd.h, W = Math.round(hd.w * s), H = HEAD_H;
+    HEADS[name] = { w: W, h: H, px: nearest(decode(hd.d, hd.w, hd.h), hd.w, hd.h, W, H), chin: [Math.round(hd.chin[0] * s), Math.round(hd.chin[1] * s)] };
+  }
+  // a copy of the cell with the sheet's small head erased and the picture's head drawn at the chin point
+  function withHead(c, face) {
+    const H = HEADS[face] || HEADS.normal; if (!H || !c.head) return c;
+    const k = c.k, pad = 16, w = c.w + pad * 2, h = c.h + pad * 2, Rd = Math.round;
+    const fig = new Uint32Array(w * h), eff = c.eff ? new Uint32Array(w * h) : null;
+    for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) { fig[(y + pad) * w + x + pad] = c.fig[y * c.w + x]; if (eff) eff[(y + pad) * w + x + pad] = c.eff[y * c.w + x]; }
+    const ax = c.ax + pad, ay = c.ay + pad, b = c.head.box;
+    const bx0 = ax + Rd(b[0] * k), by0 = ay + Rd(b[1] * k), bx1 = ax + Rd((b[2] + 1) * k), by1 = ay + Rd((b[3] + 1) * k);
+    for (let y = Math.max(0, by0); y < Math.min(h, by1); y++) for (let x = Math.max(0, bx0); x < Math.min(w, bx1); x++) fig[y * w + x] = 0;
+    const dcx = ax + Rd((c.head.chin[0] + 0.5) * k), dcy = ay + Rd((c.head.chin[1] + 1) * k) - 1;
+    const ox = dcx - H.chin[0], oy = dcy - H.chin[1];
+    for (let y = 0; y < H.h; y++) for (let x = 0; x < H.w; x++) { const v = H.px[y * H.w + x]; if (!v) continue; const X = ox + x, Y = oy + y; if (X >= 0 && Y >= 0 && X < w && Y < h) fig[Y * w + X] = v; }
+    const fb = c.figBox ? [Math.min(c.figBox[0], ox - ax), Math.min(c.figBox[1], oy - ay), Math.max(c.figBox[2], ox + H.w - ax), c.figBox[3]] : null;
+    return Object.assign({}, c, { w, h, fig, eff, ax, ay, figBox: fb, head: null });
   }
   // a decoded, upscaled cell: { w, h, k, fig, eff, ax, ay, figBox, effBox } (boxes in world px relative to the anchor)
   const cells = new Map();
@@ -60,19 +91,20 @@
     const key = tag + i;
     if (cells.has(key)) return cells.get(key);
     const c = SHEETS[tag][i], k = SCALE[tag];
-    const w = c.w * k, h = c.h * k;
+    const w = Math.round(c.w * k), h = Math.round(c.h * k);
     const fig = up(decode(c.f, c.w, c.h), c.w, c.h, k);
     const eff = c.e ? up(decode(c.e, c.w, c.h), c.w, c.h, k) : null;
-    const o = { tag, i, w, h, k, fig, eff, ax: c.ax * k + (k >> 1), ay: c.ay * k + k - 1, sX: c.sX, sY: c.sY,
-      figBox: c.fig ? [c.fig[0] * k, c.fig[1] * k, (c.fig[2] + 1) * k, (c.fig[3] + 1) * k] : null,
-      effBox: c.eff ? [c.eff[0] * k, c.eff[1] * k, (c.eff[2] + 1) * k, (c.eff[3] + 1) * k] : null };
+    const Rd = Math.round;
+    const o = { tag, i, w, h, k, fig, eff, ax: Rd((c.ax + 0.5) * k), ay: Rd((c.ay + 1) * k) - 1, sX: c.sX, sY: c.sY, head: c.head || null,
+      figBox: c.fig ? [Rd(c.fig[0] * k), Rd(c.fig[1] * k), Rd((c.fig[2] + 1) * k), Rd((c.fig[3] + 1) * k)] : null,
+      effBox: c.eff ? [Rd(c.eff[0] * k), Rd(c.eff[1] * k), Rd((c.eff[2] + 1) * k), Rd((c.eff[3] + 1) * k)] : null };
     cells.set(key, o);
     return o;
   }
   // a cell with companions (cells cut apart from the same drawing) composed at their sheet offsets
   function composed(main, comps) {
     const parts = [{ c: main, dx: 0, dy: 0 }];
-    for (const q of comps) { const c = cell(q.tag, q.i); parts.push({ c, dx: (c.sX - main.sX) * main.k, dy: (c.sY - main.sY) * main.k }); }
+    for (const q of comps) { const c = cell(q.tag, q.i); parts.push({ c, dx: Math.round((c.sX - main.sX) * main.k), dy: Math.round((c.sY - main.sY) * main.k) }); }
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     for (const p of parts) { x0 = Math.min(x0, p.dx - p.c.ax); y0 = Math.min(y0, p.dy - p.c.ay); x1 = Math.max(x1, p.dx - p.c.ax + p.c.w); y1 = Math.max(y1, p.dy - p.c.ay + p.c.h); }
     const w = x1 - x0, h = y1 - y0, fig = new Uint32Array(w * h), eff = new Uint32Array(w * h); let anyEff = false;
@@ -88,7 +120,7 @@
   }
   // a sub-rectangle of a cell (cell px), re-anchored at the bottom centre of what it holds
   function cropped(c, box) {
-    const k = c.k, x0 = box[0] * k, y0 = box[1] * k, x1 = (box[2] + 1) * k, y1 = (box[3] + 1) * k;
+    const k = c.k, x0 = Math.round(box[0] * k), y0 = Math.round(box[1] * k), x1 = Math.round((box[2] + 1) * k), y1 = Math.round((box[3] + 1) * k);
     const w = x1 - x0, h = y1 - y0, fig = new Uint32Array(w * h), eff = new Uint32Array(w * h); let anyEff = false;
     let bx0 = 1e9, by0 = 1e9, bx1 = -1, by1 = -1;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -111,11 +143,12 @@
   // the per-frame canvases; opts: { comp: [{tag,i}], tint: '#rrggbb', flash: bool }
   const frames = new Map();
   function frame(tag, i, opts = {}) {
-    const key = tag + i + (opts.comp ? ':' + opts.comp.map((q) => q.tag + q.i).join('+') : '') + (opts.crop ? ':c' + opts.crop.join(',') : '') + ':' + (opts.tint || '');
+    const key = tag + i + (opts.comp ? ':' + opts.comp.map((q) => q.tag + q.i).join('+') : '') + (opts.crop ? ':c' + opts.crop.join(',') : '') + ':' + (opts.face || '') + ':' + (opts.tint || '');
     if (frames.has(key)) return frames.get(key);
     let c = cell(tag, i);
     if (opts.crop) c = cropped(c, opts.crop);
     if (opts.comp && opts.comp.length) c = composed(c, opts.comp);
+    if (opts.face !== 'none') c = withHead(c, opts.face || 'normal');
     const { w, h } = c;
     const tint = hexColor(opts.tint || '#ff5a6e');
     const sil = new Uint32Array(w * h), ink = new Uint32Array(w * h), white = new Uint32Array(w * h);
@@ -144,5 +177,5 @@
     swordCv = { cv: toCanvas(px, w, h), w, h, pivot: [4, Math.round(h / 2)] };
     return swordCv;
   }
-  root.SPR = { SCALE, sheets: SHEETS, cell, frame, sword, decode, up, toCanvas };
+  root.SPR = { SCALE, sheets: SHEETS, cell, frame, sword, decode, up, toCanvas, HEADS };
 })(typeof window !== 'undefined' ? window : globalThis);

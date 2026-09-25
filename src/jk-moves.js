@@ -6,7 +6,7 @@
 // to world px by the sheet's scale on emit.
 (function (root) {
   'use strict';
-  const K = { A: 3, B: 3, C: 4 };
+  const K = { A: 110 / 41, B: 110 / 41, C: 110 / 30 };   // = src/sprite.js SCALE (cell px -> world px)
   let hitSerial = 1;
   const parse = (s) => ({ tag: s[0], i: +s.slice(1) });
   function seq(list) {
@@ -23,6 +23,7 @@
         chain: !!e.chain, cancel: !!e.cancel, inv: !!e.inv, air: e.air, spawn: e.spawn, phase: e.ph,
         hitId: hb ? (e.hid ? hitId + e.hid * 1000 : hitId) : 0, form: e.form,
         throw: !!e.throw, release: !!e.release, holdX: e.holdX, holdY: e.holdY,
+        face: e.face || (e.hb && !e.throw ? 'shout' : undefined),
       });
     }
     return out;
@@ -37,7 +38,7 @@
   function build() {
     const A = {};
     // ---------------------------------------------------------------- stance, movement
-    A.idle = { label: '構え', loop: true, frames: seq([0, 1, 2, 3, 4, 5].map((i) => ({ c: 'C' + i, d: 130 }))) };
+    A.idle = { label: '構え', loop: true, frames: seq([{ c: 'B0', d: 420 }, { c: 'B0', d: 420, lift: 1 }]) };
     A.idle2 = { label: '構え直し', frames: seq([{ c: 'B1', d: 220 }, { c: 'B2', d: 320 }, { c: 'B3', d: 320 }, { c: 'B4', d: 280 }, { c: 'B0', d: 180 }]) };
     A.walk = { label: '前進', loop: true, frames: seq([5, 6, 7, 8].map((i) => ({ c: 'B' + i, d: 110 }))) };
     A.back = { label: '後退', loop: true, frames: seq([8, 7, 6, 5].map((i) => ({ c: 'B' + i, d: 120 }))) };
@@ -47,19 +48,19 @@
       { c: 'B17', d: 70, air: 'squat' }, { c: 'B18', d: 100, air: 'rise', ghost: true }, { c: 'B20', d: 100, air: 'apex' },
       { c: 'B21', d: 100, air: 'fall' }, { c: 'B17', d: 90, air: 'land', sfx: 'land' },
     ]) };
-    A.crouch = { label: '蹲下', loop: true, frames: seq([{ c: 'A14', d: 240 }, { c: 'C19', d: 240 }]) };
+    A.crouch = { label: '蹲下', loop: true, frames: seq([{ c: 'A14', d: 300 }, { c: 'A14', d: 300, lift: 1 }]) };
     A.block = { label: '防禦', loop: true, frames: seq([{ c: 'B33', d: 200 }]) };
     A.blockLow = { label: '蹲防', loop: true, frames: seq([{ c: 'B34', d: 200 }]) };
     A.blockHit = { label: '防禦', frames: seq([{ c: 'B33', d: 70, dx: -2 }, { c: 'B33', d: 90, dx: -1 }]) };
     // ---------------------------------------------------------------- hit reactions
-    A.hurt = { label: '受傷', frames: seq([{ c: 'C33', d: 60, dx: -2, flash: true }, { c: 'C33', d: 110, dx: -2 }, { c: 'C35', d: 110, dx: -1 }]) };
+    A.hurt = { label: '受傷', frames: seq([{ c: 'B38', d: 60, dx: -2, flash: true }, { c: 'B38', d: 110, dx: -2 }, { c: 'B37', d: 110, dx: -1 }]) };
     A.hurtHead = { label: '受傷（頭）', frames: seq([{ c: 'B35', d: 60, dx: -2, flash: true }, { c: 'B35', d: 110, dx: -2 }, { c: 'B37', d: 110, dx: -1 }]) };
     A.hurtLow = { label: '受傷（下段）', frames: seq([{ c: 'B36', d: 60, dx: -1, flash: true }, { c: 'B36', d: 110, dx: -2 }, { c: 'B36', d: 110, dx: -1 }]) };
-    A.stagger = { label: '暈眩', loop: true, frames: seq([{ c: 'B37', d: 160 }, { c: 'C35', d: 160 }]) };
+    A.stagger = { label: '暈眩', loop: true, frames: seq([{ c: 'B37', d: 160 }, { c: 'B38', d: 160 }]) };
     A.down = { label: '倒地', frames: seq([
-      { c: 'C36', d: 70, air: 'fly', ghost: true, flash: true }, { c: 'C36', d: 70, air: 'fly', ghost: true }, { c: 'C36', d: 80, air: 'fly', ghost: true },
-      { c: 'C37', d: 90, air: 'land', sfx: 'slam', shake: 2 }, { c: 'C38', d: 90, air: 'land' },
-      { c: 'C38', d: 400, air: 'lying', inv: true },
+      { c: 'B39', d: 70, air: 'fly', ghost: true, flash: true }, { c: 'B39', d: 70, air: 'fly', ghost: true }, { c: 'B39', d: 80, air: 'fly', ghost: true },
+      { c: 'B40', d: 90, air: 'land', sfx: 'slam', shake: 2 }, { c: 'B40', d: 90, air: 'land' },
+      { c: 'B40', d: 400, air: 'lying', inv: true },
     ]) };
     A.getup = { label: '起身', frames: seq([{ c: 'B36', d: 120, inv: true }, { c: 'B34', d: 110, inv: true }, { c: 'B0', d: 110, inv: true }]) };
     A.lose = { label: '敗北', loop: true, frames: seq([{ c: 'B46', d: 400 }, { c: 'B46', d: 400 }]) };
@@ -149,10 +150,10 @@
       { c: 'A19', d: 120, ph: 'RECOVER' },
     ]) };
     A.crouchKick = { label: '炎の足払い', frames: seq([
-      { c: 'C19', d: 60, ph: 'ANTICIPATION' },
+      { c: 'A14', d: 60, ph: 'ANTICIPATION' },
       { c: 'C11', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
       { c: 'C11', d: 90, ph: 'HOLD', hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
-      { c: 'C12', d: 130, ph: 'RECOVER' },
+      { c: 'A14', d: 130, ph: 'RECOVER' },
     ]), altWhenBroken: { leg: 'crouchHeavy' } };
     // ---------------------------------------------------------------- air
     A.air = { label: '空中義手', frames: seq([
@@ -162,7 +163,7 @@
       { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
     ]), altWhenBroken: { arm: 'air2' } };
     A.air2 = { label: '空中斬', frames: seq([
-      { c: 'C17', d: 60, ph: 'ANTICIPATION' },
+      { c: 'B23', d: 60, ph: 'ANTICIPATION' },
       { c: 'B24', d: 40, ph: 'SMEAR', sfx: 'swish', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
       { c: 'B24', d: 80, ph: 'HIT', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
       { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
@@ -202,7 +203,7 @@
       { c: 'C44', d: 70, ph: 'BURST', sfx: 'burst', shake: 7, hb: [-30, -30, 26, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
       { c: 'C44', d: 120, ph: 'BURST', shake: 3, hb: [-34, -30, 28, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
       { c: 'C45', d: 160, ph: 'FADE' },
-      { c: 'C0', d: 240, ph: 'RECOVER' },
+      { c: 'B0', d: 240, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- throw
     A.throw = { label: '投げ', frames: seq([
@@ -217,6 +218,10 @@
       { c: 'B31', d: 160, ph: 'FOLLOW THROUGH' },
       { c: 'B0', d: 120, ph: 'RECOVER' },
     ]) };
+    for (const n of ['hurt', 'hurtHead', 'hurtLow', 'stagger', 'down', 'getup', 'lose']) for (const fr of A[n].frames) fr.face = 'hurt';
+    // flying / lying / aura / explosion drawings keep their own heads
+    for (const fr of A.down.frames) fr.face = 'none';
+    for (const fr of A.super.frames) if (fr.sprite && fr.sprite.tag === 'C' && fr.sprite.i >= 41 && fr.sprite.i <= 44) fr.face = 'none';
     return A;
   }
 

@@ -39,7 +39,7 @@
     const key = f.C.id + ':' + an.form + ':' + an.id + ':' + fi + ':' + maskOf(f);
     let e = cache.get(key);
     if (e) return e;
-    e = sp ? window.SPR.frame(sp.tag, sp.i, { comp: sp.comp, crop: sp.crop, tint: f.C.color })
+    e = sp ? window.SPR.frame(sp.tag, sp.i, { comp: sp.comp, crop: sp.crop, tint: f.C.color, face: fr.face })
       : { R: null, L: null, FR: null, FL: null, SR: null, SL: null, GR: null, GL: null, WR: null, WL: null, w: 0, h: 0, ox: 0, oy: 0, oxL: 0 };
     cache.set(key, e);
     return e;
