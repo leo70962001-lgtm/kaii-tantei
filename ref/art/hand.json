@@ -70,5 +70,158 @@
   "w": 26,
   "h": 42,
   "fx": false
+ },
+ "H8": {
+  "name": "jab_antic",
+  "note": "jab anticipation 40 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H9": {
+  "name": "jab_hit",
+  "note": "jab hit 50 + hold 60 ms; fist (12..13, -28..-27)",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": true
+ },
+ "H10": {
+  "name": "jab_rec",
+  "note": "jab recover 70 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H11": {
+  "name": "str_antic",
+  "note": "straight anticipation 60 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H12": {
+  "name": "str_smear",
+  "note": "straight smear 40 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H13": {
+  "name": "str_hit",
+  "note": "straight hit 60 + hold 90 ms; fist (15..16, -28..-27)",
+  "ax": 14,
+  "ay": 41,
+  "w": 38,
+  "h": 42,
+  "fx": true
+ },
+ "H14": {
+  "name": "str_rec",
+  "note": "straight follow through 70 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H15": {
+  "name": "kick_antic",
+  "note": "mid kick anticipation 60 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H16": {
+  "name": "kick_hit",
+  "note": "mid kick hit 50 + hold 80 ms; foot (17..19, -17..-15)",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": true
+ },
+ "H17": {
+  "name": "kick_follow",
+  "note": "mid kick retract 70 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H18": {
+  "name": "yoko_antic",
+  "note": "yoko anticipation 80 ms",
+  "ax": 19,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": false
+ },
+ "H19": {
+  "name": "yoko_smear",
+  "note": "yoko smear 50 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": true
+ },
+ "H20": {
+  "name": "yoko_hit",
+  "note": "yoko hit 80 ms; blade x 14..30 at y -28..-27",
+  "ax": 14,
+  "ay": 41,
+  "w": 50,
+  "h": 42,
+  "fx": true
+ },
+ "H21": {
+  "name": "yoko_follow",
+  "note": "yoko follow through 60 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 46,
+  "h": 42,
+  "fx": false
+ },
+ "H22": {
+  "name": "high_antic",
+  "note": "high kick anticipation 60 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H23": {
+  "name": "high_hit",
+  "note": "high kick hit 45 + hold 90 ms; foot (15..16, -30..-28)",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": true
+ },
+ "H24": {
+  "name": "high_follow",
+  "note": "high kick retract 80 ms",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": false
  }
 }

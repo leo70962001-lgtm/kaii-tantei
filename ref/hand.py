@@ -324,6 +324,224 @@ def kesa_over(c):             # overshoot: a hair back past the stance, the blad
     near_arm_rest(c, ox, ty, dx=-1)
 frame('kesa_over', 'overshoot 50 ms', (14, 41), kesa_over, size=(26, 42))
 
+# ---------------------------------------------------------------- the light chain, from the action sheets
+# A row 2 / row 4 and C row 2: 義手ジャブ → 義手ストレート → 義足ミドル（青い残影）→ 横薙ぎ（弧の残影）→ ハイキック（星）.
+# Each attack keeps the Slynyrd beats (anticipation → smear / hit → follow through), 3–4 drawn frames per move,
+# recover frames reuse the stance (H0) or the sword-back recover (H6).
+HAIR_FLY = [                  # 11×9: the back hair streaming out behind a lunge
+    "......hhhh.",
+    "...hhhhhhhh",
+    ".hhhhhhhHhh",
+    "hhhhhhhHhhh",
+    "hhhhhHhhhh.",
+    ".hhhHhhhh..",
+    "..hhhhh....",
+    "...hh......",
+    "....h......",
+]
+STAR = ["..f..", ".fFf.", "fF.Ff", ".fFf.", "..f.."]
+def leg(c, pts, kind='chrome', foot='down'):
+    """a bent leg: 3-px segments hip → knee → foot (light on the back / top, dark on the front / bottom, like the
+    standing parts), a joint pixel at the knee, the boot at the end (down = hanging shin, fwd = side kick, up = high kick)"""
+    ch, dark, light = ('M', 'd', 'm') if kind == 'chrome' else ('t', 't', 'T')
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]): c.line(x0, y0, x1, y1, ch, thick=3, ch2=dark, ch3=light)
+    for (x, y) in pts[1:-1]: c.put(x, y, 'd' if kind == 'chrome' else 'T')
+    fx, fy = pts[-1]
+    if foot == 'down': c.blit(SHOE, fx - 3, fy - 1)
+    elif foot == 'fwd': c.blit(["Nnn", "nnn", "nnN"], fx - 1, fy - 1)
+    else: c.blit(["nNn", "nnn", "Nnn"], fx - 1, fy - 2)
+def lower_far(c, ox, ty, far_x=3):
+    """only the supporting (far, stocking) leg under the body and the skirt — the near leg is drawn bent by the frame"""
+    c.blit(LEG_STOCK, ox + far_x, ty + 16); c.blit(SHOE, ox + far_x - 1, ty + 27)
+    c.blit(SKIRT, ox - 2, ty + 8)
+def near_sword_low(c, ox, ty, dx=0, ang=80, blade=13):
+    """the near hand holding the katana low in front (the punches: the steel arm is busy)"""
+    sleeve(c, ox + 8, ty + 1)
+    arm(c, [(ox + 10, ty + 5), (ox + 12 + dx, ty + 9)])
+    katana(c, ox + 13 + dx, ty + 12, ang, blade=blade); hand(c, ox + 12 + dx, ty + 10)
+def near_sword_up_blade(c, ox, ty, dx=0): katana(c, ox + 11 + dx, ty + 2, -115, blade=13)   # before upper(): behind the head
+def near_sword_up_arm(c, ox, ty, dx=0):                                                      # after upper()
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13 + dx, ty + 5), (ox + 12 + dx, ty + 3)]); hand(c, ox + 11 + dx, ty + 2)
+
+def jab_antic(c):             # the steel fist cocked at the chest, weight back
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty)
+    steel_arm(c, [(ox - 1, ty + 5), (ox - 1, ty + 8), (ox + 3, ty + 6)]); hand(c, ox + 3, ty + 5, 'm')
+    near_sword_low(c, ox, ty)
+frame('jab_antic', 'jab anticipation 40 ms', (14, 41), jab_antic, size=(30, 42))
+
+def jab_hit(c):               # the steel arm straight out at shoulder height, spark at the fist
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 6), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    for x in range(ox + 8, ox + 13): c.put(x, ty + 1, 'A'); c.put(x, ty + 6, 'A')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 9, ty + 3), (ox + 17, ty + 3)]); hand(c, ox + 17, ty + 2, 'm')
+    c.blit(["f.f", ".F.", "f.f"], ox + 20, ty + 1)
+    near_sword_low(c, ox, ty)
+frame('jab_hit', 'jab hit 50 + hold 60 ms; fist (12..13, -28..-27)', (14, 41), jab_hit, size=(34, 42))
+
+def jab_rec(c):               # the arm coming back
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 7, ty + 4), (ox + 11, ty + 3)]); hand(c, ox + 11, ty + 2, 'm')
+    near_sword_low(c, ox, ty)
+frame('jab_rec', 'jab recover 70 ms', (14, 41), jab_rec, size=(30, 42))
+
+def str_antic(c):             # the straight: fist chambered at the far hip, weight on the back leg
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=-1, near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox - 1, ty + 5), (ox - 2, ty + 9), (ox + 1, ty + 9)]); hand(c, ox + 1, ty + 8, 'm')
+    near_sword_low(c, ox, ty)
+frame('str_antic', 'straight anticipation 60 ms', (14, 41), str_antic, size=(30, 42))
+
+def str_smear(c):             # the punch in flight: a horizontal streak
+    ox, ty = 9, 11
+    c.line(ox + 3, ty + 3, ox + 12, ty + 3, 'a'); c.line(ox + 4, ty + 2, ox + 11, ty + 2, 'A'); c.line(ox + 4, ty + 4, ox + 11, ty + 4, 'A')
+    c.line(ox + 6, ty + 1, ox + 10, ty + 1, 'i'); c.line(ox + 6, ty + 5, ox + 10, ty + 5, 'i')
+    c.blit(HAIR_FLY, ox - 10, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 4), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 4), (ox + 13, ty + 3)]); hand(c, ox + 13, ty + 2, 'm')
+    near_sword_low(c, ox, ty)
+frame('str_smear', 'straight smear 40 ms', (14, 41), str_smear, size=(34, 42))
+
+def str_hit(c):               # the lunge: arm fully extended, hair streaming, spark
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=2)
+    for x in range(ox + 6, ox + 14): c.put(x, ty + 1, 'A'); c.put(x, ty + 6, 'A')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 10, ty + 3), (ox + 20, ty + 3)]); hand(c, ox + 20, ty + 2, 'm')
+    c.blit(STAR, ox + 22, ty)
+    near_sword_low(c, ox, ty, dx=1)
+frame('str_hit', 'straight hit 60 + hold 90 ms; fist (15..16, -28..-27)', (14, 41), str_hit, size=(38, 42))
+
+def str_rec(c):               # follow through: arm retracting, still leaning
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 4), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 4), (ox + 13, ty + 4)]); hand(c, ox + 13, ty + 3, 'm')
+    near_sword_low(c, ox, ty)
+frame('str_rec', 'straight follow through 70 ms', (14, 41), str_rec, size=(34, 42))
+
+def kick_antic(c):            # 義足ミドル: knee raised, sword up-back in the near hand, steel arm out for balance
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 15), (ox + 12, ty + 22)], 'chrome', foot='down')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 5, ty + 7), (ox + 9, ty + 8)]); hand(c, ox + 9, ty + 7, 'm')
+    near_sword_up_arm(c, ox, ty)
+frame('kick_antic', 'mid kick anticipation 60 ms', (14, 41), kick_antic, size=(34, 42))
+
+def kick_hit(c):              # the chrome leg straight out at waist height, blue smear under it
+    ox, ty = 9, 11
+    c.wedge(ox + 7, ty + 16, 9, 16, 4, 58)
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty, dx=-1)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=-1)
+    leg(c, [(ox + 7, ty + 16), (ox + 14, ty + 15), (ox + 22, ty + 14)], 'chrome', foot='fwd')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 4, ty + 8), (ox + 8, ty + 10)]); hand(c, ox + 8, ty + 9, 'm')
+    near_sword_up_arm(c, ox, ty, dx=-1)
+frame('kick_hit', 'mid kick hit 50 + hold 80 ms; foot (17..19, -17..-15)', (14, 41), kick_hit, size=(36, 42))
+
+def kick_follow(c):           # the leg coming down
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty)
+    leg(c, [(ox + 7, ty + 16), (ox + 13, ty + 18), (ox + 17, ty + 24)], 'chrome', foot='down')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 3, ty + 8), (ox + 6, ty + 10)]); hand(c, ox + 6, ty + 9, 'm')
+    near_sword_up_arm(c, ox, ty)
+frame('kick_follow', 'mid kick retract 70 ms', (14, 41), kick_follow, size=(34, 42))
+
+def yoko_antic(c):            # 横薙ぎ: both hands pull the sword back to the far side, blade level behind
+    ox, ty = 14, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7)
+    katana(c, ox + 1, ty + 6, 184, blade=14)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 1, ty + 7)]); hand(c, ox, ty + 6, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 5, ty + 6)]); hand(c, ox + 3, ty + 5)
+frame('yoko_antic', 'yoko anticipation 80 ms', (19, 41), yoko_antic, size=(32, 42))
+
+def yoko_smear(c):            # the level cut in flight: a fan in front of the chest
+    ox, ty = 9, 11
+    c.wedge(ox + 8, ty + 5, 8, 22, -36, 26)
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 4), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 6), (ox + 13, ty + 6)]); hand(c, ox + 13, ty + 5, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 5)]); hand(c, ox + 14, ty + 4)
+frame('yoko_smear', 'yoko smear 50 ms', (14, 41), yoko_smear, size=(36, 42))
+
+def yoko_hit(c):              # the blade straight out at chest height, lunge, spark at the tip
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 6), (ox + 14, ty + 6)]); hand(c, ox + 14, ty + 5, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 16, ty + 5)]); hand(c, ox + 16, ty + 4)
+    katana(c, ox + 18, ty + 5, 0, blade=16)
+    c.blit(STAR, ox + 35, ty + 3)
+frame('yoko_hit', 'yoko hit 80 ms; blade x 14..30 at y -28..-27', (14, 41), yoko_hit, size=(50, 42))
+
+def yoko_follow(c):           # the blade past the front, dipping
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 10, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 7), (ox + 14, ty + 8)]); hand(c, ox + 14, ty + 7, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 16, ty + 7)]); hand(c, ox + 16, ty + 6)
+    katana(c, ox + 18, ty + 8, 22, blade=15)
+frame('yoko_follow', 'yoko follow through 60 ms', (14, 41), yoko_follow, size=(46, 42))
+
+def high_antic(c):            # ハイキック: knee up high, leaning back
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty, dx=-1)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    leg(c, [(ox + 7, ty + 16), (ox + 13, ty + 11), (ox + 12, ty + 17)], 'chrome', foot='down')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 5, ty + 7), (ox + 9, ty + 8)]); hand(c, ox + 9, ty + 7, 'm')
+    near_sword_up_arm(c, ox, ty, dx=-1)
+frame('high_antic', 'high kick anticipation 60 ms', (14, 41), high_antic, size=(34, 42))
+
+def high_hit(c):              # the chrome leg up to head height, arc smear, star at the boot
+    ox, ty = 9, 11
+    c.wedge(ox + 7, ty + 16, 9, 17, -44, 12)
+    c.blit(HAIR_BACK, ox - 8, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty, dx=-2)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=-2)
+    leg(c, [(ox + 7, ty + 16), (ox + 13, ty + 9), (ox + 20, ty + 1)], 'chrome', foot='up')
+    c.blit(STAR, ox + 20, ty - 4)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 3, ty + 8), (ox + 7, ty + 10)]); hand(c, ox + 7, ty + 9, 'm')
+    near_sword_up_arm(c, ox, ty, dx=-2)
+frame('high_hit', 'high kick hit 45 + hold 90 ms; foot (15..16, -30..-28)', (14, 41), high_hit, size=(36, 42))
+
+def high_follow(c):           # the leg dropping
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower_far(c, ox, ty)
+    near_sword_up_blade(c, ox, ty, dx=-1)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    leg(c, [(ox + 7, ty + 16), (ox + 14, ty + 14), (ox + 19, ty + 21)], 'chrome', foot='down')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 3, ty + 8), (ox + 6, ty + 10)]); hand(c, ox + 6, ty + 9, 'm')
+    near_sword_up_arm(c, ox, ty, dx=-1)
+frame('high_follow', 'high kick retract 80 ms', (14, 41), high_follow, size=(36, 42))
+
 if __name__ == '__main__':
     os.makedirs('art', exist_ok=True)
     meta = {}

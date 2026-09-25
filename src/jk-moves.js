@@ -69,18 +69,21 @@
       { c: 'B44', d: 300 }, { c: 'B45', d: 300 },
     ]) };
     // ---------------------------------------------------------------- Z chain (steel arm / chrome leg)
+    // hand-drawn (ref/hand.py): H8 cocked, H9 arm out (fist at 12..13 / -28..-27 cell px), H10 back
     A.light = { label: '義手ジャブ', frames: seq([
-      { c: 'A5', d: 40, ph: 'ANTICIPATION' },
-      { c: 'A6', d: 50, ph: 'HIT', sfx: 'swish', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2 },
-      { c: 'A6', d: 60, ph: 'HOLD', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
-      { c: 'A5', d: 70, ph: 'RECOVER', chain: true, cancel: true },
+      { c: 'H8', d: 40, ph: 'ANTICIPATION' },
+      { c: 'H9', d: 50, ph: 'HIT', sfx: 'swish', hb: [6, -32, 16, -22], dmg: 5, stun: 260, kb: 2.2 },
+      { c: 'H9', d: 60, ph: 'HOLD', hb: [6, -32, 16, -22], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
+      { c: 'H10', d: 70, ph: 'RECOVER', chain: true, cancel: true },
     ]), nextLight: 'light2', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
+    // hand-drawn: H11 chambered at the hip, H12 streak, H13 lunge (fist 15..16 / -28..-27), H14 retract, stance
     A.light2 = { label: '義手ストレート', frames: seq([
-      { c: 'A20', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A21', d: 60, ph: 'HIT', ghost: true, sfx: 'heavy', shake: 2, dx: 4, hb: [2, -32, 14, -19], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
-      { c: 'A21', d: 90, ph: 'HOLD', hb: [2, -32, 14, -19], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
-      { c: 'A20', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
-      { c: 'A5', d: 90, ph: 'RECOVER', chain: true },
+      { c: 'H11', d: 60, ph: 'ANTICIPATION' },
+      { c: 'H12', d: 40, ph: 'SMEAR', ghost: true, dx: 3 },
+      { c: 'H13', d: 60, ph: 'HIT', sfx: 'heavy', shake: 2, dx: 3, hb: [7, -32, 19, -22], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
+      { c: 'H13', d: 90, ph: 'HOLD', hb: [7, -32, 19, -22], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
+      { c: 'H14', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
+      { c: 'H0', d: 90, ph: 'RECOVER', chain: true },
     ]), nextLight: 'kick', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
     A.bump = { label: '肩タックル', frames: seq([
       { c: 'A5', d: 90, ph: 'ANTICIPATION' },
@@ -88,27 +91,29 @@
       { c: 'A2', d: 90, ph: 'HOLD', hb: [0, -32, 12, -10], dmg: 6, stun: 300, kb: 4, pd: 1.2, chain: true },
       { c: 'A0', d: 120, ph: 'RECOVER', chain: true },
     ]), nextLight: 'kick', nextHeavy: 'heavy' };
+    // hand-drawn: H15 knee up, H16 leg out with the blue smear (foot 17..19 / -17..-15), H17 leg down, stance
     A.kick = { label: '義足ミドル', frames: seq([
-      { c: 'A10', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A9', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [4, -27, 24, -11], dmg: 7, stun: 340, kb: 3.2, pd: 1.2 },
-      { c: 'A9', d: 80, ph: 'HOLD', hb: [4, -27, 24, -11], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, chain: true, cancel: true },
-      { c: 'A10', d: 70, ph: 'RETRACT', chain: true, cancel: true },
-      { c: 'A5', d: 100, ph: 'RECOVER', chain: true },
+      { c: 'H15', d: 60, ph: 'ANTICIPATION' },
+      { c: 'H16', d: 50, ph: 'HIT', sfx: 'swish', shake: 1, hb: [6, -20, 21, -10], dmg: 7, stun: 340, kb: 3.2, pd: 1.2 },
+      { c: 'H16', d: 80, ph: 'HOLD', hb: [6, -20, 21, -10], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, chain: true, cancel: true },
+      { c: 'H17', d: 70, ph: 'RETRACT', chain: true, cancel: true },
+      { c: 'H0', d: 100, ph: 'RECOVER', chain: true },
     ]), nextLight: 'light3', nextHeavy: 'heavy', altWhenBroken: { leg: 'light3' } };
+    // hand-drawn: H18 sword pulled back level, H19 fan smear, H20 blade straight out (x 14..30 at -28), H21 dip, H6 sword back
     A.light3 = { label: '横薙ぎ', frames: seq([
-      { c: 'B9', d: 80, ph: 'ANTICIPATION' },
-      { c: 'B10', d: 50, ph: 'SMEAR', sfx: 'swish', hb: [-6, -32, 16, -2], dmg: 7, stun: 320, kb: 3 },
-      { c: 'A22', d: 80, ph: 'HIT', hb: [-2, -30, 16, -10], dmg: 7, stun: 320, kb: 3 },
-      { c: 'A22', d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
-      { c: 'B9', d: 80, ph: 'RECOVER', chain: true, cancel: true },
+      { c: 'H18', d: 80, ph: 'ANTICIPATION' },
+      { c: 'H19', d: 50, ph: 'SMEAR', sfx: 'swish', hb: [4, -38, 25, -13], dmg: 7, stun: 320, kb: 3 },
+      { c: 'H20', d: 80, ph: 'HIT', dx: 2, hb: [8, -31, 31, -22], dmg: 7, stun: 320, kb: 3 },
+      { c: 'H21', d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
+      { c: 'H6', d: 80, ph: 'RECOVER', chain: true, cancel: true },
     ]), nextLight: 'light4', nextHeavy: 'heavy3' };
+    // hand-drawn: H22 knee high, H23 leg up to the head with the arc + star (foot 15..16 / -30..-28), H24 leg down, stance
     A.light4 = { label: 'ハイキック', frames: seq([
-      { c: 'A10', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A7', d: 40, ph: 'RISE', ghost: true, hb: [4, -30, 20, -12], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
-      { c: 'A8', d: 45, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [2, -40, 22, -18], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
-      { c: 'A12', d: 90, ph: 'HOLD', hb: [2, -38, 18, -16], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
-      { c: 'A13', d: 80, ph: 'RETRACT' },
-      { c: 'A5', d: 120, ph: 'RECOVER' },
+      { c: 'H22', d: 60, ph: 'ANTICIPATION' },
+      { c: 'H23', d: 45, ph: 'HIT', sfx: 'swish', shake: 1, hb: [4, -35, 19, -14], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
+      { c: 'H23', d: 90, ph: 'HOLD', hb: [4, -35, 19, -14], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
+      { c: 'H24', d: 80, ph: 'RETRACT' },
+      { c: 'H0', d: 120, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- X chain (sword)
     A.heavy = { label: '袈裟斬', frames: seq([
