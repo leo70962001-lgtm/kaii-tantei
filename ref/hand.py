@@ -1,95 +1,129 @@
-# hand.py — hand-drawn pixel frames at the small sprite scale (a standing figure is 41 px, shown ×2 in the game).
-# Drawn from the standing picture's features (black hair with the white streak, red eyes, sailor top with the red
-# scarf, blue pleated skirt, steel left arm, chrome right leg, black stocking, katana) with the action sheets as
-# pose reference and Slynyrd's seven-beat sword attack as the animation model. Parts are hand-pixelled ASCII
-# bitmaps (one letter per pixel, palette below); a frame composes them at hand-chosen offsets, draws the arms,
-# the blade and the smear as pixel lines / wedges, and re-inks the silhouette. Output: ref/art/H<n>.png (+ H<n>e.png
-# for a frame's effect layer) and ref/art/hand.json (anchors), read by pixelize.py as sheet 'H'.
-#   python hand.py   → also ref/art/hand_review.png (×8)
+# hand.py — hand-drawn pixel frames at the small sprite scale (a standing figure is 42 px, shown ×2 in the game).
+# The DESIGN follows the standing picture (ref/p_jk_full2.png, read at 41 px as ref/pic41.png): black hair with a
+# blue sheen, long bangs over the forehead with the pale streak hanging in front of the temple, one red eye under a
+# dark lash, a long lock over the near shoulder and the mass down the back to the waist, sailor collar (navy) with
+# the red scarf and its tails, cropped white top with a midriff, blue pleated skirt with the red lining at the hem,
+# far steel arm (segmented, rainbow sheen on the forearm) holding the katana low and back, near arm at the hip,
+# thigh-high stocking with the garter band on the far leg, chrome prosthetic (knee + ankle joints) on the near leg,
+# dark boots. The MOTION follows the Gemini action sheets (ref/jk_actions2-4.jpg) with Slynyrd's seven-beat sword
+# attack as the timing model. Parts are ASCII bitmaps (one letter per pixel, palette below); a frame composes
+# them at hand-chosen offsets, draws arms / blade / smear as pixel lines and wedges, then re-inks the silhouette.
+# Output: ref/art/H<n>.png (+ H<n>e.png effect layer), ref/art/hand.json (anchors) → pixelize.py reads sheet 'H'.
+#   python hand.py   → also ref/art/hand_review.png (×8) and hand_x2.png (the in-game ×2 look)
 import os, json, math
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 
 PAL = {
-    'k': '0e0c18',
-    'h': '1c1e30', 'H': '363a56', 'w': 'd0d4e0',
-    's': 'f2cbb0', 'S': 'd8a48c', 'e': 'c42c3e', 'o': '8e1d2a',   # o = open mouth
-    'u': 'f5f7fb', 'U': 'c6ccdc',
-    'c': '364a86', 'C': '5871b2',
-    'r': 'd63242', 'R': '8e1d2a',
-    'b': '4c5c98', 'B': '303c6a', 'L': '6a7ab8',
-    'm': 'e2e8f2', 'M': '9ea8c0', 'd': '5a6280', 'g': '8ed8a8', 'q': 'd690d0',
-    't': '2c2e40', 'T': '464a62',
-    'n': '1c1e2c', 'N': '3a3c50',
-    'v': 'e6ecf4', 'V': '8a92ac',
-    'x': '7c2232', 'X': 'd0404a', 'y': 'c8a24c',
-    'a': 'dfe9ff', 'A': '9fc4e8', 'i': '6a9ad0',   # smear: core, mid, edge
+    'k': '0e0c18',                                              # ink
+    'h': '1c1e30', 'H': '363a56', 'w': 'c8cce0', 'W': 'f4f6ff',  # hair, sheen, streak shade / core
+    's': 'f2cbb0', 'S': 'd8a48c', 'e': 'c42c3e', 'o': '8e1d2a',   # skin, shade, eye, open mouth
+    'u': 'f5f7fb', 'U': 'c6ccdc',                               # top white / shade
+    'c': '2e3f78', 'C': '5871b2',                               # collar navy / stripe
+    'r': 'd63242', 'R': '8e1d2a',                               # scarf / shade
+    'b': '4c5c98', 'B': '303c6a', 'L': '7f90c8',                # skirt / pleat shadow / front light
+    'm': 'e2e8f2', 'M': '9ea8c0', 'd': '5a6280',                # chrome light / mid / joint
+    'g': '8ed8a8', 'q': 'd690d0',                               # steel-arm sheen (green / magenta)
+    't': '2c2e40', 'T': '464a62', 'V': '8a92ac',                # stocking / light / garter band
+    'n': '1c1e2c', 'N': '3a3c50',                               # boot / light
+    'v': 'e6ecf4',                                              # blade
+    'x': '7c2232', 'X': 'd0404a', 'y': 'c8a24c',                # hilt wrap dark / light, guard
+    'a': 'dfe9ff', 'A': '9fc4e8', 'i': '6a9ad0',                # smear: core, mid, edge
+    'f': 'ffe066', 'F': 'ff8a3c',                               # hit spark
     '.': None,
 }
 def rgb(hx): return tuple(int(hx[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
 
 # ---------------------------------------------------------------- hand-drawn parts (facing right)
-HEAD = [                      # 13×11, neck at the bottom centre-right; face on the right
-    "....kkkkkk...",
-    "...khhhhhhk..",
-    "..khhhhHhhhk.",
-    ".khhhhHhhhhhk",
-    ".khhhhhkwsssk",
-    "khhhHhhkssssk",
-    "khhhHhhkskesk",
-    "khhhhHhkssssk",
-    "khhhhHhhksssk",
-    "khhhhhHhhkssk",
-    ".khhhhhHhhkSk",
+# Parts carry no outer outline: Canvas.ink() draws one around the composed silhouette, so touching parts (head +
+# hair, hair + lock) merge without double lines. Internal edges that the picture inks (bang tips, the hair / face
+# boundary, the eye) are written as 'k'.
+HEAD = [                      # 14×10: hair cap with the sheen band, bangs to the eye line, streak hanging in front
+    "...hhhhhhhh...",       # of the temple, eye = lash (kk) over the red iris, receding chin; neck under col 12
+    ".hhhhhhhHHhhh.",
+    ".hhhhhhHHhhhwW",
+    "hhhhhhHhhhhksW",
+    "hhhhhhHhhkskkW",
+    "hhhhhhhHhkskes",
+    "hhhhhhhHhhkssS",
+    ".hhhhhhHhhksSS",
+    ".hhhhhhhHhhkSS",
+    "..hhhhhhhhhkS.",
 ]
-HEAD_SHOUT = HEAD[:9] + ["khhhhhHhhkosk", ".khhhhhHhhkSk"]      # mouth open on the chin row
-HEAD_HURT = HEAD[:6] + ["khhhHhhksSssk", "khhhhHhkkkssk", "khhhhHhhksssk", "khhhhhHhhkssk", ".khhhhhHhhkSk"]  # eye shut
-HAIR_BACK = [                 # 7×16: the long mass down the back, tapering
-    "khhhhhH",
-    "khhhhhH",
-    "khhhhHk",
-    "khhhhHk",
-    "khhhHkk",
-    "khhhHk.",
-    "khhhHk.",
-    "khhHk..",
-    "khhHk..",
-    "khhk...",
-    "khHk...",
-    "khhk...",
-    ".khk...",
-    ".khk...",
-    ".khk...",
-    "..k....",
+HEAD_SHOUT = HEAD[:7] + [".hhhhhhHhhksoS"] + HEAD[8:]                    # mouth open
+HEAD_HURT = HEAD[:4] + ["hhhhhhHhhksssW", "hhhhhhhHhkskks"] + HEAD[6:]   # eye shut
+HAIR_BACK = [                 # 6×18: the mass down the back, sheen strands, pointed tips (waist length)
+    "..hhhh",
+    ".hhhhh",
+    ".hhhhh",
+    "hhhhhh",
+    "hhhhhh",
+    "hhhhHh",
+    "hhhhHh",
+    "hhhHhh",
+    "hhhHh.",
+    "hhhHh.",
+    "hhhHh.",
+    ".hhH..",
+    ".hhH..",
+    ".hhh..",
+    ".hh...",
+    "..hh..",
+    "..h...",
+    "..h...",
 ]
-TORSO = [                     # 10×8: collar, scarf, top, midriff (neck at x4 of row 0)
-    "kkccccck..",
-    "kcrrcckk..",
-    "kurrcuuk..",
-    "kuRruuuk..",
-    "kuuuuuuk..",
-    "kuUuuuuk..",
-    "kUuuuuuk..",
-    "kssssssk..",
+HAIR_FRONT = [                # 4×12: the lock from behind the jaw, hanging outside the near shoulder to the waist
+    "hh..",
+    "hhh.",
+    "hhhH",
+    "hhhH",
+    ".hhH",
+    ".hhh",
+    ".hhh",
+    ".hh.",
+    ".hh.",
+    "..h.",
+    "..h.",
+    "..h.",
 ]
-SKIRT = [                     # 12×8: waistband, pleats, light on the front edge, hem ink
-    "kBbBbBbBk...",
-    "kbBbBbBbLk..",
-    "kbBbBbBbLk..",
-    "kbBbBbBbBLk.",
-    "kbBbBbBbBLk.",
-    "kbBbBbBbbLLk",
-    "kbBbBbBbBbLk",
-    "kkkkkkkkkkkk",
+TORSO = [                     # 11×8: neck, navy collar with the stripe, scarf knot + tails, white top, midriff
+    ".....ccss..",
+    ".kcccccCrck",
+    "kucccccCrRk",
+    "kuuucccrRuk",
+    "kuUuuuurRuk",
+    "kuUuuuuuRuk",
+    "kUUUuuuuUUk",
+    ".kssssssSk.",
 ]
-LEG_STOCK = [                 # 5×12 straight stocking leg
-    "kttTk", "kttTk", "kttTk", "ktttk", "kttTk", "ktttk", "ktTtk", "kttTk", "ktttk", "kttTk", "ktttk", "kttTk",
+SLEEVE = [".kuk", "kuuk", "kUuk", "kcCk"]     # 4×4 puff sleeve with the navy cuff
+SKIRT = [                     # 14×8: waistband, pleats (b / B), light on the front edge, red lining at the hem
+    "..kBbBBbBBbBk.",
+    ".kbbBbbBbbBbLk",
+    ".kbbBbbBbbBbLk",
+    "kbbBbbBbbBbbLk",
+    "kbbBbbBbbBbbLk",
+    "kbBbbBbbBbbbLk",
+    "kRrBbbBbbBbRrk",
+    "kkkkkkkkkkkkkk",
 ]
-LEG_CHROME = [                # 5×12 straight chrome leg (light on the front)
-    "kmMdk", "kmMdk", "kmMdk", "kMdMk", "kmMdk", "kmMdk", "kmMdk", "kMdMk", "kmMdk", "kmMdk", "kmMdk", "kmMdk",
+LEG_STOCK = [                 # 5×13: garter band, thigh-high stocking with the front light, knee
+    "kTVTk", "kttTk", "kttTk", "kttTk", "ktTTk", "kttTk", "kttTk", "kttTk", "kttTk", "kttTk", "kttTk", "kttTk", "kttTk",
 ]
-SHOE = ["kNnnnk", "kNnnnnk", "kkkkkkk"]   # 7×3 (drawn with the toe to the right)
-SLEEVE = ["kuk", "kuuk", "kUuk", "kkk."]  # 4×4 near sleeve puff
+LEG_CHROME = [                # 5×13: chrome prosthetic, knee joint, ankle joint
+    "kmMdk", "kmMdk", "kmMdk", "kmMdk", "kdddk", "kMdMk", "kdMdk", "kmMdk", "kmMdk", "kmMdk", "kmMdk", "kdddk", "kMMdk",
+]
+SHOE = ["kNnnk..", "kNnnnk.", "kNnnnnk", "kkkkkkk"]   # 7×4 boot (toe to the right)
+
+def slant(part, step, dirn=1):
+    """a leg leaning: every `step` rows the part shifts one px (dirn +1 = toward the toe)"""
+    out = []
+    for j, r in enumerate(part):
+        s = j // step
+        out.append('.' * s + r if dirn > 0 else r + '.' * s)
+    if dirn < 0:
+        w = max(len(r) for r in out); out = ['.' * (w - len(r)) + r for r in out]
+    return out
 
 # ---------------------------------------------------------------- composition helpers
 class Canvas:
@@ -103,13 +137,16 @@ class Canvas:
                 if ch == '.': continue
                 if not over and self.get(x0 + i, y0 + j) != '.': continue
                 self.put(x0 + i, y0 + j, ch)
-    def line(self, x0, y0, x1, y1, ch, thick=1, side=(0, 1), ch2=None):
-        """Bresenham line; thick 2 adds ch2 (or ch) on the `side` offset"""
+    def line(self, x0, y0, x1, y1, ch, thick=1, side=None, ch2=None, ch3=None):
+        """Bresenham line; thick 2 adds ch2 beside it (along the minor axis unless `side` is given), thick 3 both sides"""
+        if side is None:
+            side = (0, 1) if abs(x1 - x0) >= abs(y1 - y0) else (1, 0)
         dx, dy = abs(x1 - x0), -abs(y1 - y0); sx = 1 if x0 < x1 else -1; sy = 1 if y0 < y1 else -1; err = dx + dy
         x, y = x0, y0
         while True:
             self.put(x, y, ch)
             if thick > 1: self.put(x + side[0], y + side[1], ch2 or ch)
+            if thick > 2: self.put(x - side[0], y - side[1], ch3 or ch2 or ch)
             if x == x1 and y == y1: break
             e2 = 2 * err
             if e2 >= dy: err += dy; x += sx
@@ -133,15 +170,16 @@ class Canvas:
                 if self.g[y][x] != '.': continue
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     c = self.get(x + dx, y + dy)
-                    if c not in ('.', 'k', 'a', 'A', 'i'): add.append((x, y)); break
+                    if c not in ('.', 'k', 'a', 'A', 'i', 'f', 'F'): add.append((x, y)); break
         for (x, y) in add: self.g[y][x] = 'k'
     def rows(self): return [''.join(r) for r in self.g]
+    FX = ('a', 'A', 'i', 'f', 'F')
     def image(self, chars=None):
         im = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0)); px = im.load()
         for y in range(self.h):
             for x in range(self.w):
                 ch = self.g[y][x]
-                if ch == '.' or (chars is not None and ch not in chars) or (chars is None and ch in ('a', 'A', 'i')): continue
+                if ch == '.' or (chars is not None and ch not in chars) or (chars is None and ch in self.FX): continue
                 px[x, y] = rgb(PAL[ch])
         return im
     def image_fx(self):
@@ -149,120 +187,142 @@ class Canvas:
         for y in range(self.h):
             for x in range(self.w):
                 ch = self.g[y][x]
-                if ch in ('a', 'A', 'i'): px[x, y] = rgb(PAL[ch]); any_ = True
+                if ch in self.FX: px[x, y] = rgb(PAL[ch]); any_ = True
         return im if any_ else None
 
 def arm(c, pts, ch='s', ch2='S'):
-    """an arm as a 2-px line through the given joints (elbow → wrist ...), shade below"""
-    for (x0, y0), (x1, y1) in zip(pts, pts[1:]): c.line(x0, y0, x1, y1, ch, thick=2, side=(0, 1), ch2=ch2)
-def steel_arm(c, pts): arm(c, pts, 'm', 'M')
-def hand(c, x, y, ch='s'): c.blit([ch + ch, ch + 'S' if ch == 's' else ch + 'M'], x, y)
-def katana(c, hx, hy, ang, blade=18, layer=None):
+    """a bare arm: a 2-px line through the joints (shoulder → elbow → wrist), shade on the minor-axis side"""
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]): c.line(x0, y0, x1, y1, ch, thick=2, ch2=ch2)
+def steel_arm(c, pts):
+    """the prosthetic arm: chrome 2-px line, a joint pixel at every bend, the rainbow sheen on the last segment"""
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]): c.line(x0, y0, x1, y1, 'm', thick=2, ch2='M')
+    for (x, y) in pts[1:-1]: c.put(x, y, 'd')
+    (x0, y0), (x1, y1) = pts[-2], pts[-1]
+    c.put(round(x0 + (x1 - x0) * 0.45), round(y0 + (y1 - y0) * 0.45), 'g')
+    c.put(round(x0 + (x1 - x0) * 0.75), round(y0 + (y1 - y0) * 0.75), 'q')
+def hand(c, x, y, ch='s'): c.blit([ch + ch, ch + ('S' if ch == 's' else 'M')], x, y)
+def sleeve(c, x, y): c.blit(SLEEVE, x, y)
+def katana(c, hx, hy, ang, blade=16):
     """the katana held at (hx, hy): hilt 3 px behind the hand, guard, blade `blade` px along `ang` (deg, y down)"""
     a = math.radians(ang); ux, uy = math.cos(a), math.sin(a)
-    # hilt behind the hand (opposite direction)
     for i in (1, 2, 3): c.put(round(hx - ux * i), round(hy - uy * i), 'X' if i % 2 else 'x')
-    # guard
     gx, gy = round(hx + ux * 1), round(hy + uy * 1)
     c.put(gx, gy, 'y'); c.put(gx - round(uy), gy + round(ux), 'y'); c.put(gx + round(uy), gy - round(ux), 'y')
-    # blade: 2 px, light on the top/front edge, dark on the back
     x0, y0 = round(hx + ux * 2), round(hy + uy * 2); x1, y1 = round(hx + ux * (2 + blade)), round(hy + uy * (2 + blade))
-    # the second pixel row of the blade sits beside the first along the line's minor axis (a solid 2-px stroke)
     side = (0, 1) if abs(ux) >= abs(uy) else (1 if ux < 0 else -1, 0)
-    c.line(x0, y0, x1, y1, 'v', thick=2, side=side, ch2='V')
+    c.line(x0, y0, x1, y1, 'v', thick=2, side=side, ch2='M')
 
 FRAMES = []
 def frame(name, cell_note, anchor, build, size=(30, 46)):
     c = Canvas(*size); build(c); c.ink()
     FRAMES.append((name, cell_note, anchor, c))
 
-# ---------------------------------------------------------------- the body at rest (shared by several frames)
-def body_stance(c, ox, oy, head=HEAD):
-    """ox, oy = the torso's top-left; returns key joints"""
-    c.blit(HAIR_BACK, ox - 6, oy - 1)
-    c.blit(SKIRT, ox - 1, oy + 8)
-    c.blit(LEG_STOCK, ox, oy + 15); c.blit(SHOE, ox - 1, oy + 27)
-    c.blit(LEG_CHROME, ox + 5, oy + 15); c.blit(SHOE, ox + 5, oy + 27)
-    c.blit(TORSO, ox, oy)
-    c.blit(head, ox - 2, oy - 10)
-    return { 'shN': (ox + 7, oy + 1), 'shF': (ox + 1, oy + 1), 'hip': (ox + 4, oy + 8) }
+# ---------------------------------------------------------------- the body (shared)
+# ox, ty = the torso's top-left. Layout (ty = 11 in a 42-row stance): head rows ty-11..ty-1, torso ty..ty+7,
+# skirt ty+8..ty+15, legs ty+16..ty+28, boots ty+27..ty+30. Joints returned: far/near shoulder, hip.
+def upper(c, ox, ty, head=HEAD, lean=0, hair_front=True):
+    """torso, head (lean = the head's x shift), the lock over the near shoulder (hair back is blitted first by the frame)"""
+    c.blit(TORSO, ox, ty)
+    c.blit(head, ox - 4 + lean, ty - 10)
+    if hair_front: c.blit(HAIR_FRONT, ox + 10 + lean, ty - 3)
+    return {'shF': (ox + 1, ty + 2), 'shN': (ox + 9, ty + 2), 'hip': (ox + 5, ty + 8)}
+def lower(c, ox, ty, far=None, near=None, far_x=1, near_x=6, far_y=0, near_y=0):
+    """skirt over the two legs (parts may be slanted); boots"""
+    far = far or LEG_STOCK; near = near or LEG_CHROME
+    c.blit(far, ox + far_x, ty + 16 + far_y); c.blit(SHOE, ox + far_x - 1 + (len(far[-1]) - 5), ty + 27 + far_y)
+    c.blit(near, ox + near_x, ty + 16 + near_y); c.blit(SHOE, ox + near_x - 1 + (len(near[-1]) - 5), ty + 27 + near_y)
+    c.blit(SKIRT, ox - 2, ty + 8)
+
+def far_arm_rest(c, ox, ty, dx=0, kat_ang=105, kat_len=15):
+    """the far steel arm hanging at the side, the katana gripped at the hip with the blade down-back"""
+    sleeve(c, ox - 3, ty + 1)
+    steel_arm(c, [(ox - 2 + dx, ty + 5), (ox - 2 + dx, ty + 9)])
+    katana(c, ox - 2 + dx, ty + 12, kat_ang, blade=kat_len)
+    hand(c, ox - 3 + dx, ty + 10, 'm')
+def near_arm_rest(c, ox, ty, dx=0):
+    """the near arm loose, the fist at the hip"""
+    sleeve(c, ox + 8, ty + 1)
+    arm(c, [(ox + 10, ty + 5), (ox + 11 + dx, ty + 8), (ox + 11 + dx, ty + 10)]); hand(c, ox + 10 + dx, ty + 11)
 
 def stance(c):
-    J = body_stance(c, 8, 12)
-    steel_arm(c, [(J['shF'][0] - 4, J['shF'][1] + 2), (J['shF'][0] - 5, J['shF'][1] + 9)]); hand(c, 3, 22, 'm')
-    c.blit(SLEEVE, 16, 12)
-    arm(c, [(17, 16), (16, 19)]); hand(c, 16, 20)
-    katana(c, 17, 21, 130, blade=20)          # blade down-back through the legs (the picture's pose)
-    # the blade behind the chrome leg: re-draw the leg over it
-    c.blit(LEG_CHROME, 13, 27); c.blit(SHOE, 13, 39)
-frame('stance', 'idle', (12, 41), stance, size=(24, 42))
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty)
+    far_arm_rest(c, ox, ty)
+    upper(c, ox, ty)
+    near_arm_rest(c, ox, ty)
+frame('stance', 'idle', (14, 41), stance, size=(26, 42))
 
 def stance_breath(c):
-    J = body_stance(c, 8, 13)
-    steel_arm(c, [(J['shF'][0] - 4, J['shF'][1] + 2), (J['shF'][0] - 5, J['shF'][1] + 9)]); hand(c, 3, 23, 'm')
-    c.blit(SLEEVE, 16, 13)
-    arm(c, [(17, 17), (16, 20)]); hand(c, 16, 21)
-    katana(c, 17, 22, 130, blade=20)
-    c.blit(LEG_CHROME, 13, 27); c.blit(SHOE, 13, 39)
-frame('stance2', 'idle 2 (chest down 1)', (12, 41), stance_breath, size=(24, 42))
+    ox, ty = 9, 12
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty - 1)
+    far_arm_rest(c, ox, ty, kat_ang=107)
+    upper(c, ox, ty)
+    near_arm_rest(c, ox, ty)
+frame('stance2', 'idle 2 (chest down 1)', (14, 41), stance_breath, size=(26, 42))
 
 # ---------------------------------------------------------------- 袈裟斬: Slynyrd's seven beats
-def kesa_antic(c):            # sword raised over the shoulder, both hands, weight back
-    c.blit(HAIR_BACK, 3, 12); c.blit(SKIRT, 8, 21)
-    c.blit(LEG_STOCK, 8, 28); c.blit(SHOE, 7, 40)
-    c.blit(LEG_CHROME, 15, 28); c.blit(SHOE, 15, 40)
-    c.blit(TORSO, 9, 13); c.blit(HEAD, 7, 3)
-    steel_arm(c, [(11, 14), (12, 9), (14, 6)]); hand(c, 14, 5, 'm')
-    c.blit(SLEEVE, 17, 13); arm(c, [(18, 14), (18, 9), (16, 6)]); hand(c, 16, 5)
-    katana(c, 16, 5, -125, blade=16)
-frame('kesa_antic', 'anticipation 100 ms', (13, 42), kesa_antic, size=(30, 43))
+def kesa_antic(c):            # jodan: the sword raised above the head, both hands, blade up-back; weight back
+    ox, ty = 10, 24
+    c.blit(HAIR_BACK, ox - 7, ty - 7)
+    lower(c, ox, ty, far_x=0, near_x=7)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox + 1, ty - 3), (ox + 8, ty - 12)])
+    upper(c, ox, ty, lean=-1)
+    hand(c, ox + 8, ty - 14, 'm')
+    katana(c, ox + 10, ty - 14, -150, blade=15)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 4), (ox + 14, ty - 3), (ox + 11, ty - 12)]); hand(c, ox + 10, ty - 13)
+frame('kesa_antic', 'anticipation 100 ms', (15, 54), kesa_antic, size=(30, 55))
 
 def kesa_smear(c):            # the cut in flight: arms forward-down, the blade replaced by the smear wedge
-    c.wedge(12, 20, 16, 25, -72, 42)
-    c.blit(HAIR_BACK, 2, 12); c.blit(SKIRT, 8, 21)
-    c.blit(LEG_STOCK, 6, 28); c.blit(SHOE, 5, 40)
-    c.blit(LEG_CHROME, 16, 28); c.blit(SHOE, 16, 40)
-    c.blit(TORSO, 9, 13); c.blit(HEAD_SHOUT, 8, 3)
-    steel_arm(c, [(11, 15), (16, 18)]); hand(c, 17, 18, 'm')
-    c.blit(SLEEVE, 17, 13); arm(c, [(19, 15), (20, 18)]); hand(c, 20, 18)
-frame('kesa_smear', 'smear 50 ms', (12, 42), kesa_smear, size=(38, 43))
+    ox, ty = 9, 12
+    c.wedge(ox + 9, ty + 4, 9, 23, -78, 36)
+    c.blit(HAIR_BACK, ox - 5, ty - 7)
+    lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 4), near_x=7)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=1)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox + 8, ty + 6), (ox + 14, ty + 9)]); hand(c, ox + 15, ty + 9, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 7), (ox + 16, ty + 10)]); hand(c, ox + 16, ty + 10)
+frame('kesa_smear', 'smear 50 ms', (14, 42), kesa_smear, size=(40, 43))
 
-def kesa_hit(c):              # the blade fully extended down-forward, lunge, held
-    c.blit(HAIR_BACK, 1, 12); c.blit(SKIRT, 8, 21)
-    c.blit(LEG_STOCK, 5, 28); c.blit(SHOE, 4, 40)
-    c.blit(["kmMdk", "kmMdk", "kmMdk", "kkMdMk", ".kmMdk", ".kmMdk", ".kmMdk", "..kMdMk", "..kmMdk", "..kmMdk", "..kmMdk", "..kmMdk"], 16, 28); c.blit(SHOE, 18, 40)
-    c.blit(TORSO, 9, 13); c.blit(HEAD_SHOUT, 8, 3)
-    steel_arm(c, [(11, 15), (17, 20)]); hand(c, 18, 20, 'm')
-    c.blit(SLEEVE, 17, 13); arm(c, [(19, 16), (21, 20)]); hand(c, 21, 20)
-    katana(c, 22, 21, 40, blade=17)
-frame('kesa_hit', 'hit 100 ms (hold)', (12, 42), kesa_hit, size=(40, 43))
+def kesa_hit(c):              # the blade fully extended down-forward, lunge on the chrome leg, held
+    ox, ty = 8, 12
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty, far=slant(LEG_STOCK, 5, -1), far_x=-1, near=slant(LEG_CHROME, 3), near_x=8)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox + 7, ty + 7), (ox + 13, ty + 10)]); hand(c, ox + 14, ty + 10, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 8), (ox + 16, ty + 11)]); hand(c, ox + 16, ty + 11)
+    katana(c, ox + 18, ty + 12, 38, blade=16)
+    c.blit(["..f..", ".fFf.", "fF.Ff", ".fFf.", "..f.."], ox + 27, ty + 16)
+frame('kesa_hit', 'hit 100 ms (hold)', (14, 42), kesa_hit, size=(42, 43))
 
 def kesa_follow(c):           # the sword through, low in front; body bent forward
-    c.blit(HAIR_BACK, 1, 12); c.blit(SKIRT, 8, 21)
-    c.blit(LEG_STOCK, 5, 28); c.blit(SHOE, 4, 40)
-    c.blit(["kmMdk", "kmMdk", "kmMdk", "kkMdMk", ".kmMdk", ".kmMdk", ".kmMdk", "..kMdMk", "..kmMdk", "..kmMdk", "..kmMdk", "..kmMdk"], 16, 28); c.blit(SHOE, 18, 40)
-    c.blit(TORSO, 10, 14); c.blit(HEAD, 10, 4)
-    steel_arm(c, [(12, 16), (16, 24)]); hand(c, 17, 24, 'm')
-    c.blit(SLEEVE, 18, 14); arm(c, [(20, 17), (20, 24)]); hand(c, 20, 24)
-    katana(c, 21, 25, 70, blade=15)
-frame('kesa_follow', 'follow through 50 ms', (12, 42), kesa_follow, size=(34, 43))
+    ox, ty = 8, 13
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty - 1, far=slant(LEG_STOCK, 5, -1), far_x=-1, near=slant(LEG_CHROME, 3), near_x=8)
+    upper(c, ox, ty, lean=2)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox + 6, ty + 9), (ox + 11, ty + 13)]); hand(c, ox + 12, ty + 13, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 9), (ox + 14, ty + 13)]); hand(c, ox + 14, ty + 14)
+    katana(c, ox + 15, ty + 15, 66, blade=13)
+frame('kesa_follow', 'follow through 50 ms', (14, 42), kesa_follow, size=(34, 43))
 
-def kesa_recover(c):          # coming back up, the sword lowered at the side
-    J = body_stance(c, 8, 12)
-    steel_arm(c, [(J['shF'][0] - 4, J['shF'][1] + 2), (J['shF'][0] - 5, J['shF'][1] + 9)]); hand(c, 3, 22, 'm')
-    c.blit(SLEEVE, 16, 12)
-    arm(c, [(17, 16), (18, 20)]); hand(c, 18, 21)
-    katana(c, 19, 22, 95, blade=14)
-frame('kesa_recover', 'recover 50 ms', (12, 41), kesa_recover, size=(24, 42))
+def kesa_recover(c):          # the sword swung down-back to the far hip (the stance grip), near arm returning
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty, far_x=0, near_x=7)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox, ty + 9)])
+    katana(c, ox, ty + 12, 100, blade=15); hand(c, ox - 1, ty + 10, 'm')
+    upper(c, ox, ty, lean=1)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 8), (ox + 12, ty + 11)]); hand(c, ox + 11, ty + 12)
+frame('kesa_recover', 'recover 50 ms', (14, 41), kesa_recover, size=(26, 42))
 
-def kesa_over(c):             # overshoot: a hair back past the stance
-    J = body_stance(c, 8, 12)
-    steel_arm(c, [(J['shF'][0] - 4, J['shF'][1] + 2), (J['shF'][0] - 5, J['shF'][1] + 9)]); hand(c, 3, 22, 'm')
-    c.blit(SLEEVE, 16, 12)
-    arm(c, [(17, 16), (16, 19)]); hand(c, 16, 20)
-    katana(c, 17, 21, 120, blade=20)
-    c.blit(LEG_CHROME, 13, 27); c.blit(SHOE, 13, 39)
-frame('kesa_over', 'overshoot 50 ms', (12, 41), kesa_over, size=(24, 42))
+def kesa_over(c):             # overshoot: a hair back past the stance, the blade swung further back
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7)
+    lower(c, ox, ty)
+    far_arm_rest(c, ox, ty, dx=-1, kat_ang=118)
+    upper(c, ox, ty, lean=-1)
+    near_arm_rest(c, ox, ty, dx=-1)
+frame('kesa_over', 'overshoot 50 ms', (14, 41), kesa_over, size=(26, 42))
 
 if __name__ == '__main__':
     os.makedirs('art', exist_ok=True)
@@ -270,17 +330,20 @@ if __name__ == '__main__':
     for n, (name, note, (ax, ay), c) in enumerate(FRAMES):
         fig = c.image(); fx = c.image_fx()
         fig.save(os.path.join('art', 'H%d.png' % n))
-        if fx: fx.save(os.path.join('art', 'H%de.png' % n))
+        p = os.path.join('art', 'H%de.png' % n)
+        if fx: fx.save(p)
+        elif os.path.exists(p): os.remove(p)
         meta['H%d' % n] = {'name': name, 'note': note, 'ax': ax, 'ay': ay, 'w': c.w, 'h': c.h, 'fx': bool(fx)}
         print('H%d' % n, name, c.w, 'x', c.h, 'anchor', (ax, ay), 'fx' if fx else '')
     json.dump(meta, open(os.path.join('art', 'hand.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    S = 8
-    W = sum(c.w * S + 24 for _, _, _, c in FRAMES) + 24; H = max(c.h for _, _, _, c in FRAMES) * S + 40
-    sheet = Image.new('RGBA', (W, H), (124, 150, 163, 255)); d = ImageDraw.Draw(sheet); x = 24
-    for n, (name, note, (ax, ay), c) in enumerate(FRAMES):
-        full = c.image(chars=set(PAL) - {'.'})
-        sheet.alpha_composite(full.resize((c.w * S, c.h * S), Image.NEAREST), (x, 24))
-        gy = 24 + (ay + 1) * S; d.line([(x, gy), (x + c.w * S, gy)], fill=(255, 240, 80, 255))
-        d.rectangle([x + ax * S, gy - 3, x + ax * S + S, gy + 3], fill=(255, 60, 60, 255))
-        d.text((x, 6), 'H%d %s' % (n, name), fill=(255, 255, 0, 255)); x += c.w * S + 24
-    sheet.save(os.path.join('art', 'hand_review.png')); print('review', sheet.size)
+    for S, fn in ((8, 'hand_review.png'), (2, 'hand_x2.png')):
+        W = sum(c.w * S + 3 * S for _, _, _, c in FRAMES) + 3 * S; H = max(c.h for _, _, _, c in FRAMES) * S + 5 * S
+        sheet = Image.new('RGBA', (W, H), (124, 150, 163, 255)); d = ImageDraw.Draw(sheet); x = 3 * S
+        for n, (name, note, (ax, ay), c) in enumerate(FRAMES):
+            full = c.image(chars=set(PAL) - {'.'})
+            sheet.alpha_composite(full.resize((c.w * S, c.h * S), Image.NEAREST), (x, 3 * S))
+            gy = 3 * S + (ay + 1) * S; d.line([(x, gy), (x + c.w * S, gy)], fill=(255, 240, 80, 255))
+            d.rectangle([x + ax * S, gy - 2, x + ax * S + S, gy + 2], fill=(255, 60, 60, 255))
+            if S >= 4: d.text((x, 6), 'H%d %s' % (n, name), fill=(255, 255, 0, 255))
+            x += c.w * S + 3 * S
+        sheet.save(os.path.join('art', fn)); print(fn, sheet.size)

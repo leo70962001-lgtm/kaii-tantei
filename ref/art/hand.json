@@ -2,52 +2,52 @@
  "H0": {
   "name": "stance",
   "note": "idle",
-  "ax": 12,
+  "ax": 14,
   "ay": 41,
-  "w": 24,
+  "w": 26,
   "h": 42,
   "fx": false
  },
  "H1": {
   "name": "stance2",
   "note": "idle 2 (chest down 1)",
-  "ax": 12,
+  "ax": 14,
   "ay": 41,
-  "w": 24,
+  "w": 26,
   "h": 42,
   "fx": false
  },
  "H2": {
   "name": "kesa_antic",
   "note": "anticipation 100 ms",
-  "ax": 13,
-  "ay": 42,
+  "ax": 15,
+  "ay": 54,
   "w": 30,
-  "h": 43,
+  "h": 55,
   "fx": false
  },
  "H3": {
   "name": "kesa_smear",
   "note": "smear 50 ms",
-  "ax": 12,
+  "ax": 14,
   "ay": 42,
-  "w": 38,
+  "w": 40,
   "h": 43,
   "fx": true
  },
  "H4": {
   "name": "kesa_hit",
   "note": "hit 100 ms (hold)",
-  "ax": 12,
+  "ax": 14,
   "ay": 42,
-  "w": 40,
+  "w": 42,
   "h": 43,
-  "fx": false
+  "fx": true
  },
  "H5": {
   "name": "kesa_follow",
   "note": "follow through 50 ms",
-  "ax": 12,
+  "ax": 14,
   "ay": 42,
   "w": 34,
   "h": 43,
@@ -56,18 +56,18 @@
  "H6": {
   "name": "kesa_recover",
   "note": "recover 50 ms",
-  "ax": 12,
+  "ax": 14,
   "ay": 41,
-  "w": 24,
+  "w": 26,
   "h": 42,
   "fx": false
  },
  "H7": {
   "name": "kesa_over",
   "note": "overshoot 50 ms",
-  "ax": 12,
+  "ax": 14,
   "ay": 41,
-  "w": 24,
+  "w": 26,
   "h": 42,
   "fx": false
  }
