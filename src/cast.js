@@ -41,7 +41,7 @@
     M.stocking = material('jk_stock', ['#6a6d80', '#41434f', '#2c2e38', '#1d1e26', '#111117'], '#050610', { softInk: '#1d1e26' });
     const KEY = R.KEY;
     const SPEC = specOf(C, { thigh: 34, shin: 24, upper: 13, fore: 13, headH: 26, headW: 22, bodyW: 12 });
-    const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 46 });
+    const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 60 });
     function render(pose, opts = {}) {
       const p = Object.assign({}, DEF, pose);
       const br = p.broken || {};

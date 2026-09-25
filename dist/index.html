@@ -2210,7 +2210,7 @@
     M.stocking = material('jk_stock', ['#6a6d80', '#41434f', '#2c2e38', '#1d1e26', '#111117'], '#050610', { softInk: '#1d1e26' });
     const KEY = R.KEY;
     const SPEC = specOf(C, { thigh: 34, shin: 24, upper: 13, fore: 13, headH: 26, headW: 22, bodyW: 12 });
-    const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 46 });
+    const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 60 });
     function render(pose, opts = {}) {
       const p = Object.assign({}, DEF, pose);
       const br = p.broken || {};
@@ -2759,12 +2759,12 @@
       { d: 420, p: { full: true, dy: 1 } },
     ], S, K) };
     // 小斬: one hand, horizontal
-    A.light = { label: '突き', frames: seq([
-      { d: 70, ph: 'ANTICIPATION', p: { hF: [4, -26], sw: 175, swordLayer: 'front', lean: -2, hip: [-1, -27], hair: hp(0.1, { base: 96 }) } },
-      { d: 50, ph: 'HIT', sfx: 'swish', hbAbs: SBOX(4, { y: -4 }), dmg: 6, stun: 280, kb: 2.5, p: { hip: [3, -25], fF: [14, -2], fN: [-10, -2], hF: [20, -26], sw: 4, lean: 3, head: [2, 0], face: 'shout', hair: hp(0.25, { base: 150, droop: 100 }) }, fx: [SFX(4, { y: -4 })] },
-      { d: 60, ph: 'HIT', hbAbs: SBOX(5, { y: -4 }), dmg: 6, stun: 280, kb: 2.5, p: { hF: [21, -26], sw: 2, hair: hp(0.4) }, fx: [SFX(5, { y: -4 })] },
-      { d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { hF: [21, -26], sw: 0, face: 'normal', hair: hp(0.5) }, fx: [SFX(6, { y: -4, age: 0.5 })] },
-      { d: 70, ph: 'RECOVER', chain: true, cancel: true, p: { hip: [1, -27], fF: [10, -2], fN: [-9, -2], hF: [13, -27], sw: 8, lean: 1, head: [1, 0], swordLayer: 'back', hair: hp(0.65, { base: 110 }) } },
+    A.light = { label: '横薙ぎ', frames: seq([
+      { d: 90, ph: 'ANTICIPATION', p: { hF: [-9, -31], sw: 200, swordLayer: 'back', lean: -3, hip: [-3, -27], fN: [-11, -2], fF: [8, -2], head: [-2, 0], hN: [5, -31], hair: hp(0.1, { base: 88, wave: 1.4 }) } },
+      { d: 40, ph: 'SMEAR', sm: 'fan', sfx: 'swish', hb: [6, -48, 50, -12], dmg: 6, stun: 300, kb: 3, p: { hip: [7, -25], fF: [24, -2], fN: [-15, -2], hF: [24, -28], sw: 4, lean: 4, head: [3, 0], face: 'shout', noBlade: true, swordLayer: 'front', hN: [-6, -25], hair: hp(0.25, { base: 168, droop: 100, wave: 1.9 }) } },
+      { d: 80, ph: 'HIT', sa: 0.45, hb: [6, -48, 50, -12], dmg: 6, stun: 300, kb: 3, p: { hF: [25, -27], sw: 12, noBlade: false, hair: hp(0.4) } },
+      { d: 60, ph: 'FOLLOW THROUGH', sa: 0.8, chain: true, cancel: true, p: { hF: [21, -23], sw: 44, face: 'normal', hair: hp(0.5) } },
+      { d: 80, ph: 'RECOVER', chain: true, cancel: true, p: { hip: [2, -27], fF: [13, -2], fN: [-9, -2], hF: [13, -27], sw: 8, lean: 1, head: [1, 0], swordLayer: 'back', hN: [-4, -27], hair: hp(0.65, { base: 110 }) } },
       { d: 50, ph: 'OVERSHOOT', p: { hip: [0, -27], fF: [11, -2], hF: [12, -29], sw: -5, lean: 0, hair: hp(0.8) } },
     ], S, K), next: 'light2' };
     // 返し斬: the return cut, upward
@@ -2792,10 +2792,10 @@
     ], S, K), next: 'heavy2' };
     // 袈裟斬: two hands, over the shoulder, a lunge
     A.heavy2 = { label: '袈裟斬', frames: seq([
-      { d: 110, ph: 'ANTICIPATION', p: { grip: 'B', hF: [3, -42], hN: [1, -40], sw: -135, lean: -2, hip: [-1, -27], fF: [10, -4], head: [0, 0], swordLayer: 'front', hair: hp(0.1, { base: 92 }) } },
-      { d: 40, ph: 'SMEAR', sfx: 'swish', shake: 2, hbAbs: SBOX(0, { x: 6 }), dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hip: [6, -24], fF: [21, -2], fN: [-15, -2], hF: [21, -22], hN: [18, -25], sw: 42, lean: 3, head: [2, 1], face: 'shout', hair: hp(0.3, { base: 170, droop: 100, wave: 1.8 }) }, fx: [SFX(0, { x: 6 })] },
-      { d: 100, ph: 'HIT', hbAbs: SBOX(0, { x: 6 }), dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hF: [19, -17], hN: [16, -20], sw: 66, hair: hp(0.45) }, fx: [SFX(0, { x: 6, age: 0.3 })] },
-      { d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { hF: [17, -13], hN: [14, -16], sw: 86, face: 'normal', hair: hp(0.55) }, fx: [SFX(0, { x: 6, age: 0.75 })] },
+      { d: 120, ph: 'ANTICIPATION', p: { grip: 'B', hF: [-5, -45], hN: [-3, -43], sw: -152, lean: -3, hip: [-3, -26], fF: [9, -3], fN: [-5, -9], head: [-1, 0], swordLayer: 'front', hair: hp(0.1, { base: 86, wave: 1.5 }) } },
+      { d: 40, ph: 'SMEAR', sfx: 'swish', shake: 2, hbAbs: SBOX(0, { x: 8 }), dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hip: [8, -24], fF: [25, -2], fN: [-16, -2], hF: [23, -21], hN: [20, -24], sw: 46, lean: 4, head: [3, 1], face: 'shout', hair: hp(0.3, { base: 172, droop: 100, wave: 2 }) }, fx: [SFX(0, { x: 8 })] },
+      { d: 100, ph: 'HIT', hbAbs: SBOX(0, { x: 8 }), dmg: 12, stun: 420, kb: 4, pd: 1.4, p: { hF: [21, -15], hN: [18, -18], sw: 72, hair: hp(0.45) }, fx: [SFX(0, { x: 8, age: 0.3 })] },
+      { d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true, p: { hF: [17, -11], hN: [14, -14], sw: 92, face: 'normal', hair: hp(0.55) }, fx: [SFX(0, { x: 8, age: 0.75 })] },
       { d: 80, ph: 'RECOVER', chain: true, p: { grip: 'F', hip: [1, -26], fF: [11, -2], fN: [-9, -2], hF: [13, -27], hN: [-4, -27], sw: 18, lean: 1, head: [1, 0], swordLayer: 'back', hair: hp(0.7, { base: 110 }) } },
       { d: 60, ph: 'OVERSHOOT', p: { hip: [0, -27], fF: [8, -2], hF: [12, -29], sw: 2, lean: 0, hair: hp(0.85) } },
     ], S, K), next: 'heavy3' };
