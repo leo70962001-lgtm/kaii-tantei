@@ -15,7 +15,10 @@
   let hitSerial = 1;
   // longer legs and torsos: hips/knees/hit boxes/body effects move up by SHIFT_Y (half of it in crouches),
   // hands and elbows by SHIFT_Y + HAND_EXTRA (the taller torso lifts the shoulders)
-  const K = 1.8; // KOF scale: every authored coordinate is multiplied on emit
+  const SM = 0.36; // sheet scale: the rig characters are rendered big and shrunk by this
+  const K = 1.8 * SM; // every authored coordinate is multiplied on emit
+  let KY = 1.8 * SM;  // vertical scale, per character (the image cut-outs have their own hip heights)
+  const KYS = { jk: 1.615 * SM, vamp: 1.09 * SM, maid: 1.336 * SM, wolf: 1.8 * SM };
   let SHIFT_Y = 0, HAND_EXTRA = 0;
   const JOINTS = ['hip', 'kN', 'kF', 'bat'], HANDS = ['hN', 'hF', 'eN', 'eF'];
   function shifted(pose) {
@@ -34,12 +37,12 @@
     o._s = s;
     return scaled(o);
   }
-  const SC = (v) => Math.round(v * K);
+  const SC = (v) => Math.round(v * K), SY = (v) => Math.round(v * KY);
   function scaled(o) {
-    for (const k of [...JOINTS, ...HANDS, 'fN', 'fF']) if (Array.isArray(o[k])) o[k] = [SC(o[k][0]), SC(o[k][1])];
+    for (const k of [...JOINTS, ...HANDS, 'fN', 'fF']) if (Array.isArray(o[k])) o[k] = [SC(o[k][0]), SY(o[k][1])];
     if (typeof o.skirtSwing === 'number') o.skirtSwing = SC(o.skirtSwing);
-    if (o.smear) { const sm = Object.assign({}, o.smear); for (const w of ['from', 'to']) if (sm[w]) { sm[w] = Object.assign({}, sm[w]); for (const k of HANDS) if (Array.isArray(sm[w][k])) sm[w][k] = [SC(sm[w][k][0]), SC(sm[w][k][1])]; } o.smear = sm; }
-    if (o.fx) o.fx = o.fx.map((f) => { const g = Object.assign({}, f); for (const k of ['x', 'y', 'x0', 'x1', 'r', 'r0', 'r1', 'len', 'd', 'rx', 'ry', 'h', 'gap', 'w']) if (typeof g[k] === 'number') g[k] = k === 'w' ? Math.max(0, Math.round(g[k] * K)) : g[k] * K; if (Array.isArray(g.c)) g.c = [g.c[0] * K, g.c[1] * K]; if (typeof g.s === 'number') g.s = Math.round(g.s * 1.5); return g; });
+    if (o.smear) { const sm = Object.assign({}, o.smear); for (const w of ['from', 'to']) if (sm[w]) { sm[w] = Object.assign({}, sm[w]); for (const k of HANDS) if (Array.isArray(sm[w][k])) sm[w][k] = [SC(sm[w][k][0]), SY(sm[w][k][1])]; } o.smear = sm; }
+    if (o.fx) o.fx = o.fx.map((f) => { const g = Object.assign({}, f); for (const k of ['x', 'x0', 'x1', 'r', 'r0', 'r1', 'len', 'd', 'rx', 'ry', 'h', 'gap', 'w']) if (typeof g[k] === 'number') g[k] = k === 'w' ? Math.max(0, Math.round(g[k] * K)) : g[k] * K; if (typeof g.y === 'number') g.y = g.y * KY; if (Array.isArray(g.c)) g.c = [g.c[0] * K, g.c[1] * KY]; if (typeof g.s === 'number') g.s = Math.round(g.s * 1.5); return g; });
     return o;
   }
   function seq(list, base, keys) {
@@ -58,8 +61,8 @@
       const P = shifted(Object.assign({}, pose, { fx: e.fx || [], smear }));
       out.push({
         pose: P,
-        dur: e.d || 50, dx: SC(e.dx || 0), lift: SC(e.lift || 0), ghost: !!e.ghost, shake: e.shake || 0, sfx: e.sfx,
-        hb: e.hb ? [SC(e.hb[0]), SC(e.hb[1] + (P._s || 0)), SC(e.hb[2]), SC(e.hb[3] + (P._s || 0))] : null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
+        dur: e.d || 50, dx: SC(e.dx || 0), lift: SY(e.lift || 0), ghost: !!e.ghost, shake: e.shake || 0, sfx: e.sfx,
+        hb: e.hb ? [SC(e.hb[0]), SY(e.hb[1] + (P._s || 0)), SC(e.hb[2]), SY(e.hb[3] + (P._s || 0))] : null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
         chain: !!e.chain, cancel: !!e.cancel, inv: !!e.inv, air: e.air, spawn: e.spawn, phase: e.ph, hitId: e.hb ? (e.hid ? hitId + e.hid * 1000 : hitId) : 0,
         form: e.form,
       });
@@ -164,7 +167,7 @@
   };
   const JK_KEYS = ['hF', 'sw'];
   function jkAnims() {
-    SHIFT_Y = -11; HAND_EXTRA = -2;
+    SHIFT_Y = -11; HAND_EXTRA = -2; KY = KYS.jk;
     const V = {
       stride: 9,
       breath: { hF: [11, -27], sw: 27 },
@@ -290,7 +293,7 @@
   };
   const V_KEYS = ['hN', 'la'];
   function vampAnims() {
-    SHIFT_Y = -10; HAND_EXTRA = -2;
+    SHIFT_Y = -10; HAND_EXTRA = -2; KY = KYS.vamp;
     const V = {
       stride: 7, idleLabel: 'だるい構え',
       breath: { hN: [8, -25], hF: [10, -24], flap: 1, bat: [-14, -46] },
@@ -390,7 +393,7 @@
   const W_S = Object.assign({}, M_S, { form: 'wolf', hip: [0, -28], lean: 3, fN: [-10, -2], fF: [11, -2], hN: [3, -18], hF: [13, -26] });
   const M_KEYS = ['hF', 'la', 'hN', 'fF'];
   function maidAnims() {
-    SHIFT_Y = -11; HAND_EXTRA = -3;
+    SHIFT_Y = -11; HAND_EXTRA = -3; KY = KYS.maid;
     const V = {
       stride: 8, idleLabel: '待機',
       breath: { hN: [-3, -27], hF: [9, -29] },
@@ -473,7 +476,7 @@
     return A;
   }
   function wolfAnims() {
-    SHIFT_Y = -12; HAND_EXTRA = -2;
+    SHIFT_Y = -12; HAND_EXTRA = -2; KY = KYS.wolf;
     const V = {
       stride: 11, idleLabel: '威嚇',
       breath: { hN: [3, -17], hF: [13, -25], head: [1, 1] },

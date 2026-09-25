@@ -130,6 +130,37 @@
     return parts;
   }
 
+  // decode a CAST part (base64 RGBA, w, h) into little-endian RGBA uint32 once
+  function imgData(part) {
+    if (part.px) return part.px;
+    const bin = typeof atob === 'function' ? atob(part.d) : Buffer.from(part.d, 'base64').toString('binary');
+    const n = part.w * part.h, px = new Uint32Array(n);
+    for (let i = 0; i < n; i++) { const a = bin.charCodeAt(i * 4 + 3); px[i] = a ? PX.rgba(bin.charCodeAt(i * 4), bin.charCodeAt(i * 4 + 1), bin.charCodeAt(i * 4 + 2), 255) : 0; }
+    part.px = px;
+    return px;
+  }
+  // draw an image part so that its pixel `anchor` lands on `at`; opts.lean shears rows above opts.pivot,
+  // opts.flip mirrors, opts.rot (deg) rotates about the anchor (nearest neighbour). Pixels carry flag 1
+  // (no outline ring) and belong to one Part so neighbours get separation edges.
+  function blitImg(buf, part, at, anchor, opts = {}) {
+    const px = imgData(part);
+    const P = new Part(buf, opts.mat || PX.MATS[1] || null, { sep: opts.sep !== false, flag: 1 });
+    const lean = opts.lean || 0, pivot = opts.pivot ?? part.h - 1;
+    const ax = Math.round(at[0]), ay = Math.round(at[1]);
+    const rot = opts.rot ? rad(opts.rot) : 0, cs = Math.cos(rot), sn = Math.sin(rot);
+    for (let j = 0; j < part.h; j++) {
+      const sh = lean ? Math.round(lean * clamp(1 - j / pivot, 0, 1)) : 0;
+      for (let i = 0; i < part.w; i++) {
+        const c = px[j * part.w + i];
+        if (!c) continue;
+        let dx = (opts.flip ? part.w - 1 - i : i) - anchor[0] + sh, dy = j - anchor[1];
+        if (rot) { const rx = dx * cs - dy * sn, ry = dx * sn + dy * cs; dx = Math.round(rx); dy = Math.round(ry); }
+        P.add(ax + dx, ay + dy, { col: c });
+      }
+    }
+    P.commit((i) => ({ col: i.col }));
+    return P;
+  }
   function shear(rows, n, pivotRow) {
     const H = rows.length, pad = Math.abs(n), pr = pivotRow ?? H - 1;
     return rows.map((r, j) => {
@@ -248,5 +279,5 @@
     }
   }
 
-  root.RIG = { LOOK, sh, cyl, stroke, ball, place, matmap, shear, tall, variant, recolour, solve, boxes, finish, smear, mane, c };
+  root.RIG = { LOOK, sh, cyl, stroke, ball, place, matmap, imgData, blitImg, shear, tall, variant, recolour, solve, boxes, finish, smear, mane, c };
 })(typeof window !== 'undefined' ? window : globalThis);

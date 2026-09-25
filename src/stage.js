@@ -115,8 +115,14 @@
     return L;
   }
 
+  // the sheet-scale game shows everything at half size: 360×135 world, 240×135 view
+  function half(L) {
+    const w = L.w >> 1, h = L.h >> 1, c = new Uint32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) c[y * w + x] = L.c[(y * 2) * L.w + x * 2];
+    return { w, h, c };
+  }
   let FAR = null, NEAR = null;
-  function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); } return { far: FAR, near: NEAR }; }
+  function paint() { if (!FAR) { FAR = half(paintFar()); NEAR = half(paintNear()); } return { far: FAR, near: NEAR }; }
 
-  root.STAGE = { W, H, VW, GROUND, FAR_W, paint, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
+  root.STAGE = { W: W >> 1, H: H >> 1, VW: VW >> 1, GROUND: GROUND >> 1, FAR_W: FAR_W >> 1, paint, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);
