@@ -11,10 +11,11 @@
   'use strict';
   const SHEETS = root.SPRITES && root.SPRITES.jk;
   if (!SHEETS) return;
-  // the standing picture (110 px tall) is the size base: sheets A/B stand 41 cell px, C 30 → fractional scales
-  const BASE_H = 110;
-  const SCALE = { A: BASE_H / 41, B: BASE_H / 41, C: BASE_H / 30 };
-  const HEAD_H = 27;   // the picture's own head, 1:1
+  // the small pixel-art scale: cells are drawn at their native size (a standing figure is 41 px; ref/pixelize.py
+  // brings sheet C to the same size) and shown at an integer ×2, nearest-neighbour, so every sprite pixel is a
+  // crisp 2×2 world-pixel block like the references at zoom
+  const SCALE = { A: 2, B: 2, C: 2, H: 2 };   // H = the hand-drawn frames (ref/hand.py)
+  const HEAD_H = 27;   // (picture-head overlay; inactive unless the sheet data carries 'heads')
   const hasDoc = typeof document !== 'undefined';
 
   function decode(b64, w, h) {
@@ -58,11 +59,10 @@
   }
   // upscale by a fractional factor: the nearest integer smoothing scale (Scale2x / Scale3x / Scale2x²), then a
   // nearest-neighbour resample to the exact size
+  // plain integer upscale (nearest): the hand-refined pixels stay square; the smoothing scalers are kept for effects
   function up(px, w, h, s) {
-    const kb = s <= 2.5 ? 2 : s <= 3.5 ? 3 : 4;
-    const base = kb === 2 ? scale2x(px, w, h) : kb === 3 ? scale3x(px, w, h) : scale2x(scale2x(px, w, h), w * 2, h * 2);
     const W = Math.round(w * s), H = Math.round(h * s);
-    return (W === w * kb && H === h * kb) ? base : nearest(base, w * kb, h * kb, W, H);
+    return nearest(px, w, h, W, H);
   }
   // the standing picture's head (normal / hurt / shout faces), scaled to HEAD_H, chin point kept
   const HEADS = {};

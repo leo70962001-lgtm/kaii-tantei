@@ -6,7 +6,7 @@
 // to world px by the sheet's scale on emit.
 (function (root) {
   'use strict';
-  const K = { A: 110 / 41, B: 110 / 41, C: 110 / 30 };   // = src/sprite.js SCALE (cell px -> world px)
+  const K = { A: 2, B: 2, C: 2, H: 2 };   // = src/sprite.js SCALE (cell px -> world px); H = hand-drawn
   let hitSerial = 1;
   const parse = (s) => ({ tag: s[0], i: +s.slice(1) });
   function seq(list) {
@@ -38,7 +38,7 @@
   function build() {
     const A = {};
     // ---------------------------------------------------------------- stance, movement
-    A.idle = { label: '構え', loop: true, frames: seq([{ c: 'B0', d: 420 }, { c: 'B0', d: 420, lift: 1 }]) };
+    A.idle = { label: '構え', loop: true, frames: seq([{ c: 'H0', d: 460 }, { c: 'H1', d: 460 }]) };
     A.idle2 = { label: '構え直し', frames: seq([{ c: 'B1', d: 220 }, { c: 'B2', d: 320 }, { c: 'B3', d: 320 }, { c: 'B4', d: 280 }, { c: 'B0', d: 180 }]) };
     A.walk = { label: '前進', loop: true, frames: seq([5, 6, 7, 8].map((i) => ({ c: 'B' + i, d: 110 }))) };
     A.back = { label: '後退', loop: true, frames: seq([8, 7, 6, 5].map((i) => ({ c: 'B' + i, d: 120 }))) };
@@ -71,8 +71,8 @@
     // ---------------------------------------------------------------- Z chain (steel arm / chrome leg)
     A.light = { label: '義手ジャブ', frames: seq([
       { c: 'A5', d: 40, ph: 'ANTICIPATION' },
-      { c: 'A6', d: 50, ph: 'HIT', sfx: 'swish', hb: [3, -31, 16, -20], dmg: 5, stun: 260, kb: 2.2 },
-      { c: 'A6', d: 60, ph: 'HOLD', hb: [3, -31, 16, -20], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
+      { c: 'A6', d: 50, ph: 'HIT', sfx: 'swish', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2 },
+      { c: 'A6', d: 60, ph: 'HOLD', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
       { c: 'A5', d: 70, ph: 'RECOVER', chain: true, cancel: true },
     ]), nextLight: 'light2', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
     A.light2 = { label: '義手ストレート', frames: seq([
@@ -112,12 +112,12 @@
     ]) };
     // ---------------------------------------------------------------- X chain (sword)
     A.heavy = { label: '袈裟斬', frames: seq([
-      { c: 'A1', d: 110, ph: 'ANTICIPATION' },
-      { c: 'A30', d: 40, ph: 'ARC' },
-      { c: 'A31', d: 40, ph: 'SMEAR', sfx: 'swish', shake: 2, hb: [-4, -30, 24, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
-      { c: 'A31', d: 100, ph: 'HIT', hb: [-4, -30, 24, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
-      { c: 'A29', d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
-      { c: 'A0', d: 80, ph: 'RECOVER', chain: true },
+      { c: 'H2', d: 100, ph: 'ANTICIPATION' },
+      { c: 'H3', d: 50, ph: 'SMEAR', sfx: 'swish', shake: 2, hb: [6, -44, 25, -6], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
+      { c: 'H4', d: 100, ph: 'HIT', hb: [8, -26, 24, -8], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
+      { c: 'H5', d: 50, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
+      { c: 'H6', d: 50, ph: 'RECOVER', chain: true },
+      { c: 'H7', d: 50, ph: 'OVERSHOOT' },
     ]), nextHeavy: 'heavy2', nextLight: 'light3' };
     A.heavy2 = { label: '刺突', frames: seq([
       { c: 'A1', d: 70, ph: 'ANTICIPATION' },

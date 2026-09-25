@@ -333,7 +333,7 @@
     for (const p of sim.projs) {
       if (p.dead) continue;
       const def = sim.fighters[1 - p.owner.slot];
-      const hb = p.kind === 'shot' ? [p.x - 26, G - p.y - 13, p.x + 26, G - p.y + 13] : [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
+      const hb = p.kind === 'shot' ? [p.x - 20, G - p.y - 12, p.x + 20, G - p.y + 12] : [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
       const hz = hurtboxes(def);
       const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
       if (!zones.length || cur(def).inv) continue;
@@ -416,7 +416,7 @@
     return true;
   }
   function spawnShot(f) {
-    sim.projs.push({ owner: f, kind: 'shot', x: f.x + 36 * f.face, y: 60, vx: 6.6 * f.face, life: 56, flap: 0, t: 0 });
+    sim.projs.push({ owner: f, kind: 'shot', x: f.x + 30 * f.face, y: 46, vx: 6.6 * f.face, life: 56, flap: 0, t: 0 });
   }
   // a grabbed fighter rides along with the thrower until the release frame, which is the actual hit
   function holdTick(f) {
@@ -568,7 +568,7 @@
       for (const p of sim.projs) {
         if (p.dead) continue;
         p.x += p.vx; p.t++;
-        if (p.kind === 'shot') { p.y = 60; } else { p.flap = (p.t >> 3) & 1; p.y = 65 + Math.sin(p.t * 0.25) * 5 * (p.owner.blind ? 3 : 1); }
+        if (p.kind === 'shot') { p.y = 46; } else { p.flap = (p.t >> 3) & 1; p.y = 65 + Math.sin(p.t * 0.25) * 5 * (p.owner.blind ? 3 : 1); }
         if (--p.life <= 0 || p.x < sim.camX - 30 || p.x > sim.camX + VW + 30) p.dead = true;
       }
       for (const sw of sim.props) {
@@ -712,7 +712,13 @@
   const low = document.createElement('canvas'); low.width = VW * RS; low.height = VH * RS;
   const lx = low.getContext('2d'); lx.imageSmoothingEnabled = false;
   const BG = STAGE.paint();
-  const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
+  // the stage shares the sprites' pixel size (2 world px): painted at full size, sampled to half, blown back up ×2
+  function chunky(L) {
+    const h = STAGE.half(L), w = h.w * 2, hh = h.h * 2, c = new Uint32Array(w * hh);
+    for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) c[y * w + x] = h.c[(y >> 1) * h.w + (x >> 1)];
+    return toCanvas(c, w, hh);
+  }
+  const FAR = chunky(BG.far), NEAR = chunky(BG.near);
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -760,7 +766,7 @@
     const right = f.face > 0;
     const ox = right ? img.ox : img.oxL, oy = img.oy;
     if (!fr.pose.hidden) {
-      list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(11, 22 - f.y * 0.15) });
+      list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(9, 17 - f.y * 0.12) });
       if (lift >= 0 && img.SR) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - ox + oy * f.face * 0.5 + lift * f.face * 0.5), G + oy * 0.07 + lift * 0.07], a: 0.35 });
     }
     // afterimages (tinted silhouettes of earlier ghost frames)
