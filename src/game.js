@@ -719,12 +719,13 @@
   let usePuppet = !/\bpuppet=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35 }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
-  const low = document.createElement('canvas'); low.width = VW; low.height = VH;
-  const lx = low.getContext('2d');
+  const RS = 2;  // render scale: the low canvas / WebGL target are 2× the world so the puppet's finer parts show
+  const low = document.createElement('canvas'); low.width = VW * RS; low.height = VH * RS;
+  const lx = low.getContext('2d'); lx.imageSmoothingEnabled = false;
   const BG = STAGE.paint();
   const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
   let scale = 3;
@@ -915,16 +916,16 @@
     const shake = sim.shake > 0.2 ? [Math.round((rnd() * 2 - 1) * sim.shake), Math.round((rnd() * 2 - 1) * sim.shake * 0.5)] : [0, 0];
     const list = worldList(camX);
     initGL();
-    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.setTransform(RS, 0, 0, RS, 0, 0);
     if (gl) {
       gl.render({ camX, list, shake, zoom: koZoom() });
       lx.clearRect(0, 0, VW, VH);
     } else {
-      lx.setTransform(1, 0, 0, 1, shake[0], shake[1]);
+      lx.setTransform(RS, 0, 0, RS, shake[0] * RS, shake[1] * RS);
       lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
       lx.drawImage(NEAR, -camX, 0);
       draw2D(list);
-      lx.setTransform(1, 0, 0, 1, 0, 0);
+      lx.setTransform(RS, 0, 0, RS, 0, 0);
     }
     if (sim.phase !== 'title' && sim.phase !== 'select') hudPixels();
   }
@@ -963,7 +964,7 @@
     if (sim.paused) text('PAUSE', VW / 2, 135, 24, '#ffffff');
   }
   function drawTitle() {
-    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.setTransform(RS, 0, 0, RS, 0, 0);
     lx.drawImage(FAR, -30, 0); lx.drawImage(NEAR, -120, 0);
     lx.fillStyle = 'rgba(5,6,15,0.45)'; lx.fillRect(0, 0, VW, VH);
     // three club members standing in a row
@@ -984,7 +985,7 @@
     text('東京鬼高校・怪異探偵部', 140, 258, 10, '#8f97b8');
   }
   function drawSelect() {
-    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.setTransform(RS, 0, 0, RS, 0, 0);
     lx.drawImage(FAR, -60, 0); lx.drawImage(NEAR, -180, 0);
     lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
     if (!sim.selCast) { sim.selCast = ROSTER.map((C) => makeFighter(C, 0)); sim.selCast.forEach((f) => play(f, 'idle')); }

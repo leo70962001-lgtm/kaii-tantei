@@ -22,9 +22,10 @@ const GLOW = 1;
 
 export function createGL(o) {
   const { canvas, VW, VH, G, far, near, farRate } = o;
+  const RS = o.RS || 1;   // render target scale: world units stay VW × VH, the target has RS× the pixels
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
-  renderer.setSize(VW, VH, false);
+  renderer.setSize(VW * RS, VH * RS, false);
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();

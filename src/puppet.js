@@ -18,22 +18,22 @@
   }
   const inkc = PX.rgba(6, 8, 24, 255), whitec = PX.rgba(255, 255, 255, 255);
   // a part = { w, h, px (Uint32Array), pivot, tip?, cv, dark, white, tint: {colour: canvas} }
-  function makePart(w, h, px, pivot, tip) {
+  function makePart(w, h, px, pivot, tip, res) {
     const dark = new Uint32Array(px.length), white = new Uint32Array(px.length);
     for (let i = 0; i < px.length; i++) if (px[i]) { dark[i] = inkc; white[i] = whitec; }
-    return { w, h, px, pivot, tip: tip || null, cv: toCanvas(px, w, h), dark: toCanvas(dark, w, h), white: toCanvas(white, w, h), tints: {} };
+    return { w, h, px, pivot, tip: tip || null, res: res || 1, cv: toCanvas(px, w, h), dark: toCanvas(dark, w, h), white: toCanvas(white, w, h), tints: {} };
   }
   function tinted(part, col) {
     if (!part.tints[col]) { const t = new Uint32Array(part.px.length), c = PX.hex(col); for (let i = 0; i < t.length; i++) if (part.px[i]) t[i] = c; part.tints[col] = toCanvas(t, part.w, part.h); }
     return part.tints[col];
   }
-  function fromBuf(buf, pivot, tip) {
+  function fromBuf(buf, pivot, tip, res) {
     // trim the buffer to its drawn pixels
     let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
     for (let y = 0; y < buf.h; y++) for (let x = 0; x < buf.w; x++) if (buf.c[y * buf.w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const w = x1 - x0 + 1, h = y1 - y0 + 1, px = new Uint32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = buf.c[(y + y0) * buf.w + (x + x0)];
-    return makePart(w, h, px, [pivot[0] - x0, pivot[1] - y0], tip ? [tip[0] - x0, tip[1] - y0] : null);
+    return makePart(w, h, px, [pivot[0] - x0, pivot[1] - y0], tip ? [tip[0] - x0, tip[1] - y0] : null, res);
   }
 
   // ---------------------------------------------------------------- the JK's parts
@@ -42,14 +42,15 @@
     if (parts) return parts;
     const JK = root.JK, M = JK.M, SPEC = JK.castSpec;
     parts = {};
-    for (const [name, p] of Object.entries(CAST.jkParts)) parts[name] = makePart(p.w, p.h, RIG.imgData(p), p.pivot, p.tip);
-    // shoes: the rig's own shoe cut-outs, hanging from the ankle
-    for (const [name, key] of [['footN', 'shoeN'], ['footF', 'shoeF']]) { const s = CAST.jk[key]; parts[name] = makePart(s.w, s.h, RIG.imgData(s), s.ank, null); }
-    // the far arm: skin cylinders as the rig draws them, straight, pivot at the near joint
-    const seg = (len, r0, r1) => { const b = new PX.Buf(len + 12, 14); RIG.cyl(b, M.skin, [6, 7], [6 + len, 7], (t) => r0 - t * (r0 - r1), { look: 'skin' }); PX.outline(b); return fromBuf(b, [6, 7], [6 + len, 7]); };
-    parts.uArmF = seg(SPEC.upper, 3.2, 2.8);
+    for (const [name, p] of Object.entries(CAST.jkParts)) parts[name] = makePart(p.w, p.h, RIG.imgData(p), p.pivot, p.tip, p.res || 1);
+    const res = (parts.torso && parts.torso.res) || 1;
+    // shoes: the sheet's feet when it has them, else the rig's own shoe cut-outs, hanging from the ankle
+    for (const [name, key] of [['footN', 'shoeN'], ['footF', 'shoeF']]) { if (parts[name]) continue; const s = CAST.jk[key]; parts[name] = makePart(s.w, s.h, RIG.imgData(s), s.ank, null, 1); }
+    // the far arm: its sleeve from the sheet when cut, the skin forearm and hand as the rig draws them (at the parts' density)
+    const seg = (len, r0, r1) => { const L = Math.round(len * res), b = new PX.Buf(L + 12 * res, 14 * res); RIG.cyl(b, M.skin, [6 * res, 7 * res], [6 * res + L, 7 * res], (t) => (r0 - t * (r0 - r1)) * res, { look: 'skin' }); PX.outline(b); return fromBuf(b, [6 * res, 7 * res], [6 * res + L, 7 * res], res); };
+    if (!parts.uArmF) parts.uArmF = seg(SPEC.upper, 3.2, 2.8);
     parts.fArmF = seg(SPEC.fore, 2.8, 2.5);
-    { const b = new PX.Buf(12, 12); RIG.ball(b, M.skin, [6, 6], 3, 'skin'); PX.outline(b); parts.handF = fromBuf(b, [6, 6], null); }
+    { const b = new PX.Buf(12 * res, 12 * res); RIG.ball(b, M.skin, [6 * res, 6 * res], 3 * res, 'skin'); PX.outline(b); parts.handF = fromBuf(b, [6 * res, 6 * res], null, res); }
     // the sword: hilt (red wrap), guard, a 60 px blade; pivot at the grip; a hilt-only variant for smear frames
     const sword = (bladeLen) => {
       const L = 14 + bladeLen, b = new PX.Buf(L + 6, 12);
@@ -65,7 +66,7 @@
       PX.outline(b);
       return fromBuf(b, [8, 6], [16 + bladeLen, 6]);
     };
-    parts.sword = sword(60); parts.hilt = sword(0); parts.swordShort = sword(24);
+    if (!parts.sword) { parts.sword = sword(60); parts.hilt = sword(0); parts.swordShort = sword(24); }
     return parts;
   }
 
@@ -77,19 +78,21 @@
   const apply = (m, p) => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
   // a part hung from joint A: rotated by `ang` about its pivot, optionally stretched along its rest axis
   function hang(part, A, ang, stretch) {
-    return mul(mul(mul(T(A[0], A[1]), R(ang)), S(1, stretch || 1)), T(-part.pivot[0], -part.pivot[1]));
+    const q = 1 / (part.res || 1);
+    return mul(mul(mul(mul(T(A[0], A[1]), R(ang)), S(1, stretch || 1)), S(q, q)), T(-part.pivot[0], -part.pivot[1]));
   }
   // a limb part spanning joints A → B: its rest axis (pivot → tip) turned onto A → B, stretched to the distance
   function span(part, A, B) {
     const rx = part.tip[0] - part.pivot[0], ry = part.tip[1] - part.pivot[1];
     const vx = B[0] - A[0], vy = B[1] - A[1];
     const ang = Math.atan2(vy, vx) - Math.atan2(ry, rx);
-    const rl = Math.hypot(rx, ry) || 1, vl = Math.hypot(vx, vy);
+    const q = 1 / (part.res || 1);
+    const rl = (Math.hypot(rx, ry) || 1) * q, vl = Math.hypot(vx, vy);
     const k = Math.max(0.82, Math.min(1.3, vl / rl));
     // stretch along the rest axis: rotate into the axis frame, scale, rotate back
     const ra = Math.atan2(ry, rx);
     const st = mul(mul(R(ra), S(k, 1)), R(-ra));
-    return mul(mul(mul(T(A[0], A[1]), R(ang)), st), T(-part.pivot[0], -part.pivot[1]));
+    return mul(mul(mul(mul(T(A[0], A[1]), R(ang)), st), S(q, q)), T(-part.pivot[0], -part.pivot[1]));
   }
 
   // ---------------------------------------------------------------- posing
@@ -147,13 +150,13 @@
     push(P.shinN, span(P.shinN, J.kN, J.fN));
     push(P.footN, hang(P.footN, J.fN, 0));
     // torso shears with the lean (the rig shifts rows above the hip); the skirt follows the hips
-    const lean = p.lean || 0, k = -lean / Math.max(1, P.torso.pivot[1]);
+    const rq = 1 / (P.torso.res || 1), lean = p.lean || 0, k = -lean * (P.torso.res || 1) / Math.max(1, P.torso.pivot[1]);
     const swing = (p.skirtSwing || 0) * 0.02 + lag * 0.35;
-    push(P.skirt, mul(mul(mul(T(J.hip[0], J.hip[1]), R(swing)), [1, 0, k * 0.5, 1, 0, 0]), T(-P.skirt.pivot[0], -P.skirt.pivot[1])));
-    push(P.torso, mul(mul(T(J.hip[0], J.hip[1]), [1, 0, k, 1, 0, 0]), T(-P.torso.pivot[0], -P.torso.pivot[1])));
+    push(P.skirt, mul(mul(mul(mul(T(J.hip[0], J.hip[1]), R(swing)), [1, 0, k * 0.5, 1, 0, 0]), S(rq, rq)), T(-P.skirt.pivot[0], -P.skirt.pivot[1])));
+    push(P.torso, mul(mul(mul(T(J.hip[0], J.hip[1]), [1, 0, k, 1, 0, 0]), S(rq, rq)), T(-P.torso.pivot[0], -P.torso.pivot[1])));
     const head = p.head || [0, 0];
     push(headPart, hang(headPart, [J.neck[0] + head[0], J.neck[1] + head[1]], rad(lean * 0.6)));
-    push(P.hairF, hang(P.hairF, [J.neck[0] + head[0] - 5, J.neck[1] + head[1] - 2], sway * 0.5));
+    if (P.hairF) push(P.hairF, hang(P.hairF, [J.neck[0] + head[0] - 5, J.neck[1] + head[1] - 2], sway * 0.5));
     push(P.uArmN, span(P.uArmN, J.shN, J.eN));
     if (!br.arm) {
       push(P.fArmN, span(P.fArmN, J.eN, J.hN));
