@@ -1,138 +1,189 @@
-// jk.js — 改造人間の女子高生 (the cyborg schoolgirl), a small hand-pixeled fighter (~60 px).
-// Head, sailor top, skirt and shoes are hand-typed bitmaps; the long hair is a flowing mane;
-// arms and legs are pixel strokes: near arm = steel prosthetic, far leg = steel prosthetic,
-// far arm = skin with a short sleeve, near leg = black thigh-high. The odachi rides in the far hand.
-// Breakable parts: arm (forearm blown off), leg (shin armour stripped to its frame), blade
-// (snapped short) and uniform (scarf and collar torn away, exposing the stitches).
+// jk.js — 改造人間の女子高生 (the cyborg schoolgirl) at KOF scale (~108 px).
+// Head, hands, feet and the side lock are hand-typed bitmaps; the sailor top is a material map shaded by
+// the rig; the long hair is a flowing mane with strand grooves; arms and legs are cylinder-shaded strokes:
+// near arm = steel prosthetic (plates, joints, a 7 px fist), far leg = steel prosthetic, far arm = skin with
+// a short white sleeve, near leg = black thigh-high. The odachi rides in the far hand.
+// Breakable parts: arm (forearm blown off), leg (shin armour stripped to its frame), blade (snapped short),
+// uniform (scarf and collar torn away, exposing the stitches).
 (function (root) {
   'use strict';
   const PX = root.PX, RIG = root.RIG;
   const { material, Part, rad, clamp, lerp } = PX;
 
   const M = {
-    hair: material('jk_hair', ['#8e9ac4', '#4a5478', '#262c48', '#161a30', '#0c0e1c'], '#05060c', { softInk: '#161a30' }),
-    streak: material('jk_streak', ['#ffffff', '#f6f7ff', '#c9cee6', '#8f97b8', '#5e6588'], '#2a2f4a', { softInk: '#8f97b8' }),
-    skin: material('jk_skin', ['#fff3e8', '#ffe0cc', '#f2b89c', '#c98470', '#8f5650'], '#3a1a22', { softInk: '#c98470' }),
-    white: material('jk_white', ['#ffffff', '#f7f8fc', '#d3d8e8', '#9aa3c2', '#66708f'], '#232848', { softInk: '#9aa3c2' }),
-    collar: material('jk_collar', ['#c9d6f2', '#8fa4d0', '#5d74a8', '#3e5079', '#293552'], '#151c30', { softInk: '#3e5079' }),
-    red: material('jk_red', ['#ffb0a0', '#ff6a5c', '#d8343c', '#8e1f30', '#5a1426'], '#2a0812', { softInk: '#8e1f30' }),
-    skirt: material('jk_skirt', ['#9cc2ff', '#5d8fe8', '#3462bd', '#224285', '#162c5a'], '#0b1530', { softInk: '#224285' }),
-    sock: material('jk_sock', ['#6a6f8c', '#41455e', '#2a2d42', '#1b1d2e', '#101120'], '#050610', { softInk: '#1b1d2e' }),
-    steel: material('jk_steel', ['#ffffff', '#e4ebf5', '#a9b5cc', '#6a7590', '#414a62'], '#12162a', { softInk: '#6a7590' }),
-    joint: material('jk_joint', ['#9aa0b8', '#5c6178', '#3b3f52', '#25283a', '#171924'], '#08090f'),
-    shoe: material('jk_shoe', ['#8d93ad', '#585d78', '#353950', '#22243a', '#141525'], '#07080f', { softInk: '#22243a' }),
-    blade: material('jk_blade', ['#ffffff', '#d9e0ee', '#7a8398', '#2f3446', '#181b28'], '#07080e', { softInk: '#2f3446' }),
+    hair: material('jk_hair', ['#9aa6d2', '#4d5880', '#28304e', '#171c34', '#0c0f1e'], '#05060c', { softInk: '#171c34' }),
+    streak: material('jk_streak', ['#ffffff', '#f6f7ff', '#cfd4ea', '#959dbf', '#626a8c'], '#2a2f4a', { softInk: '#959dbf' }),
+    skin: material('jk_skin', ['#fff5ec', '#ffe3d0', '#f3bb9f', '#cb8773', '#8f5652'], '#3a1a22', { softInk: '#cb8773' }),
+    white: material('jk_white', ['#ffffff', '#f8f9fd', '#d5dae9', '#9ca5c4', '#68728f'], '#232848', { softInk: '#9ca5c4' }),
+    collar: material('jk_collar', ['#d0dcf4', '#93a8d3', '#6079ac', '#40527c', '#2a3654'], '#151c30', { softInk: '#40527c' }),
+    red: material('jk_red', ['#ffb6a6', '#ff6e60', '#da3740', '#912032', '#5b1427'], '#2a0812', { softInk: '#912032' }),
+    skirt: material('jk_skirt', ['#a2c6ff', '#6092ea', '#3664bf', '#234388', '#172d5c'], '#0b1530', { softInk: '#234388' }),
+    sock: material('jk_sock', ['#6e738f', '#444861', '#2c2f44', '#1c1e30', '#111222'], '#050610', { softInk: '#1c1e30' }),
+    steel: material('jk_steel', ['#ffffff', '#e2f0fa', '#aebad2', '#6f7a9a', '#4a4a70'], '#12162a', { softInk: '#6f7a9a' }),
+    joint: material('jk_joint', ['#9ea4bc', '#5e647a', '#3d4154', '#26293c', '#181a26'], '#08090f'),
+    shoe: material('jk_shoe', ['#8f95ae', '#5a5f7a', '#373b52', '#23253c', '#151627'], '#07080f', { softInk: '#23253c' }),
+    blade: material('jk_blade', ['#ffffff', '#dbe2f0', '#7d869b', '#303548', '#191c2a'], '#07080e', { softInk: '#303548' }),
     gold: material('jk_gold', ['#fff2a0', '#ffd04a', '#e8962e', '#b05a26', '#7a3620'], '#2a0e08'),
-    eye: material('jk_eye', ['#ffc0b0', '#ff5a5a', '#e0202c', '#8a1028', '#4a0818'], '#1d030e'),
+    eye: material('jk_eye', ['#ffd0c8', '#ff6a6a', '#e0202c', '#8a1028', '#4a0818'], '#1d030e'),
+    ewhite: material('jk_ewhite', ['#ffffff', '#f4f6ff', '#d0d6ec', '#9aa2c0', '#6c748f'], '#22263f'),
     wire: material('jk_wire', ['#fff0a0', '#ff9a3a', '#c8482a', '#5a2a30', '#2a1420'], '#120608'),
   };
 
   const KEY = {
-    a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], d: [M.hair, 4],
-    W: [M.streak, 1], w: [M.streak, 2], u: [M.streak, 3],
-    s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3],
-    k: [M.hair, 'ink'], r: [M.eye, 2], m: [M.red, 4], y: [M.red, 3],
-    V: [M.collar, 1], v: [M.collar, 2], x: [M.collar, 3],
-    R: [M.red, 1], E: [M.red, 2], F: [M.red, 3],
-    T: [M.white, 1], h: [M.white, 2], H: [M.white, 3],
-    P: [M.skirt, 1], p: [M.skirt, 2], n: [M.skirt, 3], N: [M.skirt, 4],
-    B: [M.shoe, 1], o: [M.shoe, 2], O: [M.shoe, 3],
-    q: [M.red, 3], X: [M.streak, 0],
-    I: [M.steel, 1], i: [M.steel, 2], j: [M.steel, 3], J: [M.joint, 3],
+    A: [M.hair, 0], a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], d: [M.hair, 4],
+    W: [M.streak, 1], w: [M.streak, 2], u: [M.streak, 3], X: [M.streak, 0],
+    h: [M.skin, 0], s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3], T: [M.skin, 4],
+    k: [M.hair, 'ink'], e: [M.ewhite, 1], R: [M.eye, 1], r: [M.eye, 2], m: [M.red, 4], n: [M.red, 3],
+    q: [M.red, 3], Q: [M.red, 2],
+    B: [M.shoe, 1], o: [M.shoe, 2], O: [M.shoe, 3], D: [M.shoe, 4],
+    I: [M.steel, 1], i: [M.steel, 2], j: [M.steel, 3], J: [M.steel, 4], '*': [M.steel, 0],
+    g: [M.joint, 2], G: [M.joint, 3], f: [M.joint, 1],
   };
 
-  // ---------------------------------------------------------------- head (3/4 view, facing +x)
+  // ---------------------------------------------------------------- head (3/4 view, facing +x), 28×26
   const HEAD = {
     normal: [
-      '.....bbbbbb....',
-      '...bbbaabbbbb..',
-      '..bbbbbbbbbbbb.',
-      '..cbbbbbbbWbbb.',
-      '.ccbbbbbbbWsSS.',
-      '.ccbbbbbbcWkSk.',
-      '.ccbbbbbbcWrSrS',
-      '..cbbbbbbcwSSSs',
-      '..cbbbbbbcwSmS.',
-      '..ccbbbbbcuSSS.',
-      '...cbbbbb.tSS..',
-      '....cbbbb.qXq..',
-      '.....bbb...S...',
+      '..........bbbbbbbb..........',
+      '.......bbbbbbbbbbbbb........',
+      '.....bbbbaaaabbbbbbbb.......',
+      '....bbbbaaaabbbbbbbbbb......',
+      '...bbbbbabbbbbbbbbbbbbb.....',
+      '...cbbbbbbbbbbbbbbbbbbbb....',
+      '..ccbbbbbbbbbbbbbWbbbbbb....',
+      '..ccbbbbbbbbbbbbbWbbbbbbb...',
+      '..ccbbbbbbbbbbbbcWbcbbbbb...',
+      '.cccbbbbbbbbbbbbcWbcsSSbbb..',
+      '.cccbbbbbbbbbbbbcWcsSSSSSb..',
+      '.cccbbbbbbbbbbbccWsSSSSSSSb.',
+      '.cccbbbbbbbbbbbcdWsSkkSSkkS.',
+      '.ccccbbbbbbbbbbcdWSSeRSSeRS.',
+      '.ccccbbbbbbbbbbcdwSSrrSSrrs.',
+      '..cccbbbbbbbbbbcdwSSSSSSSSs.',
+      '..cccbbbbbbbbbbcdwSSSSSSSts.',
+      '..cccbbbbbbbbbbcdwSSSSSnSS..',
+      '..ccccbbbbbbbbbcdwtSSSmmSS..',
+      '...cccbbbbbbbbbcduSSSSSSS...',
+      '...cccbbbbbbbbbbcutSSSSS....',
+      '....ccbbbbbbbbbbc.tTSSS.....',
+      '....ccbbbbbbbbbb..TqQQqT....',
+      '.....ccbbbbbbbbb..qQXQQq....',
+      '.....ccbbbbbbbbb...SSSS.....',
+      '......ccbbbbbbb....SSS......',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[11, 5, 'k'], [12, 5, 'k'], [12, 8, 'm'], [13, 8, 'm'], [12, 9, 'm']]);
-  HEAD.hurt = fv([[11, 6, 'k'], [13, 6, 'k'], [11, 5, 'S'], [13, 5, 'S'], [12, 8, 'm'], [12, 9, 'm']]);
-  HEAD.calm = fv([[11, 6, 'k'], [13, 6, 'k'], [11, 5, 'S'], [13, 5, 'S']]);
-  HEAD.grin = fv([[11, 8, 'm'], [12, 8, 'm'], [13, 8, 'm']]);
-  const HEAD_NECK = [11, 12];
-  const HAIR_ROOT = [4, 10];  // the nape: the mane hangs from here
-  // the near side lock: hangs from the cheek down over the shoulder, drawn after the torso
-  const SIDELOCK = ['wu', 'wu', '.wu', '.wu', '..wu', '..w', '..u'];
+  // eyes: lashes row 12 (cols 20-21, 24-25), whites/iris rows 13-14, mouth row 18 (cols 22-23)
+  HEAD.shout = fv([[19, 12, 'k'], [20, 12, 'k'], [21, 12, 'k'], [24, 12, 'k'], [25, 12, 'k'], [26, 12, 'k'], [22, 17, 'm'], [23, 17, 'm'], [21, 18, 'm'], [22, 18, 'm'], [23, 18, 'm'], [24, 18, 'm'], [22, 19, 'm'], [23, 19, 'm']]);
+  HEAD.hurt = fv([[20, 13, 'k'], [21, 13, 'k'], [24, 13, 'k'], [25, 13, 'k'], [20, 14, 'S'], [21, 14, 'S'], [24, 14, 'S'], [25, 14, 'S'], [20, 12, 'S'], [21, 12, 'S'], [24, 12, 'S'], [25, 12, 'S'], [22, 18, 'm'], [23, 18, 'm'], [22, 19, 'm'], [23, 19, 'm']]);
+  HEAD.calm = fv([[20, 13, 'k'], [21, 13, 'k'], [24, 13, 'k'], [25, 13, 'k'], [20, 14, 'S'], [21, 14, 'S'], [24, 14, 'S'], [25, 14, 'S'], [20, 12, 'S'], [21, 12, 'S'], [24, 12, 'S'], [25, 12, 'S']]);
+  HEAD.grin = fv([[21, 18, 'm'], [22, 18, 'm'], [23, 18, 'm'], [24, 18, 'm'], [22, 17, 'n'], [23, 17, 'n']]);
+  const HEAD_NECK = [21, 25];
+  const HAIR_ROOT = [5, 19];
+  const SIDELOCK = ['Wu', 'Wu', 'wu', 'wu', '.wu', '.wu', '.wu', '.wu', '..wu', '..wu', '..wu', '..w', '..u', '..u', '...u'];
 
-  // ---------------------------------------------------------------- torso: sailor top, bare midriff, waistband
+  // ---------------------------------------------------------------- torso material map (facing +x), hip at [13, 29]
   const TORSO = {
     up: [
-      '.....vvvv.....',
-      '...vvvvvvvvv..',
-      '..vvVVvvvvvRR.',
-      '..hTTvvvvvRRE.',
-      '.hTTTTTvvvREEh',
-      '.hTTTTTTvvEEhh',
-      '.hTTTTTTTTEhhh',
-      '.hhTTTTTTThhhh',
-      '..hhTTTTTThhH.',
-      '..HhhhhhhhhH..',
-      '...sSSSSSSs...',
-      '...SSSSySSs...',
-      '...tSSSSSSs...',
-      '..PpPPPPPPPp..',
-      '..pppPPPPppp..',
+      '..........vvvvvv..........',
+      '.......vvvvvvvvvvvv.......',
+      '.....vvvvvvvvvvvvvvvv.....',
+      '...vvvvvvvvvvvvvvvvvvvv...',
+      '..wvvvvvvvvvvvvvvvvvvrr...',
+      '..wwvvvvvvvvvvvvvvvvrrrr..',
+      '.wwwwvvvvvvvvvvvvvvrrrrrw.',
+      '.wwwwwvvvvvvvvvvvvrrrrrww.',
+      '.wwwwwwvvvvvvvvvvrrrRrwww.',
+      '.wwwwwwwvvvvvvvvrrrrrwwww.',
+      '.wwwwwwwwwwvvvvrrrrwwwwww.',
+      '.wwwwwwwwwwwwwwrrrwwwwwww.',
+      '.wwwwwwwwwwwwwwrrrwwwwww..',
+      '.w/wwwwwwwwwwwwwrrwwwwww..',
+      '.w/wwwwwwwwwwwwwrrwwwwww..',
+      '..w/wwwwwwwwwwwwwrwwwww/..',
+      '..wwwwwwwwwwwwwwwwwwwww/..',
+      '..wwwwwwwwwwwwwwwwwwwww...',
+      '...wwwwwwwwwwwwwwwwwww....',
+      '....sssssssssssssssss.....',
+      '....ssssssssssssssss......',
+      '....sssssssnsssssssss.....',
+      '....sssssssssssssssss.....',
+      '...ssssssssssssssssss.....',
+      '...ssssssssssssssssss.....',
+      '..jppppppppppppppppppj....',
+      '..pppppppppppppppppppp....',
+      '..pppppppppppppppppppp....',
+      '.pppppppppppppppppppppp...',
+      '.pppppppppppppppppppppp...',
     ],
   };
-  TORSO.torn = RIG.recolour(TORSO.up, { R: 'v', E: 'x', V: 'x', T: 'h' }).map((r, j) => (j === 3 ? r.replace('vvvvv', 'vxvvx') : j === 11 ? r.replace('ySS', 'yyS') : r));
-  TORSO.up = RIG.tall(TORSO.up, [6, 10]); TORSO.torn = RIG.tall(TORSO.torn, [6, 10]);
-  const TORSO_HIP = [7, 16];
-  const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
+  TORSO.up = TORSO.up.map((r) => r.replace(/./g, (ch, i) => (ch === 'v' && ((r[i - 1] && r[i - 1] !== 'v' && r[i - 1] !== '.') || (r[i + 1] && r[i + 1] !== 'v' && r[i + 1] !== '.')) ? 'V' : ch)));
+  TORSO.torn = RIG.recolour(TORSO.up, { r: 'v', R: 'v' }).map((r, j) => (j >= 4 && j <= 9 ? r.replace(/vvvv(?=w|\.)/, 'v/vv') : j === 21 ? r.replace('sssssssn', 'ssnssssn') : j === 13 ? r.replace('wwwwww..', 'ww/ww/..') : r));
+  const TKEY = {
+    v: { m: M.collar, look: 'cloth' },
+    w: { m: M.white, look: 'white' },
+    r: { m: M.red, look: 'cloth' },
+    s: { m: M.skin, look: 'skin' },
+    n: { m: M.red, flat: 3 },
+    p: { m: M.skirt, look: 'cloth' },
+    j: { m: M.joint, flat: 2 },
+  };
+  const TORSO_HIP = [13, 29];
+  const TORSO_SH = { N: [4, 4], F: [21, 4], neck: [13, 0] };
 
-  // pleated skirt generated with a swing: alternate light/base columns, darker toward the back and the hem
+  // pleated skirt: alternating light/base/dark pleats, darker toward the back, a shadow under the band
   function skirtRows(swing = 0, flare = 0) {
     const rows = [];
-    const H = 11;
+    const H = 20;
     for (let j = 0; j < H; j++) {
-      const w = 10 + Math.round(j * (0.9 + flare * 0.4));
-      const left = Math.round(9 - w / 2 + swing * (j / (H - 1)));
+      const w = 20 + Math.round(j * (0.7 + flare * 0.4));
+      const left = Math.round(18 - w / 2 + swing * (j / (H - 1)));
       let r = '';
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 40; i++) {
         const q = i - left;
         if (q < 0 || q >= w) { r += '.'; continue; }
-        const back = q < w * 0.3;
-        if (j === H - 1) r += back ? 'N' : 'n';
-        else if (j === H - 2) r += ((q + (j >> 1)) % 3 === 0) ? 'N' : back ? 'n' : 'p';
-        else r += ((q + (j >> 1)) % 3 === 0) ? (back ? 'n' : 'p') : back ? 'p' : 'P';
+        const back = q < w * 0.3, front = q > w * 0.7;
+        const pl = q % 4;
+        let t = pl === 0 ? 3 : pl === 1 ? 1 : 2;
+        if (front && pl === 1) t = 0;
+        if (back) t = Math.min(4, t + 1);
+        if (j < 2) t = Math.min(4, t + 1);
+        if (j === H - 1) t = 4; else if (j === H - 2) t = Math.min(4, t + 1);
+        r += 'PpnNd'[t];
       }
       rows.push(r);
     }
     return rows;
   }
-  const SKIRT_HIP = [9, 0];
+  const SKEY = { P: [M.skirt, 0], p: [M.skirt, 1], n: [M.skirt, 2], N: [M.skirt, 3], d: [M.skirt, 4] };
+  const SKIRT_HIP = [18, 0];
 
   const FOOT = {
     flat: [
-      '.oBB....',
-      'oBBBBB..',
-      'oBBBBBBB',
-      'OOOOOOOO',
+      '...oBBB.......',
+      '..oBBBBBBB....',
+      '.ooBBBBBBBBB..',
+      '.oooBBBBBBBBBB',
+      'ooooooBBBBBBBB',
+      'OOOOOOOOOOOOOO',
+      '.DDDDDDDDDDDD.',
     ],
     toe: [
-      '.oB....',
-      'oBBB...',
-      'oBBBB..',
-      'OOOOO..',
+      '...oBB........',
+      '..oBBBBB......',
+      '.ooBBBBBB.....',
+      '.oooBBBBBBB...',
+      'ooooooBBBBB...',
+      'OOOOOOOOOOO...',
+      '.DDDDDDDDD....',
     ],
   };
-  const FOOT_ANK = [2, 0];
+  const FOOT_ANK = [4, 0];
+  const FIST_STEEL = ['..IIIi.', '.IiiiiJ', 'IiiiiiJ', 'IiigiiJ', 'iiiiijJ', '.iijjJ.', '..GGG..'];
+  const FIST_SKIN = ['..ssS..', '.sSSSt.', 'sSSSSSt', 'sSStSSt', 'SSSSStt', '.SttTt.', '..TTT..'];
+  const HAND_SKIN = ['..sSS..', '.sSSSSt', 'sSSSSSt', 'sSSSSSt', '.SSSStt', '.tSSTt.', '..TTT..'];
+  const KNEE = ['.III.', 'IiiiJ', 'IiiiJ', 'iijjJ', '.JJJ.'];
+  const ELBOW = ['.fgg.', 'fgggG', 'fgggG', 'gggGG', '.GGG.'];
 
-  // ---------------------------------------------------------------- parts that can be broken
   const PARTS = [
     { id: 'arm', label: '義手', en: 'ARM', hp: 55, zone: 'body', icon: 'arm' },
     { id: 'leg', label: '義足', en: 'LEG', hp: 55, zone: 'legs', icon: 'leg' },
@@ -140,14 +191,14 @@
     { id: 'uniform', label: '制服', en: 'UNIFORM', hp: 40, zone: 'body', icon: 'cloth' },
   ];
 
-  const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 15, thigh: 18, shin: 18, upper: 9, fore: 9, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 11 };
+  const SIZE = { w: 232, h: 204, ox: 108, oy: 194 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 27, thigh: 32, shin: 32, upper: 16, fore: 16, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 4, headH: 24, headW: 20, bodyW: 11 };
   const DEF = {
-    hip: [0, -38], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-9, -2], fF: [11, -2], feetN: 'flat', feetF: 'flat',
-    hN: [-4, -40], hF: [11, -41],
-    sw: 25, blade: 26, grip: 'F', swordLayer: 'back',
-    hair: { base: 106, droop: 92, wave: 1, phase: 0, len: 32 },
+    hip: [0, -68], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-16, -3], fF: [20, -3], feetN: 'flat', feetF: 'flat',
+    hN: [3, -58], hF: [20, -74],
+    sw: 25, blade: 46, grip: 'F', swordLayer: 'back',
+    hair: { base: 106, droop: 92, wave: 1, phase: 0, len: 62 },
     broken: {},
   };
 
@@ -163,111 +214,96 @@
     const hairRoot = [headO[0] + HAIR_ROOT[0], headO[1] + HAIR_ROOT[1]];
 
     if (!p.hidden) {
-      // 1. the mane, behind everything
       const H = p.hair;
-      RIG.mane(buf, M.hair, hairRoot, { ribbons: [{ off: [0, 0], w0: 5, w1: 2, len: H.len, dA: 0 }, { off: [-2, -1], w0: 3.5, w1: 1.5, len: H.len - 6, dA: 8 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, freq: 0.4, waveGrow: 8 });
-      // 2. far arm (skin, short white sleeve) and the sword behind the body
+      RIG.mane(buf, M.hair, hairRoot, { ribbons: [{ off: [0, 0], w0: 11, w1: 3, len: H.len, dA: 0 }, { off: [-4, -1], w0: 7, w1: 2, len: H.len - 10, dA: 8 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, freq: 0.32, waveGrow: 9, groove: 4 });
       farArm(buf, J, p);
       if (p.swordLayer === 'back') sword(buf, J.hF, p, br);
-      // 3. legs: far (steel) then near (stocking)
       steelLeg(buf, J.hipF, J.kF, J.fF, p.feetF, br.leg);
       sockLeg(buf, J.hipN, J.kN, J.fN, p.feetN);
-      // 4. skirt over the thighs, then the torso
-      RIG.place(buf, M.skirt, skirtRows(p.skirtSwing || 0, p.skirtFlare || 0), KEY, [J.hip[0], J.hip[1] + 1], SKIRT_HIP);
-      RIG.place(buf, M.white, J.tb, KEY, J.hip, J.tAnchor);
-      // 5. head and the near side lock
+      RIG.place(buf, M.skirt, skirtRows(p.skirtSwing || 0, p.skirtFlare || 0), SKEY, [J.hip[0], J.hip[1] + 2], SKIRT_HIP);
+      RIG.matmap(buf, J.rows, TKEY, J.hip, TORSO_HIP, { lean: J.lean, pivot: J.pivot, order: ['p', 'j', 's', 'w', 'v', 'r', 'n'] });
       RIG.place(buf, M.hair, HEAD[p.face] || HEAD.normal, KEY, J.neck, HEAD_NECK);
-      RIG.place(buf, M.streak, SIDELOCK, KEY, [headO[0] + 9, headO[1] + 10], [0, 0]);
-      // 6. near arm: the prosthetic
+      RIG.place(buf, M.streak, SIDELOCK, KEY, [headO[0] + 16, headO[1] + 17], [0, 0]);
       steelArm(buf, J, p, br.arm);
       if (p.swordLayer === 'front') sword(buf, J.hF, p, br);
-      RIG.finish(buf, p, J, { rotUp: 10 });
+      RIG.finish(buf, p, J, { rotUp: 18 });
     }
-    if (p.smear) RIG.smear(buf, O, p, p.smear, (br.blade ? 11 : p.blade) + 4, ['hF', 'sw']);
+    if (p.smear) RIG.smear(buf, O, p, p.smear, (br.blade ? 20 : p.blade) + 6, ['hF', 'sw']);
     if (root.FX && p.fx) { root.FX.draw(buf, O, p.fx, 'over'); root.FX.outlineFx(buf); }
     return opts.flip ? PX.flipX(buf) : buf;
   }
 
+  // far arm: a puffed white sleeve over the upper arm, skin below, an open hand or fist
   function farArm(buf, J, p) {
-    RIG.stroke(buf, M.white, J.shF, J.eF, 1.8);
-    RIG.stroke(buf, M.skin, J.eF, J.hF, 1.4);
-    RIG.hand(buf, M.skin, J.hF, 3);
+    RIG.cyl(buf, M.white, J.shF, J.eF, (t) => (t < 0.55 ? 3.6 - t * 0.6 : 2.9), { look: 'white', band: (i) => (i.t > 0.55 ? [M.skin, RIG.sh(i.nx * 0.9, i.ny * 0.9, RIG.LOOK.skin, i.x, i.y)] : i.t > 0.47 ? { shift: 1 } : null) });
+    RIG.cyl(buf, M.skin, J.eF, J.hF, (t) => 2.9 - t * 0.3, { look: 'skin' });
+    RIG.place(buf, M.skin, p.grip === 'S' || p.noSword ? HAND_SKIN : FIST_SKIN, KEY, J.hF, [3, 3]);
   }
-  // the steel arm: plated upper arm, a dark elbow joint, a heavy forearm with a seam, a 3x3 fist
+  // the steel arm: plated upper arm, a dark elbow, a heavy forearm with a seam and a wrist ring, a 7 px fist
   function steelArm(buf, J, p, broken) {
-    RIG.stroke(buf, M.steel, J.shN, J.eN, 1.8, { band: (i) => (i.t < 0.22 ? [M.joint, 2] : Math.abs(i.t - 0.6) < 0.08 ? [M.steel, 3] : null) });
-    const el = new Part(buf, M.joint);
-    el.add(J.eN[0], J.eN[1], {}); el.add(J.eN[0] + 1, J.eN[1], {}); el.add(J.eN[0], J.eN[1] + 1, {}); el.add(J.eN[0] + 1, J.eN[1] + 1, {});
-    el.commit((i) => (i.x === J.eN[0] && i.y === J.eN[1] ? 1 : 3));
+    RIG.cyl(buf, M.steel, J.shN, J.eN, (t) => 3.6 - t * 0.5, { look: 'metal', band: (i) => (i.t < 0.16 ? [M.joint, RIG.sh(i.nx * 0.9, i.ny * 0.9, RIG.LOOK.metal, i.x, i.y, { shift: 1 })] : Math.abs(i.t - 0.55) < 0.05 ? { shift: 2 } : null) });
+    RIG.place(buf, M.joint, ELBOW, KEY, J.eN, [2, 2]);
     if (broken) {
-      // the forearm is gone: a ragged stump of frame and wires past the elbow
       const d = [J.hN[0] - J.eN[0], J.hN[1] - J.eN[1]], L = Math.hypot(d[0], d[1]) || 1;
       const u = [d[0] / L, d[1] / L];
-      const stump = [Math.round(J.eN[0] + u[0] * 3), Math.round(J.eN[1] + u[1] * 3)];
-      RIG.stroke(buf, M.joint, J.eN, stump, 1.2, { hi: 2, mid: 3, lo: 4 });
+      const stump = [Math.round(J.eN[0] + u[0] * 6), Math.round(J.eN[1] + u[1] * 6)];
+      RIG.cyl(buf, M.joint, J.eN, stump, 2.4, { look: 'metal', add: -0.2 });
       const w = new Part(buf, M.wire, { sep: false });
-      w.add(stump[0] + Math.round(u[0] * 2), stump[1] + Math.round(u[1] * 2), { t: 1 });
-      w.add(stump[0] + Math.round(u[0]) - Math.round(u[1]), stump[1] + Math.round(u[1]) + Math.round(u[0]), { t: 2 });
-      w.add(stump[0] + Math.round(u[0] * 2) + Math.round(u[1]), stump[1] + Math.round(u[1] * 2) - Math.round(u[0]), { t: 0 });
+      for (const [dx, dy, t] of [[3, 0, 1], [5, 1, 0], [2, -3, 2], [4, 3, 1], [6, -1, 0]]) w.add(stump[0] + Math.round(u[0] * dx - u[1] * dy), stump[1] + Math.round(u[1] * dx + u[0] * dy), { t });
       w.commit((i) => i.t);
       return;
     }
-    RIG.stroke(buf, M.steel, J.eN, J.hN, 1.8, { band: (i) => (Math.abs(i.t - 0.45) < 0.07 ? [M.joint, 3] : i.t > 0.86 ? [M.joint, 2] : null) });
-    RIG.hand(buf, M.joint, J.hN, 3, (i) => (i.i === 0 && i.j === 0 ? 0 : i.i === 2 || i.j === 2 ? 3 : 2));
+    RIG.cyl(buf, M.steel, J.eN, J.hN, (t) => 3.8 - t * 0.6, { look: 'metal', band: (i) => (Math.abs(i.t - 0.4) < 0.045 ? { shift: 2 } : i.t > 0.86 ? [M.joint, RIG.sh(i.nx * 0.9, i.ny * 0.9, RIG.LOOK.metal, i.x, i.y, { shift: 1 })] : null) });
+    RIG.place(buf, M.steel, FIST_STEEL, KEY, J.hN, [3, 3]);
   }
   function steelLeg(buf, hip, knee, foot, fvn, broken) {
-    RIG.stroke(buf, M.steel, hip, knee, 2.3, { band: (i) => (Math.abs(i.t - 0.5) < 0.06 ? [M.joint, 3] : null) });
-    const ank = [foot[0], foot[1] - 1];
+    RIG.cyl(buf, M.steel, hip, knee, (t) => 4.2 - t * 0.8, { look: 'metal', band: (i) => (Math.abs(i.t - 0.5) < 0.04 ? { shift: 2 } : i.t < 0.1 ? { shift: 1 } : null) });
+    const ank = [foot[0], foot[1] - 2];
     if (broken) {
-      // armour stripped: a thin dark frame with a glowing wire and the knee joint bare
-      RIG.stroke(buf, M.joint, knee, ank, 0.9, { hi: 2, mid: 3, lo: 4 });
+      RIG.cyl(buf, M.joint, knee, ank, 1.8, { look: 'metal', add: -0.25 });
       const w = new Part(buf, M.wire, { sep: false });
       const mid = [Math.round((knee[0] + ank[0]) / 2), Math.round((knee[1] + ank[1]) / 2)];
-      w.add(mid[0] + 1, mid[1], { t: 1 }); w.add(mid[0] + 1, mid[1] + 3, { t: 2 });
+      for (const [dx, dy, t] of [[2, 0, 1], [3, 5, 2], [-2, 8, 0], [2, -6, 1]]) w.add(mid[0] + dx, mid[1] + dy, { t });
       w.commit((i) => i.t);
     } else {
-      RIG.stroke(buf, M.steel, knee, ank, 2.0, { band: (i) => (Math.abs(i.t - 0.62) < 0.07 ? [M.joint, 3] : null) });
+      RIG.cyl(buf, M.steel, knee, ank, (t) => 3.4 - t * 0.4, { look: 'metal', band: (i) => (Math.abs(i.t - 0.62) < 0.04 ? { shift: 2 } : i.t > 0.9 ? [M.joint, RIG.sh(i.nx * 0.9, i.ny * 0.9, RIG.LOOK.metal, i.x, i.y, { shift: 1 })] : null) });
     }
-    const kc = new Part(buf, M.joint);
-    kc.add(knee[0], knee[1], {}); kc.add(knee[0] + 1, knee[1], {}); kc.add(knee[0], knee[1] - 1, {}); kc.add(knee[0] + 1, knee[1] - 1, {});
-    kc.commit((i) => (broken ? 3 : i.y < knee[1] ? 1 : 2));
+    RIG.place(buf, broken ? M.joint : M.steel, KNEE, KEY, knee, [2, 2]);
     RIG.place(buf, M.shoe, FOOT[fvn] || FOOT.flat, KEY, foot, FOOT_ANK);
   }
   function sockLeg(buf, hip, knee, foot, fvn) {
-    RIG.stroke(buf, M.sock, hip, knee, 2.3);
-    RIG.stroke(buf, M.sock, knee, [foot[0], foot[1] - 1], 2.0);
+    RIG.cyl(buf, M.sock, hip, knee, (t) => 4.2 - t * 0.8, { look: 'leather', band: (i) => (i.t < 0.06 ? { shift: -1 } : null) });
+    RIG.cyl(buf, M.sock, knee, [foot[0], foot[1] - 2], (t) => 3.4 - t * 0.5, { look: 'leather' });
     RIG.place(buf, M.shoe, FOOT[fvn] || FOOT.flat, KEY, foot, FOOT_ANK);
   }
 
-  // odachi: a long black blade with a bright edge, wrapped hilt behind the hand, small round tsuba
+  // odachi: a long black blade 3 px wide with a bright edge and a dark spine, wrapped hilt, round tsuba
   function sword(buf, h, p, br) {
     if (p.grip === 'S' || p.noSword) return;
     const a = rad(p.sw), d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]];
     const g = [h[0] + 0.5, h[1] + 0.5];
     const hilt = new Part(buf, M.red);
-    PX.line(g[0] - d[0] * 5, g[1] - d[1] * 5, g[0], g[1], (x, y, i) => hilt.add(x, y, { i }));
-    hilt.commit((i) => (i.i % 2 ? 3 : 4));
+    for (let s = -1; s <= 1; s++) PX.line(g[0] - d[0] * 10 + n[0] * s, g[1] - d[1] * 10 + n[1] * s, g[0] + n[0] * s, g[1] + n[1] * s, (x, y, i) => hilt.add(x, y, { i, s }));
+    hilt.commit((i) => (i.s === -1 ? 2 : (i.i >> 1) % 2 ? 3 : 4));
     if (!p.noBlade) {
-      const L = br.blade ? 10 : p.blade;
+      const L = br.blade ? 19 : p.blade;
       const bl = new Part(buf, M.blade);
-      const t0 = [g[0] + d[0] * 2, g[1] + d[1] * 2];
+      const t0 = [g[0] + d[0] * 4, g[1] + d[1] * 4];
       const tip = [t0[0] + d[0] * L, t0[1] + d[1] * L];
-      PX.line(t0[0], t0[1], tip[0], tip[1], (x, y) => bl.add(x, y, { e: 1 }));
       const side = n[1] > 0 ? 1 : -1;
-      PX.line(t0[0] + n[0] * side, t0[1] + n[1] * side, tip[0] - d[0] * 3 + n[0] * side, tip[1] - d[1] * 3 + n[1] * side, (x, y) => { if (!bl.has(x, y)) bl.add(x, y, { e: 0 }); });
-      if (br.blade) { // jagged break
-        bl.add(Math.round(tip[0] + n[0] * side), Math.round(tip[1] + n[1] * side), { e: 0 });
-        bl.add(Math.round(tip[0] - d[0] + n[0] * side * 2), Math.round(tip[1] - d[1] + n[1] * side * 2), { e: 0 });
+      for (let s = -1; s <= 1; s++) {
+        const shorten = s === -side ? 5 : s === 0 ? 2 : 0;
+        PX.line(t0[0] + n[0] * s, t0[1] + n[1] * s, tip[0] - d[0] * shorten + n[0] * s, tip[1] - d[1] * shorten + n[1] * s, (x, y) => { if (!bl.has(x, y)) bl.add(x, y, { s: s * side }); });
       }
-      bl.commit((i) => (i.e ? 1 : 3));
+      if (br.blade) { bl.add(Math.round(tip[0] + n[0] * side * 2), Math.round(tip[1] + n[1] * side * 2), { s: 1 }); bl.add(Math.round(tip[0] - d[0] * 2 - n[0] * side * 2), Math.round(tip[1] - d[1] * 2 - n[1] * side * 2), { s: -1 }); }
+      bl.commit((i) => (i.s === -1 ? 1 : i.s === 0 ? 3 : 4));
     }
     const ts = new Part(buf, M.gold);
-    const tc = [g[0] + d[0] * 1.5, g[1] + d[1] * 1.5];
-    PX.line(tc[0] - n[0] * 1.3, tc[1] - n[1] * 1.3, tc[0] + n[0] * 1.3, tc[1] + n[1] * 1.3, (x, y) => ts.add(x, y, {}));
-    ts.commit(() => 1);
+    const tc = [g[0] + d[0] * 2.5, g[1] + d[1] * 2.5];
+    for (let s = -2.5; s <= 2.5; s += 0.5) PX.line(tc[0] + n[0] * s - d[0] * 0.5, tc[1] + n[1] * s - d[1] * 0.5, tc[0] + n[0] * s + d[0] * 0.5, tc[1] + n[1] * s + d[1] * 0.5, (x, y) => ts.add(x, y, { s }));
+    ts.commit((i) => (i.s < -1 ? 0 : i.s > 1.5 ? 3 : 1));
   }
 
-  // hurt boxes and part anchors without rendering
   function boxes(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
@@ -276,7 +312,7 @@
   function anchors(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
-    return { arm: J.eN, leg: [(J.kF[0] + J.fF[0]) / 2, (J.kF[1] + J.fF[1]) / 2], blade: [J.hF[0] + Math.cos(rad(p.sw)) * 12, J.hF[1] + Math.sin(rad(p.sw)) * 12], uniform: [J.neck[0] + 2, J.neck[1] + 4] };
+    return { arm: J.eN, leg: [(J.kF[0] + J.fF[0]) / 2, (J.kF[1] + J.fF[1]) / 2], blade: [J.hF[0] + Math.cos(rad(p.sw)) * 22, J.hF[1] + Math.sin(rad(p.sw)) * 22], uniform: [J.neck[0] + 4, J.neck[1] + 8] };
   }
 
   root.JK = {

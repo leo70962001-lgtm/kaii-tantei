@@ -1,159 +1,208 @@
-// vamp.js — 吸血鬼ニート (the vampire NEET), a small hand-pixeled fighter (~53 px).
-// Huge blonde hair with an ahoge, red glasses, a red track suit with white stripes, a pink shirt,
+// vamp.js — 吸血鬼ニート (the vampire NEET) at KOF scale (~96 px).
+// A cloud of blonde hair with an ahoge, red glasses over blue eyes, a fang, a zipped red track jacket
+// with white stripes over a pink shirt, cropped above the midriff, red track pants with side stripes,
 // yellow cat slippers, a laptop with a bat-cat sticker (her weapon) and a bat-cat familiar.
 // Breakable parts: glasses (she squints), laptop (cracked in half — she fights furious and short),
-// slippers (barefoot), ahoge (cut off — shocked).
+// slippers (barefoot), ahoge (cut off).
 (function (root) {
   'use strict';
   const PX = root.PX, RIG = root.RIG;
   const { material, Part, rad, clamp, lerp } = PX;
 
   const M = {
-    hair: material('vp_hair', ['#fff8d0', '#ffdc62', '#eaa92e', '#b8721a', '#7a4810'], '#3a2008', { softInk: '#b8721a' }),
-    skin: material('vp_skin', ['#fff8f4', '#ffeae0', '#f7ccb8', '#d49e8a', '#9c6c60'], '#3c1c24', { softInk: '#d49e8a' }),
-    red: material('vp_red', ['#ffb8a4', '#ff6c4c', '#d83c2c', '#902618', '#5a1610'], '#2a0a08', { softInk: '#902618' }),
-    white: material('vp_white', ['#ffffff', '#fbfbff', '#d8dcea', '#a2a8c2', '#6c7290'], '#252a48', { softInk: '#a2a8c2' }),
-    pink: material('vp_pink', ['#ffe4f0', '#ffb8d4', '#f088b0', '#c25c88', '#8a3c60'], '#3a1428'),
-    frame: material('vp_frame', ['#ff9a9a', '#ff4040', '#d01c1c', '#8a1010', '#500808'], '#2a0404'),
-    eye: material('vp_eye', ['#d0f4ff', '#66ccff', '#2a8ee8', '#1c5cb0', '#0e3870'], '#061c3a'),
-    lap: material('vp_lap', ['#ffffff', '#e8ebf2', '#b6bccb', '#7e8698', '#505766'], '#1e2230', { softInk: '#7e8698' }),
-    screen: material('vp_screen', ['#ffffff', '#c8fbff', '#62d8ff', '#2a8ad8', '#1a4a90'], '#0a2440', { glow: true }),
-    slip: material('vp_slip', ['#fffad0', '#ffe66a', '#f2bc34', '#bc861e', '#7c5612'], '#3a2608', { softInk: '#bc861e' }),
-    bat: material('vp_bat', ['#f4f4fc', '#c0c4d8', '#828aa0', '#525868', '#303440'], '#101018', { softInk: '#525868' }),
-    mouth: material('vp_mouth', ['#ffd0d0', '#ff7080', '#c03050', '#701830', '#400c1c'], '#1c0408'),
+    hair: material('vp_hair', ['#fff9d6', '#ffde6a', '#ecab30', '#ba741c', '#7c4a12'], '#3a2008', { softInk: '#ba741c' }),
+    skin: material('vp_skin', ['#fff9f5', '#ffece2', '#f8cebb', '#d6a08c', '#9e6e62'], '#3c1c24', { softInk: '#d6a08c' }),
+    red: material('vp_red', ['#ffbcaa', '#ff7050', '#dc3e2e', '#93281a', '#5c1812'], '#2a0a08', { softInk: '#93281a' }),
+    white: material('vp_white', ['#ffffff', '#fbfbff', '#dadeec', '#a4aac4', '#6e7492'], '#252a48', { softInk: '#a4aac4' }),
+    pink: material('vp_pink', ['#ffe6f2', '#ffbcd6', '#f28cb4', '#c45e8a', '#8c3e62'], '#3a1428'),
+    frame: material('vp_frame', ['#ffa0a0', '#ff4444', '#d21e1e', '#8c1212', '#520a0a'], '#2a0404'),
+    eye: material('vp_eye', ['#d4f6ff', '#6ad0ff', '#2c92ec', '#1e60b4', '#103c74'], '#061c3a'),
+    ewhite: material('vp_ewhite', ['#ffffff', '#f4f6ff', '#d0d6ec', '#9aa2c0', '#6c748f'], '#22263f'),
+    lap: material('vp_lap', ['#ffffff', '#eaedf4', '#b8bece', '#80889a', '#525968'], '#1e2230', { softInk: '#80889a' }),
+    screen: material('vp_screen', ['#ffffff', '#ccfcff', '#66daff', '#2c8cda', '#1c4c92'], '#0a2440', { glow: true }),
+    slip: material('vp_slip', ['#fffbd4', '#ffe870', '#f4be38', '#be8820', '#7e5814'], '#3a2608', { softInk: '#be8820' }),
+    bat: material('vp_bat', ['#f6f6fe', '#c4c8dc', '#868ea4', '#565c6c', '#323644'], '#101018', { softInk: '#565c6c' }),
+    mouth: material('vp_mouth', ['#ffd4d4', '#ff7484', '#c43454', '#741c34', '#420e1e'], '#1c0408'),
   };
 
   const KEY = {
-    a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], A: [M.hair, 0],
-    s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3],
-    k: [M.hair, 'ink'], e: [M.eye, 2], g: [M.frame, 2], G: [M.frame, 1], m: [M.mouth, 3], f: [M.white, 0],
-    R: [M.red, 1], r: [M.red, 2], d: [M.red, 3], D: [M.red, 4],
-    T: [M.white, 1], h: [M.white, 2], H: [M.white, 3],
+    A: [M.hair, 0], a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], d: [M.hair, 4],
+    h: [M.skin, 0], s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3], T: [M.skin, 4],
+    k: [M.hair, 'ink'], e: [M.eye, 2], E: [M.eye, 1], o: [M.ewhite, 1], g: [M.frame, 2], G: [M.frame, 1], m: [M.mouth, 3], f: [M.white, 0], n: [M.mouth, 2],
     p: [M.pink, 2], P: [M.pink, 1],
-    Y: [M.slip, 1], y: [M.slip, 2], u: [M.slip, 3],
+    Y: [M.slip, 1], y: [M.slip, 2], u: [M.slip, 3], U: [M.slip, 4], K: [M.slip, 'ink'],
     L: [M.lap, 1], l: [M.lap, 2], j: [M.lap, 3], J: [M.lap, 4],
-    w: [M.bat, 2], W: [M.bat, 1], v: [M.bat, 3], V: [M.bat, 4], o: [M.eye, 1],
-    z: [M.screen, 2], Z: [M.screen, 1],
+    w: [M.bat, 2], W: [M.bat, 1], v: [M.bat, 3], V: [M.bat, 4],
   };
 
-  // ---------------------------------------------------------------- head: a cloud of hair, small face, red glasses
+  // ---------------------------------------------------------------- head: a cloud of hair, small face, red glasses (30×26)
   const HEAD = {
     normal: [
-      '.......a.........',
-      '......aa.........',
-      '....aaaaaaaa.....',
-      '..aabbbbbbbbba...',
-      '.aabbbbbbbbbbba..',
-      '.abbbbbbbbbbSSSb.',
-      '.abbbbbbbbbcSSSSs',
-      '.abbbbbbbbbgegegs',
-      '..abbbbbbbbcSSSSs',
-      '..abbbbbbbbcSmfS.',
-      '...abbbbbbbccSSS.',
-      '....abbbbbbb.SS..',
-      '.....abbbbbb.SS..',
+      '..............aa..............',
+      '.............aa...............',
+      '............ab................',
+      '.........aaaaaaaaaaa..........',
+      '......aaaabbbbbbbbbbaa........',
+      '....aaabbbbbbbbbbbbbbba.......',
+      '...aabbbbbbbbbbbbbbbbbba......',
+      '..aabbbbbbbbbbbbbbbbbbbba.....',
+      '..abbbbbbbbbbbbbbbbsSSSbba....',
+      '.aabbbbbbbbbbbbbbbsSSSSSSb....',
+      '.abbbbbbbbbbbbbbbcsSSSSSSSb...',
+      '.abbbbbbbbbbbbbbbcSSkkSSkkSs..',
+      '.abbbbbbbbbbbbbbccggggggggggs.',
+      '.abbbbbbbbbbbbbbccgoEgSgoEgs..',
+      '..abbbbbbbbbbbbbccgeegSgeegs..',
+      '..abbbbbbbbbbbbbccggggSggggS..',
+      '..aabbbbbbbbbbbbbcSSSSSSSSSs..',
+      '...abbbbbbbbbbbbbcSSSSSSSts...',
+      '...abbbbbbbbbbbbbcSSSSnmfS....',
+      '....abbbbbbbbbbbbccSSSSmSS....',
+      '....abbbbbbbbbbbbccSSSSSS.....',
+      '.....abbbbbbbbbbbbc.tSSS......',
+      '.....abbbbbbbbbbbbc..SSS......',
+      '......abbbbbbbbbbb...SSS......',
+      '......aabbbbbbbbbb...SSS......',
+      '.......abbbbbbbbb....SS.......',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[13, 9, 'm'], [14, 9, 'm'], [13, 10, 'm'], [14, 10, 'f']]);
-  HEAD.hurt = fv([[12, 7, 'k'], [14, 7, 'k'], [13, 9, 'm'], [14, 9, 'm'], [13, 10, 'm']]);
-  HEAD.calm = fv([[12, 7, 'k'], [14, 7, 'k'], [13, 9, 'S'], [14, 9, 'S']]);
-  HEAD.grin = fv([[12, 9, 'm'], [13, 9, 'f'], [14, 9, 'm']]);
-  HEAD.rage = fv([[12, 6, 'k'], [13, 6, 'k'], [14, 6, 'k'], [15, 6, 'k'], [12, 9, 'm'], [13, 9, 'f'], [14, 9, 'm'], [13, 10, 'm']]);
-  // without glasses: the frame row becomes brow/skin, eyes squint
-  const NOGLASS = (rows) => rows.map((r, j) => (j === 7 ? r.replace('gegeg', 'SkSkS') : r));
-  const NOAHOGE = (rows) => rows.map((r, j) => (j < 2 ? r.replace(/[ab]/g, '.') : r));
-  const HEAD_NECK = [13, 12];
-  const HAIR_ROOT = [5, 10];
+  // eyes: whites/iris at (19-20,13-14) and (24-25,13-14) inside the frames; mouth at (22-24, 18-19)
+  HEAD.shout = fv([[22, 18, 'm'], [23, 18, 'm'], [24, 18, 'm'], [22, 19, 'm'], [23, 19, 'f'], [24, 19, 'm'], [23, 20, 'm']]);
+  HEAD.hurt = fv([[19, 13, 'k'], [20, 13, 'k'], [24, 13, 'k'], [25, 13, 'k'], [19, 14, 'S'], [20, 14, 'S'], [24, 14, 'S'], [25, 14, 'S'], [22, 18, 'm'], [23, 18, 'm'], [24, 18, 'm'], [23, 19, 'm']]);
+  HEAD.calm = fv([[19, 13, 'k'], [20, 13, 'k'], [24, 13, 'k'], [25, 13, 'k'], [19, 14, 'S'], [20, 14, 'S'], [24, 14, 'S'], [25, 14, 'S'], [22, 18, 'S'], [23, 18, 'S'], [24, 18, 'S']]);
+  HEAD.grin = fv([[21, 18, 'm'], [22, 18, 'f'], [23, 18, 'm'], [24, 18, 'f'], [25, 18, 'm']]);
+  HEAD.rage = fv([[18, 11, 'k'], [19, 11, 'k'], [20, 11, 'k'], [24, 11, 'k'], [25, 11, 'k'], [26, 11, 'k'], [21, 18, 'm'], [22, 18, 'f'], [23, 18, 'm'], [24, 18, 'f'], [25, 18, 'm'], [22, 19, 'm'], [23, 19, 'm'], [24, 19, 'm']]);
+  // without glasses: frames become skin, the eyes squint; without the ahoge the top three rows go
+  const NOGLASS = (rows) => rows.map((r, j) => (j === 12 || j === 15 ? r.replace(/g/g, 'S') : j === 13 || j === 14 ? r.replace(/g/g, 'S').replace(/o/g, 'k').replace(/E/g, 'k') : r));
+  const NOAHOGE = (rows) => rows.map((r, j) => (j < 3 ? r.replace(/[ab]/g, '.') : r));
+  const HEAD_NECK = [22, 25];
+  const HAIR_ROOT = [6, 18];
 
-  // ---------------------------------------------------------------- torso: zipped track jacket, bare midriff, waistband
+  // ---------------------------------------------------------------- torso: zipped track jacket, bare midriff, waistband (26×26)
   const TORSO = {
     up: [
-      '.....rrrr.....',
-      '...rrRRrrrr...',
-      '..rrRRPprrrr..',
-      '.rrRRRPpRrrrr.',
-      '.rrRRRRTRrrrr.',
-      '.rrRRRRTRrrrr.',
-      '.rrrRRRTRrrrr.',
-      '..rrrRRTRrrr..',
-      '..drrrrrrrrd..',
-      '...sSSSSSSs...',
-      '...tSSSSSSs...',
-      '..rrrRRTrrrr..',
-      '..rrrrrrrrrr..',
+      '..........rrrrrr..........',
+      '.......rrrrrrRRrrrr.......',
+      '.....rrrrrRRppRRrrrrr.....',
+      '...rrrrrrrRRpppRRrrrrrr...',
+      '..rrrrrrrrrRRppRRrrrrrrr..',
+      '..rrrrrrrrrrRpWpRrrrrrrr..',
+      '.rrrrrrrrrrrrrWrrrrrrrrrr.',
+      '.rrrrrrrrrrrrrWrrrrrrrrrr.',
+      '.rrr/rrrrrrrrrWrrrrrrr/rr.',
+      '.rrr/rrrrrrrrrWrrrrrrr/rr.',
+      '.rrrrrrrrrrrrrWrrrrrrrrrr.',
+      '.rrrrrrrrrrrrrWrrrrrrrrrr.',
+      '..rrrrrrrrrrrrWrrrrrrrrr..',
+      '..rrrrrrrrrrrrWrrrrrrrrr..',
+      '..rrr/rrrrrrrrWrrrrrr/rr..',
+      '...rrrrrrrrrrrWrrrrrrrr...',
+      '...rrrrrrrrrrrrrrrrrrrr...',
+      '....ssssssssssssssssss....',
+      '....sssssssssssssssss.....',
+      '....ssssssssssssssss......',
+      '....sssssssssssssssss.....',
+      '...ssssssssssssssssss.....',
+      '...rrrrrrrrrrrrrrrrrrr....',
+      '..rrrrrrrrrWWWrrrrrrrr....',
+      '..rrrrrrrrrrrrrrrrrrrrr...',
+      '..rrrrrrrrrrrrrrrrrrrrr...',
     ],
   };
-  TORSO.up = RIG.tall(TORSO.up, [5, 9]);
-  const TORSO_HIP = [7, 14];
-  const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
+  const TKEY = {
+    r: { m: M.red, look: 'cloth' },
+    p: { m: M.pink, look: 'cloth' },
+    w: { m: M.white, flat: 1 },
+    s: { m: M.skin, look: 'skin' },
+  };
+  const TORSO_HIP = [13, 25];
+  const TORSO_SH = { N: [4, 4], F: [21, 4], neck: [13, 0] };
 
   const FOOT = {
     slip: [
-      '.Y..Y...',
-      'yYYYYY..',
-      'yYYYYYY.',
-      'uuuuuuu.',
+      '..Y....Y......',
+      '.YYy..yYYY....',
+      '.yYYYYYYYYYY..',
+      '.yYKYYKYYYYYYY',
+      'yyyYYYYYYYYYYY',
+      'uuuuuuuuuuuuuu',
+      '.UUUUUUUUUUUU.',
     ],
     bare: [
-      '........',
-      '.sSSS...',
-      'tSSSSS..',
-      'ttttttt.',
+      '..............',
+      '...sSSS.......',
+      '..sSSSSSSS....',
+      '.sSSSSSSSSSS..',
+      'sSSSSSSSSSSSSS',
+      'ttttttttttttt.',
+      '.TTTTTTTTTTT..',
     ],
   };
-  const FOOT_ANK = [2, 0];
+  const FOOT_ANK = [4, 0];
+  const FIST_SKIN = ['..ssS..', '.sSSSt.', 'sSSSSSt', 'sSStSSt', 'SSSSStt', '.SttTt.', '..TTT..'];
+  const HAND_SKIN = ['..sSS..', '.sSSSSt', 'sSSSSSt', 'sSSSSSt', '.SSSStt', '.tSSTt.', '..TTT..'];
 
-  // laptop: closed = a slab 11 px long, drawn along angle `la` from the near hand; open = screen up, glowing
+  // laptop: a slab 20 px long, 5 thick, along angle `la` from the near hand; open = screen up, glowing
   function laptop(buf, h, p, br) {
     if (p.noLap) return;
     const a = rad(p.la ?? 0), d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]];
     const g = [h[0] + 0.5, h[1] + 0.5];
-    const L = br.laptop ? 6 : 11;
+    const L = br.laptop ? 11 : 20;
     const base = new Part(buf, M.lap);
-    for (let k = 0; k <= L; k++) for (let s = -1; s <= 1; s++) {
-      const x = Math.floor(g[0] + d[0] * (k - 3) + n[0] * s), y = Math.floor(g[1] + d[1] * (k - 3) + n[1] * s);
+    for (let k = 0; k <= L; k++) for (let s = -2; s <= 2; s++) {
+      const x = Math.floor(g[0] + d[0] * (k - 5) + n[0] * s), y = Math.floor(g[1] + d[1] * (k - 5) + n[1] * s);
       base.add(x, y, { s, k });
     }
-    if (br.laptop) { // jagged break at the far end
-      base.remove(Math.floor(g[0] + d[0] * (L - 3) + n[0]), Math.floor(g[1] + d[1] * (L - 3) + n[1]));
-      base.remove(Math.floor(g[0] + d[0] * (L - 4) - n[0]), Math.floor(g[1] + d[1] * (L - 4) - n[1]));
-    }
-    base.commit((i) => (i.s === -1 ? 1 : i.s === 1 ? 3 : i.k === 4 && !br.laptop ? 4 : 2));
+    if (br.laptop) for (const [kk, ss] of [[L, 1], [L, 0], [L - 1, -2], [L - 2, 2], [L - 1, 2]]) base.remove(Math.floor(g[0] + d[0] * (kk - 5) + n[0] * ss), Math.floor(g[1] + d[1] * (kk - 5) + n[1] * ss));
+    base.commit((i) => (i.s === -2 ? 0 : i.s === -1 ? 1 : i.s === 2 ? 3 : (!br.laptop && i.k >= 7 && i.k <= 12 && i.s === 0) ? 4 : (!br.laptop && (i.k === 8 || i.k === 11) && i.s === 1) ? 4 : 2));
     if (p.lapOpen && !br.laptop) {
       const sc = new Part(buf, M.screen, { sep: false });
-      for (let k = 0; k <= 8; k++) for (let s = 0; s <= L; s++) {
-        const x = Math.floor(g[0] + d[0] * (s - 3) - n[0] * (k + 1)), y = Math.floor(g[1] + d[1] * (s - 3) - n[1] * (k + 1));
-        sc.add(x, y, { k, s, edge: k === 8 || s === 0 || s === L });
+      for (let k = 0; k <= 14; k++) for (let s = 0; s <= L; s++) {
+        const x = Math.floor(g[0] + d[0] * (s - 5) - n[0] * (k + 2)), y = Math.floor(g[1] + d[1] * (s - 5) - n[1] * (k + 2));
+        sc.add(x, y, { k, s, edge: k === 14 || k === 0 || s === 0 || s === L });
       }
-      sc.commit((i) => (i.edge ? [M.lap, 3] : (i.k >= 2 && i.k <= 5 && i.s >= 4 && i.s <= 7 && ((i.k === 3 && (i.s === 5 || i.s === 6)) || i.k === 5)) ? 0 : (i.k + i.s) % 3 === 0 ? 1 : 2));
+      // a bat-cat face on the glowing screen
+      sc.commit((i) => (i.edge ? [M.lap, 3] : ((i.k >= 4 && i.k <= 9 && i.s >= 7 && i.s <= 13 && ((i.k === 5 && (i.s === 8 || i.s === 12)) || (i.k === 8 && i.s >= 9 && i.s <= 11) || (i.k === 6 && (i.s === 9 || i.s === 11)))) ? 0 : (i.k + i.s) % 4 === 0 ? 1 : 2)));
     }
   }
-  // the bat-cat familiar: round grey body, cat ears, bat wings (two flap frames)
+  // the bat-cat familiar (20×12), two flap frames
   const BAT = [
     [
-      '..w.....w..',
-      '.ww.a.a.ww.',
-      'www.bbb.www',
-      'wwwwbobbwww',
-      '.ww.bbb.ww.',
-      '....bbb....',
+      '....w..........w....',
+      '...ww...a...a...ww..',
+      '..www...bb.bb...www.',
+      '.wwww..bbbbbbb..wwww',
+      'wwwwww.bWbbbWb.wwwww',
+      'wwwwwwwbbobbobwwwwww',
+      '.wwwwwwbbbbbbbwwwww.',
+      '..wwww.bbbvbbb.wwww.',
+      '...ww..bbbbbbb..ww..',
+      '........bbbbb.......',
+      '.........vvv........',
+      '....................',
     ],
     [
-      '...........',
-      '....a.a....',
-      'ww..bbb..ww',
-      'wwwwbobbwww',
-      '.wwwbbbwww.',
-      '....bbb....',
+      '....................',
+      '........a...a.......',
+      '........bb.bb.......',
+      '.......bbbbbbb......',
+      '.......bWbbbWb......',
+      'ww.....bbobbob.....w',
+      'wwww...bbbbbbb...www',
+      'wwwwwwwbbbvbbbwwwwww',
+      '.wwwwwwbbbbbbbwwwww.',
+      '...wwww.bbbbb.wwww..',
+      '.....ww..vvv..ww....',
+      '....................',
     ],
   ];
-  const BATKEY = { w: [M.bat, 3], a: [M.bat, 2], b: [M.bat, 2], o: [M.eye, 1] };
+  const BATKEY = { w: [M.bat, 3], a: [M.bat, 2], b: [M.bat, 2], W: [M.bat, 1], o: [M.eye, 1], v: [M.bat, 4] };
   function bat(buf, at, flap, opts = {}) {
     const rows = BAT[flap ? 1 : 0];
     const part = new Part(buf, M.bat);
-    PX.sprite(part, rows, BATKEY, at, [5, 3], !!opts.flip);
-    part.commit((i) => (i.ch === 'w' ? [M.bat, 3] : i.ch === 'a' ? [M.bat, 2] : i.ch === 'o' ? (opts.angry ? [M.frame, 1] : [M.eye, 1]) : i.j === 2 ? [M.bat, 1] : i.j >= 4 ? [M.bat, 3] : [M.bat, 2]));
+    PX.sprite(part, rows, BATKEY, at, [10, 6], !!opts.flip);
+    part.commit((i) => (i.ch === 'o' ? (opts.angry ? [M.frame, 1] : [M.eye, 1]) : i.ch === 'w' ? [M.bat, i.j > 6 ? 4 : 3] : i.ch === 'b' ? [M.bat, i.j <= 3 ? 1 : i.j >= 8 ? 3 : 2] : BATKEY[i.ch]));
   }
 
   const PARTS = [
@@ -163,14 +212,14 @@
     { id: 'ahoge', label: '呆毛', en: 'AHOGE', hp: 30, zone: 'head', icon: 'hair' },
   ];
 
-  const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 13, thigh: 16, shin: 16, upper: 8, fore: 8, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 12 };
+  const SIZE = { w: 232, h: 204, ox: 108, oy: 194 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 23, thigh: 29, shin: 29, upper: 14, fore: 14, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 4, headH: 24, headW: 24, bodyW: 10 };
   const DEF = {
-    hip: [0, -34], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-8, -2], fF: [9, -2], feetN: 'slip', feetF: 'slip',
-    hN: [8, -38], hF: [10, -37], la: 0, lapOpen: false, lapLayer: 'front',
-    bat: [-14, -44], flap: 0,
-    hair: { base: 110, droop: 92, wave: 1.6, phase: 0, len: 26 },
+    hip: [0, -61], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-14, -3], fF: [16, -3], feetN: 'slip', feetF: 'slip',
+    hN: [14, -68], hF: [18, -66], la: 0, lapOpen: false, lapLayer: 'front',
+    bat: [-25, -79], flap: 0,
+    hair: { base: 110, droop: 92, wave: 1.6, phase: 0, len: 46 },
     broken: {},
   };
 
@@ -186,36 +235,35 @@
     if (p.bat && !p.noBat) bat(buf, [O[0] + p.bat[0], O[1] + p.bat[1]], p.flap, { angry: !!br.laptop });
     if (!p.hidden) {
       const H = p.hair;
-      RIG.mane(buf, M.hair, hairRoot, { ribbons: [{ off: [0, 0], w0: 7, w1: 3, len: H.len, dA: 0 }, { off: [-3, -2], w0: 4, w1: 2, len: H.len - 4, dA: 12 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, freq: 0.7, waveGrow: 14, sheenAt: 0.1 });
-      // far arm: red sleeve with a white stripe, skin hand
-      arm(buf, J.shF, J.eF, J.hF);
+      RIG.mane(buf, M.hair, hairRoot, { ribbons: [{ off: [0, 0], w0: 14, w1: 4, len: H.len, dA: 0 }, { off: [-5, -3], w0: 9, w1: 3, len: H.len - 8, dA: 12 }, { off: [3, 2], w0: 6, w1: 2, len: H.len - 14, dA: -10 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, freq: 0.5, waveGrow: 14, sheenAt: 0.1, groove: 5 });
+      arm(buf, J.shF, J.eF, J.hF, p.grip === 'O');
       if (p.lapLayer === 'back') laptop(buf, J.hN, p, br);
-      // legs: red pants with the white side stripe
       leg(buf, J.hipF, J.kF, J.fF, br.slippers ? 'bare' : p.feetF);
       leg(buf, J.hipN, J.kN, J.fN, br.slippers ? 'bare' : p.feetN);
-      RIG.place(buf, M.red, J.tb, KEY, J.hip, J.tAnchor);
+      RIG.matmap(buf, J.rows, TKEY, J.hip, TORSO_HIP, { lean: J.lean, pivot: J.pivot, order: ['s', 'r', 'p', 'w'] });
       let head = HEAD[p.face] || HEAD.normal;
       if (br.glasses) head = NOGLASS(head);
       if (br.ahoge) head = NOAHOGE(head);
       RIG.place(buf, M.hair, head, KEY, J.neck, HEAD_NECK);
-      arm(buf, J.shN, J.eN, J.hN);
+      arm(buf, J.shN, J.eN, J.hN, p.grip === 'O');
       if (p.lapLayer === 'front') laptop(buf, J.hN, p, br);
-      RIG.finish(buf, p, J, { rotUp: 9 });
+      RIG.finish(buf, p, J, { rotUp: 16 });
     }
-    if (p.smear) RIG.smear(buf, O, p, p.smear, (br.laptop ? 7 : 12), ['hN', 'la']);
+    if (p.smear) RIG.smear(buf, O, p, p.smear, (br.laptop ? 13 : 22), ['hN', 'la']);
     if (root.FX && p.fx) { root.FX.draw(buf, O, p.fx, 'over'); root.FX.outlineFx(buf); }
     return opts.flip ? PX.flipX(buf) : buf;
   }
-  function arm(buf, sh, el, hd) {
-    const stripe = (i) => (Math.abs(i.u) < 0.3 ? [M.white, 1] : null);
-    RIG.stroke(buf, M.red, sh, el, 1.8, { band: stripe });
-    RIG.stroke(buf, M.red, el, hd, 1.6, { band: (i) => (i.t > 0.8 ? [M.red, 3] : stripe(i)) });
-    RIG.hand(buf, M.skin, hd, 3);
+  // a track-suit sleeve: red with a white stripe along the outside, a dark cuff, a skin hand
+  function arm(buf, sh, el, hd, open) {
+    const stripe = (i) => (Math.abs(i.u - 0.1) < 0.24 ? [M.white, i.nx > 0.3 ? 0 : 1] : null);
+    RIG.cyl(buf, M.red, sh, el, (t) => 3.6 - t * 0.4, { look: 'cloth', band: stripe });
+    RIG.cyl(buf, M.red, el, hd, (t) => 3.3 - t * 0.5, { look: 'cloth', band: (i) => (i.t > 0.84 ? { shift: 2 } : stripe(i)) });
+    RIG.place(buf, M.skin, open ? HAND_SKIN : FIST_SKIN, KEY, hd, [3, 3]);
   }
   function leg(buf, hip, knee, foot, fvn) {
-    const stripe = (i) => (Math.abs(i.u - 0.05) < 0.28 ? [M.white, 1] : null);
-    RIG.stroke(buf, M.red, hip, knee, 2.4, { band: stripe });
-    RIG.stroke(buf, M.red, knee, [foot[0], foot[1] - 1], 2.1, { band: stripe });
+    const stripe = (i) => (Math.abs(i.u - 0.05) < 0.22 ? [M.white, i.nx > 0.3 ? 0 : 1] : null);
+    RIG.cyl(buf, M.red, hip, knee, (t) => 4.4 - t * 0.6, { look: 'cloth', band: stripe });
+    RIG.cyl(buf, M.red, knee, [foot[0], foot[1] - 2], (t) => 3.9 - t * 0.3, { look: 'cloth', band: stripe });
     RIG.place(buf, fvn === 'bare' ? M.skin : M.slip, FOOT[fvn] || FOOT.slip, KEY, foot, FOOT_ANK);
   }
 
@@ -227,7 +275,7 @@
   function anchors(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
-    return { glasses: [J.neck[0] + 2, J.neck[1] - 5], laptop: [J.hN[0] + 4, J.hN[1]], slippers: [J.fN[0], J.fN[1]], ahoge: [J.neck[0] - 5, J.neck[1] - 12] };
+    return { glasses: [J.neck[0] + 3, J.neck[1] - 11], laptop: [J.hN[0] + 8, J.hN[1]], slippers: [J.fN[0], J.fN[1]], ahoge: [J.neck[0] - 8, J.neck[1] - 24] };
   }
 
   root.VAMP = {

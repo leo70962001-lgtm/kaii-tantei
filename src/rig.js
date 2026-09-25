@@ -1,18 +1,53 @@
-// rig.js — shared skeleton for the small hand-pixeled fighters (怪異探偵部).
-// A character supplies bitmaps (head, torso, skirt/legs, feet) and per-frame joints for
-// hips, feet and hands; the rig places knees/elbows by IK, draws limbs as pixel strokes,
-// shears the torso for a lean, applies whole-body rotation, outline and hit flash, and
-// reports hurt boxes (head / body / legs) so the game can resolve hits and part damage.
+// rig.js — shared skeleton for the hand-pixeled fighters (怪異探偵部), KOF scale (~110 px).
+// A character supplies bitmaps (head, hands, feet), a material map for the torso and per-frame joints
+// for hips, feet and hands; the rig places knees/elbows by IK, draws limbs as cylinder-shaded strokes,
+// shears the torso for a lean, applies whole-body rotation, outline and hit flash, and reports
+// hurt boxes (head / body / legs) so the game can resolve hits and part damage.
 // Authored facing +x; the game flips the buffer to face left.
 (function (root) {
   'use strict';
   const PX = root.PX;
-  const { Part, limb, sprite, rad, clamp, lerp } = PX;
+  const { Part, limb, sprite, rad, clamp, lerp, lit, tone } = PX;
 
   const L = () => PX.LIGHT;
   const c = (pt) => [pt[0] + 0.5, pt[1] + 0.5];
 
-  // a limb segment: capsule stroke of radius r, three tones by the side toward the light
+  // material looks for the normal-lit shading (spec = highlight strength, rim = back-light)
+  const LOOK = {
+    cloth: { spec: 0, rim: 0.28, amb: 0.14 },
+    white: { spec: 0.05, shine: 8, rim: 0.3, amb: 0.22 },
+    skin: { spec: 0.08, shine: 10, rim: 0.26, amb: 0.2 },
+    hair: { spec: 0.4, shine: 18, rim: 0.5, amb: 0.1 },
+    metal: { spec: 1.0, shine: 40, rim: 0.55, amb: 0.1, dither: 0.03 },
+    leather: { spec: 0.35, shine: 24, rim: 0.4, amb: 0.1 },
+    fur: { spec: 0, rim: 0.4, amb: 0.14 },
+    flat: { spec: 0, rim: 0, amb: 0.3, kd: 0.6 },
+  };
+  // shade from an in-plane normal → ramp index 0..4
+  function sh(nx, ny, look, x, y, o = {}) {
+    const v = lit(nx, ny, look) + (o.add || 0);
+    return tone(v, x, y, { dither: look.dither || 0, noShine: !look.spec || o.noShine, shift: o.shift || 0 });
+  }
+
+  // a limb segment: capsule of radius r (or a profile function of t) with cylinder shading;
+  // band(i) may return [mat, idx] to override (cuffs, plates), or { shift } to darken
+  function cyl(buf, mat, a, b, r, opts = {}) {
+    const look = LOOK[opts.look || 'cloth'] || LOOK.cloth;
+    const part = new Part(buf, mat, opts.part || {});
+    const rf = typeof r === 'function' ? r : () => r;
+    limb(part, c(a), c(b), rf, {});
+    part.commit((i) => {
+      let shift = 0;
+      if (opts.band) {
+        const v = opts.band(i);
+        if (Array.isArray(v)) return v;
+        if (v && typeof v === 'object') shift = v.shift || 0;
+      }
+      return sh((i.nx || 0) * (opts.round ?? 0.92), (i.ny || 0) * (opts.round ?? 0.92), look, i.x, i.y, { shift, add: opts.add || 0 });
+    });
+    return part;
+  }
+  // the flat three-tone stroke (thin things)
   function stroke(buf, mat, a, b, r, opts = {}) {
     const part = new Part(buf, mat, opts.part || {});
     limb(part, c(a), c(b), () => r, {});
@@ -23,12 +58,11 @@
     });
     return part;
   }
-  // a fist: 2x2 (size 2) or 3x3 (size 3) block, lit corner light
-  function hand(buf, mat, h, size = 2, tone) {
-    const part = new Part(buf, mat);
-    const o = size === 3 ? 1 : 0;
-    for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) part.add(h[0] + i - o, h[1] + j - o, { i, j });
-    part.commit((i) => (tone ? tone(i) : i.i === 0 && i.j === 0 ? 1 : i.i === size - 1 || i.j === size - 1 ? 3 : 2));
+  // a small round joint shaded as a sphere
+  function ball(buf, mat, at, r, look = 'metal', opts = {}) {
+    const part = new Part(buf, mat, opts.part || {});
+    PX.disc(part, at[0] + 0.5, at[1] + 0.5, r);
+    part.commit((i) => sh(i.dx / r, i.dy / r, LOOK[look], i.x, i.y, opts));
     return part;
   }
   // place a hand-drawn bitmap (rows/key) so that its pixel `anchor` lands on world point `at`
@@ -38,7 +72,64 @@
     part.commit(opts.colour || PX.spriteColour);
     return part;
   }
-  // lean: shift rows above the pivot row by up to n px (+ forward, - back), padded so the anchor keeps its column
+
+  // material map: rows of chars, mkey char → { m: material, look, shift, flat, round, sep }.
+  // Every pixel is shaded from the map's own silhouette (a cylinder across each row, a slight fall-off
+  // down each material) and each material is committed as its own Part, so seams between materials
+  // get separation edges. Uppercase of a mapped lowercase char = the same material one step lighter.
+  // '/' = a fold: the material of the pixel to its left, two steps darker. `at`/`anchor` as place().
+  function matmap(buf, rows, mkey, at, anchor, opts = {}) {
+    const h = rows.length;
+    const bx = Math.round(at[0]) - anchor[0], by = Math.round(at[1]) - anchor[1];
+    const lean = opts.lean || 0, pivot = opts.pivot ?? h - 1;
+    const shiftAt = (j) => Math.round(lean * clamp(1 - j / pivot, 0, 1));
+    const cells = [], ext = [];
+    for (let j = 0; j < h; j++) {
+      const row = rows[j];
+      let mn = Infinity, mx = -Infinity;
+      cells.push([]);
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i];
+        let k = null, shift = 0;
+        if (ch === '.' || ch === ' ') { cells[j].push(null); continue; }
+        if (ch === '/') {
+          let p = i - 1; while (p >= 0 && (row[p] === '/' || row[p] === '.')) p--;
+          const pc = p >= 0 ? row[p] : null;
+          k = pc && (mkey[pc] ? pc : mkey[pc.toLowerCase()] ? pc.toLowerCase() : null);
+          shift = 2;
+        } else if (mkey[ch]) k = ch;
+        else if (mkey[ch.toLowerCase()]) { k = ch.toLowerCase(); shift = -1; }
+        if (!k) { cells[j].push(null); continue; }
+        cells[j].push({ k, shift, ch });
+        if (i < mn) mn = i; if (i > mx) mx = i;
+      }
+      ext.push([mn, mx]);
+    }
+    const vext = {};
+    for (let j = 0; j < h; j++) for (const cl of cells[j]) if (cl) { const v = vext[cl.k] || (vext[cl.k] = [j, j]); v[0] = Math.min(v[0], j); v[1] = Math.max(v[1], j); }
+    const order = opts.order || Object.keys(mkey);
+    const parts = {};
+    for (const k of order) parts[k] = new Part(buf, mkey[k].m, { sep: mkey[k].sep !== false });
+    for (let j = 0; j < h; j++) {
+      const [mn, mx] = ext[j];
+      const cx = (mn + mx) / 2, hw = Math.max(1, (mx - mn) / 2);
+      for (let i = 0; i < cells[j].length; i++) {
+        const cl = cells[j][i];
+        if (!cl || !parts[cl.k]) continue;
+        const nx = clamp((i - cx) / hw, -1, 1);
+        const v = vext[cl.k];
+        const fy = v[1] > v[0] ? (j - v[0]) / (v[1] - v[0]) : 0.5;
+        const ny = -0.25 + 0.55 * fy;
+        parts[cl.k].add(bx + i + shiftAt(j), by + j, { nx: nx * (mkey[cl.k].round ?? 0.85), ny, shift: cl.shift + (mkey[cl.k].shift || 0), ch: cl.ch });
+      }
+    }
+    for (const k of order) {
+      const Mk = mkey[k];
+      parts[k].commit((i) => (Mk.flat !== undefined ? clamp(Mk.flat + i.shift, 0, 4) : sh(i.nx, i.ny, LOOK[Mk.look || 'cloth'], i.x, i.y, { shift: i.shift, noShine: Mk.noShine })));
+    }
+    return parts;
+  }
+
   function shear(rows, n, pivotRow) {
     const H = rows.length, pad = Math.abs(n), pr = pivotRow ?? H - 1;
     return rows.map((r, j) => {
@@ -46,28 +137,21 @@
       return '.'.repeat(pad + s) + r + '.'.repeat(pad - s);
     });
   }
-  // duplicate the given rows (a longer torso without redrawing it)
   function tall(rows, dup) { const out = []; rows.forEach((r, j) => { out.push(r); if (dup.includes(j)) out.push(r); }); return out; }
   function variant(rows, edits) {
     const out = rows.map((r) => r.split(''));
     for (const [x, y, ch] of edits) if (out[y] && x < out[y].length) out[y][x] = ch;
     return out.map((r) => r.join(''));
   }
-  // replace characters through a map (e.g. a torn uniform, closed eyes)
   function recolour(rows, map) { return rows.map((r) => r.replace(/./g, (ch) => map[ch] || ch)); }
 
   // ---------------------------------------------------------------- skeleton
-  // spec: { hipTorso:[x,y] bitmap pixel over the hip, sh:{N,F,neck}, torsoRows, torsoPivot,
-  //         thigh, shin, upper, fore, kneeBend, elbowN, elbowF, hipSpread }
   function solve(p, spec, O) {
     const at = (pt) => [O[0] + pt[0], O[1] + pt[1]];
     const rel = (w) => [w[0] - O[0], w[1] - O[1]];
     const hip = at(p.hip);
     const lean = p.lean || 0;
-    const pad = Math.abs(lean);
     const rows = p.torsoRows || spec.torsoRows;
-    const tb = lean ? shear(rows, lean, spec.torsoPivot) : rows;
-    const tAnchor = [spec.hipTorso[0] + pad, spec.hipTorso[1]];
     const tOrigin = [hip[0] - spec.hipTorso[0], hip[1] - spec.hipTorso[1]];
     const pr = spec.torsoPivot ?? rows.length - 1;
     const shiftAt = (row) => Math.round(lean * clamp(1 - row / pr, 0, 1));
@@ -83,32 +167,28 @@
     const kF = p.kF ? at(p.kF) : bendTo(hipF, fF, spec.thigh, spec.shin, p.kneeF ?? spec.kneeBend ?? -1);
     const eN = p.eN ? at(p.eN) : bendTo(shN, hN, spec.upper, spec.fore, p.elbowN ?? spec.elbowN ?? 1);
     const eF = p.eF ? at(p.eF) : bendTo(shF, hF, spec.upper, spec.fore, p.elbowF ?? spec.elbowF ?? 1);
-    return { O, at, rel, hip, hipN, hipF, lean, pad, tb, tAnchor, tOrigin, shN, shF, neck, fN, fF, hN, hF, kN, kF, eN, eF };
+    return { O, at, rel, hip, hipN, hipF, lean, rows, tOrigin, shN, shF, neck, fN, fF, hN, hF, kN, kF, eN, eF, pivot: pr };
   }
 
-  // hurt boxes in authored coordinates (relative to the origin, +x forward, y up is negative)
   function boxes(J, spec, p) {
     const r = J.rel;
     const nk = r(J.neck), hp = r(J.hip);
-    const hh = spec.headH || 14, hw = spec.headW || 12;
-    const head = [nk[0] - hw / 2 + 1, nk[1] - hh, nk[0] + hw / 2 + 1, nk[1] + 1];
-    const body = [Math.min(nk[0], hp[0]) - 6, nk[1], Math.max(nk[0], hp[0]) + 6, hp[1] + 3];
+    const hh = spec.headH || 24, hw = spec.headW || 20, bw = spec.bodyW || 11;
+    const head = [nk[0] - hw / 2 + 2, nk[1] - hh, nk[0] + hw / 2 + 2, nk[1] + 2];
+    const body = [Math.min(nk[0], hp[0]) - bw, nk[1], Math.max(nk[0], hp[0]) + bw, hp[1] + 5];
     const fy = Math.max(r(J.fN)[1], r(J.fF)[1]);
-    const legs = [Math.min(r(J.fN)[0], r(J.fF)[0], hp[0]) - 3, hp[1] + 3, Math.max(r(J.fN)[0], r(J.fF)[0], hp[0]) + 3, fy + 1];
+    const legs = [Math.min(r(J.fN)[0], r(J.fF)[0], hp[0]) - 5, hp[1] + 5, Math.max(r(J.fN)[0], r(J.fF)[0], hp[0]) + 5, fy + 2];
     if (p && p.rot) {
-      // a spinning or fallen body: one box around everything
-      const all = [Math.min(head[0], legs[0]) - 4, Math.min(head[1], body[1]) + 6, Math.max(head[2], legs[2]) + 4, legs[3]];
+      const all = [Math.min(head[0], legs[0]) - 6, Math.min(head[1], body[1]) + 10, Math.max(head[2], legs[2]) + 6, legs[3]];
       return { head: all, body: all, legs: all };
     }
     return { head, body, legs };
   }
 
-  // finishing: whole-body rotation about a point above the hip, outline, hit flash
   function finish(buf, p, J, opts = {}) {
-    if (p.rot) PX.rotateBuf(buf, J.hip[0], J.hip[1] - (opts.rotUp ?? 8), p.rot);
+    if (p.rot) PX.rotateBuf(buf, J.hip[0], J.hip[1] - (opts.rotUp ?? 14), p.rot);
     PX.outline(buf);
     if (opts.rim ?? PX.PALE_RIM) {
-      // optional pale ring around the whole silhouette (D Ahruon's sheets)
       const pale = PX.hex(opts.rimCol || PX.PALE_RIM_COL || '#e6eef4');
       for (let i = 0; i < buf.c.length; i++) if ((buf.f[i] & 4) && !(buf.f[i] & 2)) buf.c[i] = pale;
     }
@@ -118,7 +198,6 @@
     }
   }
 
-  // weapon smear between the previous and current pose (hand key + angle key), drawn through FX.sweep
   function smear(buf, O, p, S, blade, keys) {
     if (!root.FX) return;
     const N = 30, samples = [];
@@ -132,32 +211,36 @@
     root.FX.sweep(buf, samples, { Lb: blade, inner: S.inner ?? 0.3, age: S.age, shape: S.shape, mat: S.mat || 'slash' });
   }
 
-  // a long flowing hair mass: one ribbon hanging from rootPt (world px) with a width profile
-  // w0 -> w1, bending from angle `base` (deg, screen, 90 = straight down) toward `droop`, waving with
-  // phase. Shaded by the side toward the light (front edge light, back edge dark) with a sheen band
-  // near the top; a thinner second ribbon behind it gives volume. Drawn back to front.
+  // a long flowing hair mass: ribbons hanging from rootPt, each with a width profile w0 -> w1 (pointed
+  // tip), bending from angle `base` (deg, 90 = straight down) toward `droop`, waving with phase. Shaded by
+  // the side toward the light, with strand grooves across the width and a sheen band near the top.
   function mane(buf, mat, rootPt, o) {
-    const ribbons = o.ribbons || [{ off: [0, 0], w0: o.w0 ?? 6, w1: o.w1 ?? 2.5, len: o.len || 30, dA: 0 }];
+    const ribbons = o.ribbons || [{ off: [0, 0], w0: o.w0 ?? 10, w1: o.w1 ?? 3, len: o.len || 50, dA: 0 }];
     for (let k = ribbons.length - 1; k >= 0; k--) {
       const R = ribbons[k];
       const part = new Part(buf, mat, { sep: k === 0 });
       let prev = [rootPt[0] + R.off[0] + 0.5, rootPt[1] + R.off[1] + 0.5];
       const n = Math.max(2, Math.round(R.len / 2));
       const base = (o.base ?? 100) + (R.dA || 0);
+      const groove = o.groove ?? 4;
       for (let i = 0; i < n; i++) {
         const u = i / (n - 1);
-        const ph = (o.phase || 0) * PX.TAU - i * (o.freq || 0.45) - k * 1.1;
+        const ph = (o.phase || 0) * PX.TAU - i * (o.freq || 0.4) - k * 1.1;
         const ang = rad(lerp(base, o.droop ?? 92, Math.pow(u, o.bendPow ?? 0.7)) + (o.wave ?? 1) * (2 + (o.waveGrow ?? 10) * u) * Math.sin(ph));
         const next = [prev[0] + Math.cos(ang) * 2, prev[1] + Math.sin(ang) * 2];
-        const w = lerp(R.w0, R.w1, Math.pow(u, 0.8));
+        const w = lerp(R.w0, R.w1, Math.pow(u, 0.75)) * (u > 0.9 ? ((1 - u) / 0.1) * 0.6 + 0.4 : 1);
         const nx = -Math.sin(ang), ny = Math.cos(ang);
-        // +s runs along the left normal; when hanging down that is the back of the ribbon
-        const front = ny < 0 ? -1 : 1; // sign of s that faces +x
+        const front = ny < 0 ? -1 : 1;
         for (let s = -w / 2; s <= w / 2; s += 0.5) {
-          const q = (s * front) / (w / 2); // -1 back edge .. +1 front edge
-          const sheen = o.sheen !== false && u > (o.sheenAt ?? 0.14) && u < (o.sheenAt ?? 0.14) + 0.09 && q > -0.6;
-          const tone = k > 0 ? (q > 0.4 ? 3 : 4) : sheen ? (q > 0.2 ? 0 : 1) : q > 0.55 ? 1 : q < -0.5 ? 3 : 2;
-          PX.line(prev[0] + nx * s, prev[1] + ny * s, next[0] + nx * s, next[1] + ny * s, (x, y) => { if (!part.has(x, y)) part.add(x, y, { tone, u, k, q }); });
+          const q = (s * front) / (w / 2);
+          const sheen = o.sheen !== false && u > (o.sheenAt ?? 0.12) && u < (o.sheenAt ?? 0.12) + 0.08 && q > -0.5;
+          const strand = groove && Math.abs((((s * front + w / 2 + i * 0.15) % groove) + groove) % groove - groove / 2) < 0.3 && q < 0.8;
+          let t;
+          if (k > 0) t = q > 0.4 ? 3 : 4;
+          else if (sheen) t = q > 0.1 ? 0 : 1;
+          else if (strand) t = q > 0.3 ? 2 : 3;
+          else t = q > 0.62 ? 1 : q < -0.45 ? 3 : 2;
+          PX.line(prev[0] + nx * s, prev[1] + ny * s, next[0] + nx * s, next[1] + ny * s, (x, y) => { if (!part.has(x, y)) part.add(x, y, { tone: t, u, k, q }); });
         }
         prev = next;
       }
@@ -165,5 +248,5 @@
     }
   }
 
-  root.RIG = { stroke, hand, place, shear, variant, recolour, tall, solve, boxes, finish, smear, mane, c };
+  root.RIG = { LOOK, sh, cyl, stroke, ball, place, matmap, shear, tall, variant, recolour, solve, boxes, finish, smear, mane, c };
 })(typeof window !== 'undefined' ? window : globalThis);

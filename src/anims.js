@@ -15,6 +15,7 @@
   let hitSerial = 1;
   // longer legs and torsos: hips/knees/hit boxes/body effects move up by SHIFT_Y (half of it in crouches),
   // hands and elbows by SHIFT_Y + HAND_EXTRA (the taller torso lifts the shoulders)
+  const K = 1.8; // KOF scale: every authored coordinate is multiplied on emit
   let SHIFT_Y = 0, HAND_EXTRA = 0;
   const JOINTS = ['hip', 'kN', 'kF', 'bat'], HANDS = ['hN', 'hF', 'eN', 'eF'];
   function shifted(pose) {
@@ -31,6 +32,14 @@
     }
     if (o.fx) o.fx = o.fx.map((f) => { const g = Object.assign({}, f); if (typeof g.y === 'number' && g.y < -8) g.y += s; if (Array.isArray(g.c)) g.c = [g.c[0], g.c[1] + s]; return g; });
     o._s = s;
+    return scaled(o);
+  }
+  const SC = (v) => Math.round(v * K);
+  function scaled(o) {
+    for (const k of [...JOINTS, ...HANDS, 'fN', 'fF']) if (Array.isArray(o[k])) o[k] = [SC(o[k][0]), SC(o[k][1])];
+    if (typeof o.skirtSwing === 'number') o.skirtSwing = SC(o.skirtSwing);
+    if (o.smear) { const sm = Object.assign({}, o.smear); for (const w of ['from', 'to']) if (sm[w]) { sm[w] = Object.assign({}, sm[w]); for (const k of HANDS) if (Array.isArray(sm[w][k])) sm[w][k] = [SC(sm[w][k][0]), SC(sm[w][k][1])]; } o.smear = sm; }
+    if (o.fx) o.fx = o.fx.map((f) => { const g = Object.assign({}, f); for (const k of ['x', 'y', 'x0', 'x1', 'r', 'r0', 'r1', 'len', 'd', 'rx', 'ry', 'h', 'gap', 'w']) if (typeof g[k] === 'number') g[k] = k === 'w' ? Math.max(0, Math.round(g[k] * K)) : g[k] * K; if (Array.isArray(g.c)) g.c = [g.c[0] * K, g.c[1] * K]; if (typeof g.s === 'number') g.s = Math.round(g.s * 1.5); return g; });
     return o;
   }
   function seq(list, base, keys) {
@@ -49,8 +58,8 @@
       const P = shifted(Object.assign({}, pose, { fx: e.fx || [], smear }));
       out.push({
         pose: P,
-        dur: e.d || 50, dx: e.dx || 0, lift: e.lift || 0, ghost: !!e.ghost, shake: e.shake || 0, sfx: e.sfx,
-        hb: e.hb ? [e.hb[0], e.hb[1] + (P._s || 0), e.hb[2], e.hb[3] + (P._s || 0)] : null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
+        dur: e.d || 50, dx: SC(e.dx || 0), lift: SC(e.lift || 0), ghost: !!e.ghost, shake: e.shake || 0, sfx: e.sfx,
+        hb: e.hb ? [SC(e.hb[0]), SC(e.hb[1] + (P._s || 0)), SC(e.hb[2]), SC(e.hb[3] + (P._s || 0))] : null, dmg: e.dmg || 0, stun: e.stun || 0, kb: e.kb ?? 2, kbUp: e.kbUp || 0, kd: !!e.kd, pd: e.pd ?? 1,
         chain: !!e.chain, cancel: !!e.cancel, inv: !!e.inv, air: e.air, spawn: e.spawn, phase: e.ph, hitId: e.hb ? (e.hid ? hitId + e.hid * 1000 : hitId) : 0,
         form: e.form,
       });

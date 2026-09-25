@@ -1,8 +1,8 @@
-// maid.js — 狼人メイド (the werewolf maid, a boy in a maid dress), ~57 px, and the WOLF he turns into.
-// Brown hair in a side bun with a small tail, a frilled headdress, a black dress with a white apron bib
-// and collar, a red ribbon (the seal), white cuffs, white tights and black shoes.
+// maid.js — 狼人メイド (the werewolf maid, a boy in a maid dress) at KOF scale (~104 px), and the WOLF.
+// Pink hair in a side bun with a small tail, a frilled headdress, a black dress with a white collar,
+// apron bib and waist tie, a red ribbon (the seal), white cuffs, white tights and black shoes.
 // Breakable parts: headdress, apron, ribbon (the seal — when it breaks he transforms), shoes.
-// Wolf form: the same skeleton scaled up, fur strokes, a wolf head, claws, paws and a tail;
+// Wolf form: the same skeleton scaled up, fur strokes with tufts, a wolf head, claws, paws and a tail;
 // the torn dress stays on the hips.
 (function (root) {
   'use strict';
@@ -10,158 +10,246 @@
   const { material, Part, rad, clamp, lerp } = PX;
 
   const M = {
-    hair: material('md_hair', ['#e8bc90', '#b7824f', '#84552f', '#58361c', '#382010'], '#1a0c06', { softInk: '#58361c' }),
-    skin: material('md_skin', ['#fff4ea', '#ffe2d0', '#f2bda2', '#c98a76', '#8e5a52'], '#3a1a22', { softInk: '#c98a76' }),
-    dress: material('md_dress', ['#8a88a4', '#525068', '#343248', '#201f30', '#121120'], '#050408', { softInk: '#201f30' }),
-    white: material('md_white', ['#ffffff', '#fbfbfe', '#d9dcea', '#a4a9c4', '#6f7594'], '#252a48', { softInk: '#a4a9c4' }),
-    ribbon: material('md_ribbon', ['#ffb0b8', '#ff5c6c', '#cc2840', '#851a30', '#521020'], '#2a0812'),
-    tights: material('md_tights', ['#ffffff', '#f8f8fc', '#e0e2ee', '#b0b4cc', '#7c8098'], '#2a2e4a', { softInk: '#b0b4cc' }),
-    shoe: material('md_shoe', ['#7c7a92', '#4a4860', '#2e2c40', '#1c1a2a', '#0e0d18'], '#050408'),
-    eye: material('md_eye', ['#ffe4a0', '#f0b040', '#c07828', '#805018', '#4a2c0c'], '#241204'),
-    mouth: material('md_mouth', ['#ffc8c8', '#e87878', '#b04050', '#702030', '#401018'], '#1c0408'),
-    fur: material('wf_fur', ['#ece4dc', '#b0a090', '#746656', '#4c4238', '#2c2620'], '#0e0a08', { softInk: '#4c4238' }),
-    furLight: material('wf_furl', ['#ffffff', '#f2ece4', '#cfc4b6', '#9a8e80', '#665c52'], '#1c1612', { softInk: '#9a8e80' }),
-    claw: material('wf_claw', ['#ffffff', '#f6f2ea', '#d4ccbc', '#9a917f', '#5e574a'], '#1a1610'),
-    weye: material('wf_eye', ['#ffffff', '#ffe860', '#ffb020', '#c06010', '#703008'], '#2a1004', { glow: true }),
-    maw: material('wf_maw', ['#ff9aa0', '#e0505c', '#a02838', '#601420', '#360a12'], '#160408'),
+    hair: material('md_hair', ['#ffe0e6', '#ffb0bc', '#e8788e', '#b04a66', '#702a46'], '#2a0c1c', { softInk: '#b04a66' }),
+    skin: material('md_skin', ['#fff6ee', '#ffe4d3', '#f4bfa5', '#cb8c78', '#8f5b53'], '#3a1a22', { softInk: '#cb8c78' }),
+    dress: material('md_dress', ['#8e8ca8', '#55536c', '#36344a', '#212032', '#131221'], '#050408', { softInk: '#212032' }),
+    white: material('md_white', ['#ffffff', '#fbfbfe', '#dbdeec', '#a6abc6', '#717796'], '#252a48', { softInk: '#a6abc6' }),
+    ribbon: material('md_ribbon', ['#ffb4bc', '#ff6070', '#ce2a42', '#871c32', '#541020'], '#2a0812'),
+    tights: material('md_tights', ['#ffffff', '#f9f9fd', '#e2e4f0', '#b2b6ce', '#7e829a'], '#2a2e4a', { softInk: '#b2b6ce' }),
+    shoe: material('md_shoe', ['#8080a0', '#4e4c66', '#302e44', '#1e1c2c', '#100f1a'], '#050408'),
+    eye: material('md_eye', ['#ffd0d8', '#ff6a7a', '#d82c48', '#8c1a30', '#4c0c1c'], '#240410'),
+    ewhite: material('md_ewhite', ['#ffffff', '#f4f6ff', '#d0d6ec', '#9aa2c0', '#6c748f'], '#22263f'),
+    mouth: material('md_mouth', ['#ffcccc', '#ea7c7c', '#b44454', '#722234', '#42121a'], '#1c0408'),
+    fur: material('wf_fur', ['#eee6de', '#b4a494', '#78695a', '#4e443a', '#2e2822'], '#0e0a08', { softInk: '#4e443a' }),
+    furLight: material('wf_furl', ['#ffffff', '#f4eee6', '#d2c8ba', '#9e9284', '#6a6056'], '#1c1612', { softInk: '#9e9284' }),
+    claw: material('wf_claw', ['#ffffff', '#f8f4ec', '#d6cebe', '#9c9381', '#60594c'], '#1a1610'),
+    weye: material('wf_eye', ['#ffffff', '#ffec66', '#ffb424', '#c26412', '#72320a'], '#2a1004', { glow: true }),
+    maw: material('wf_maw', ['#ffa0a6', '#e45460', '#a42a3a', '#621622', '#380a12'], '#160408'),
   };
 
   const KEY = {
-    a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], B: [M.hair, 3],
-    s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3],
-    k: [M.hair, 'ink'], o: [M.eye, 2], m: [M.mouth, 3],
-    T: [M.white, 1], h: [M.white, 2], H: [M.white, 3],
-    K: [M.dress, 2], d: [M.dress, 3], D: [M.dress, 4], L: [M.dress, 1],
+    A: [M.hair, 0], a: [M.hair, 1], b: [M.hair, 2], c: [M.hair, 3], B: [M.hair, 4],
+    h: [M.skin, 0], s: [M.skin, 1], S: [M.skin, 2], t: [M.skin, 3], T: [M.skin, 4],
+    k: [M.hair, 'ink'], o: [M.eye, 2], O: [M.eye, 1], e: [M.ewhite, 1], m: [M.mouth, 3], n: [M.mouth, 2],
+    W: [M.white, 0], w: [M.white, 1], x: [M.white, 2], X: [M.white, 3],
     q: [M.ribbon, 2], Q: [M.ribbon, 1],
-    e: [M.shoe, 2], E: [M.shoe, 3], l: [M.shoe, 1],
-    // wolf
-    F: [M.fur, 1], f: [M.fur, 2], g: [M.fur, 3], G: [M.fur, 4],
-    w: [M.furLight, 2], W: [M.furLight, 1],
-    y: [M.weye, 1], Y: [M.weye, 2], n: [M.fur, 'ink'], r: [M.maw, 2], R: [M.maw, 3], C: [M.claw, 1], v: [M.claw, 3],
+    E: [M.shoe, 1], d: [M.shoe, 2], D: [M.shoe, 3], Z: [M.shoe, 4],
+    F: [M.fur, 1], f: [M.fur, 2], g: [M.fur, 3], G: [M.fur, 4], '*': [M.fur, 0],
+    L: [M.furLight, 1], l: [M.furLight, 2],
+    y: [M.weye, 1], Y: [M.weye, 2], N: [M.fur, 'ink'], r: [M.maw, 2], R: [M.maw, 3], C: [M.claw, 1], v: [M.claw, 3],
   };
 
-  // ---------------------------------------------------------------- maid head
+  // ---------------------------------------------------------------- maid head (28×26): headdress, bun, calm face, the seal ribbon
   const HEAD = {
     normal: [
-      '.....TThThT.....',
-      '....bbTTTTTbb...',
-      '...bbbbbbbbbbb..',
-      '..Bbabbbbbbbbbb.',
-      '.BBbbbbbbbcSSSb.',
-      'BBBbbbbbbbcSkSkS',
-      'BBBbbbbbbbcSoSoS',
-      '.BBbbbbbbbcSSSSs',
-      '..BbbbbbbbcSSmS.',
-      '...bbbbbbbctSSS.',
-      '....cbbbbb.tSS..',
-      '.....ccbb.qQq...',
-      '..........SS....',
+      '..........wWwxwWwxwWw.......',
+      '.........wwwwwwwwwwwww......',
+      '........bbwxxxxxxxxxwbb.....',
+      '.......bbbbbbbbbbbbbbbb.....',
+      '.....bbbbbaabbbbbbbbbbbb....',
+      '....bbbbbaabbbbbbbbbbbbbb...',
+      '...bbbbbabbbbbbbbbbbbbbbb...',
+      '..cbbbbbbbbbbbbbbbbbbbbbbb..',
+      '.ccbbbbbbbbbbbbbbbbbcsSSbb..',
+      'cccbbbbbbbbbbbbbbbbcsSSSSSb.',
+      'ccccbbbbbbbbbbbbbbbcSSSSSSSb',
+      'BcccbbbbbbbbbbbbbbccSkkSSkkS',
+      'BBcccbbbbbbbbbbbbbccSeOSSeOS',
+      'BBccccbbbbbbbbbbbbccSooSSooS',
+      'BBBcccbbbbbbbbbbbbccSSSSSSSs',
+      '.BBcccbbbbbbbbbbbbbcSSSSSSts',
+      '.BBBccbbbbbbbbbbbbbcSSSSSnS.',
+      '..BBBcbbbbbbbbbbbbbctSSSmSS.',
+      '...BBBbbbbbbbbbbbbbcSSSSSSS.',
+      '....BBbbbbbbbbbbbbbctSSSSS..',
+      '.....BBbbbbbbbbbbbb.tTSSS...',
+      '......Bbbbbbbbbbbb..TSSST...',
+      '.......bbbbbbbbbb..qQQqqQq..',
+      '........cccccc.....qqQqqq...',
+      '.....................SSS....',
+      '.....................SS.....',
     ],
   };
   const fv = (edits) => RIG.variant(HEAD.normal, edits);
-  HEAD.shout = fv([[12, 5, 'k'], [13, 5, 'k'], [13, 8, 'm'], [14, 8, 'm'], [13, 9, 'm']]);
-  HEAD.hurt = fv([[12, 6, 'k'], [14, 6, 'k'], [12, 5, 'S'], [14, 5, 'S'], [13, 8, 'm'], [13, 9, 'm']]);
-  HEAD.calm = fv([[12, 6, 'k'], [14, 6, 'k'], [12, 5, 'S'], [14, 5, 'S']]);
-  HEAD.grin = fv([[12, 8, 'm'], [13, 8, 'm'], [14, 8, 'm']]);
-  const NOBAND = (rows) => rows.map((r, j) => (j === 0 ? r.replace(/[Th]/g, '.') : j === 1 ? r.replace('TTTTT', 'bbbbb') : r));
-  const NORIBBON = (rows) => rows.map((r, j) => (j === 11 ? r.replace('qQq', '.S.') : r));
-  const HEAD_NECK = [11, 12];
-  const TAIL_ROOT = [1, 8];
+  HEAD.shout = fv([[20, 11, 'k'], [21, 11, 'k'], [22, 11, 'k'], [25, 11, 'k'], [26, 11, 'k'], [27, 11, 'k'], [23, 17, 'm'], [24, 17, 'm'], [25, 17, 'm'], [23, 18, 'm'], [24, 18, 'm'], [25, 18, 'm']]);
+  HEAD.hurt = fv([[21, 12, 'k'], [22, 12, 'k'], [25, 12, 'k'], [26, 12, 'k'], [21, 13, 'S'], [22, 13, 'S'], [25, 13, 'S'], [26, 13, 'S'], [21, 11, 'S'], [22, 11, 'S'], [25, 11, 'S'], [26, 11, 'S'], [23, 17, 'm'], [24, 17, 'm'], [24, 18, 'm']]);
+  HEAD.calm = fv([[21, 12, 'k'], [22, 12, 'k'], [25, 12, 'k'], [26, 12, 'k'], [21, 13, 'S'], [22, 13, 'S'], [25, 13, 'S'], [26, 13, 'S'], [21, 11, 'S'], [22, 11, 'S'], [25, 11, 'S'], [26, 11, 'S']]);
+  HEAD.grin = fv([[22, 17, 'm'], [23, 17, 'm'], [24, 17, 'm'], [25, 17, 'm'], [23, 16, 'n'], [24, 16, 'n']]);
+  const NOBAND = (rows) => rows.map((r, j) => (j < 2 ? r.replace(/[wWx]/g, '.') : j === 2 ? r.replace(/[wWx]/g, 'b') : r));
+  const NORIBBON = (rows) => rows.map((r, j) => (j === 22 ? r.replace(/[qQ]/g, 'S') : j === 23 ? r.replace(/[qQ]/g, '.') : r));
+  const HEAD_NECK = [22, 25];
+  const TAIL_ROOT = [2, 17];
 
-  // ---------------------------------------------------------------- maid torso: collar, apron bib, dress, waist tie
+  // ---------------------------------------------------------------- maid torso (26×28): collar, apron bib, dress, waist tie
   const TORSO = {
     up: [
-      '.....TTTT.....',
-      '...TTKKKKTT...',
-      '..KKKThhTKKK..',
-      '.KKKTTTTTTKKK.',
-      '.KKKTTTTTTKKK.',
-      '.KKKTTTTTTKKK.',
-      '.KKKKThhTKKKK.',
-      '.KKKKKTTKKKKK.',
-      '..KKKKKKKKKK..',
-      '..dKKKKKKKKd..',
-      '.ThThThThThTh.',
-      '.dKKKKKKKKKKd.',
+      '..........wwwwww..........',
+      '.......wwwwddddwwww.......',
+      '.....ddddwwddddwwdddd.....',
+      '...ddddddwxwwwwxwdddddd...',
+      '..dddddddwwwwwwwwddddddd..',
+      '..dddddddwwwwwwwwddddddd..',
+      '.ddddddddwwwwwwwwdddddddd.',
+      '.ddddddddwwwwwwwwdddddddd.',
+      '.ddd/dddddwwwwwwdddddd/dd.',
+      '.ddd/dddddwwwwwwdddddd/dd.',
+      '.dddddddddwwwwwwdddddddd..',
+      '.ddddddddddwwwwddddddddd..',
+      '..dddddddddwwwwdddddddd...',
+      '..ddddddddddwwddddddddd...',
+      '..dddddddddddddddddddd/...',
+      '...ddddddddddddddddddd....',
+      '...dddddddddddddddddd.....',
+      '....ddddddddddddddddd.....',
+      '....dddddddddddddddd......',
+      '....dddddddddddddddd......',
+      '...wwwwwwwwwwwwwwwwww.....',
+      '...wwwwwwwwwwwwwwwwww.....',
+      '..dddddddddddddddddddd....',
+      '..dddddddddddddddddddd....',
+      '..dddddddddddddddddddd....',
+      '.dddddddddddddddddddddd...',
+      '.dddddddddddddddddddddd...',
+      '.dddddddddddddddddddddd...',
     ],
   };
-  TORSO.noapron = RIG.recolour(TORSO.up, { h: 'K' }).map((r, j) => (j >= 2 && j <= 7 ? r.replace(/T/g, 'K') : j === 10 ? r.replace(/[Th]/g, 'K') : r));
-  TORSO.torn = TORSO.noapron.map((r, j) => (j === 3 || j === 6 ? r.replace('KKKKKK', 'KSSKKS') : j === 8 ? r.replace('KKKKKKKKKK', 'KKSSKKKSKK') : r));
-  for (const k of ['up', 'noapron', 'torn']) TORSO[k] = RIG.tall(TORSO[k], [3, 5, 8]);
-  const TORSO_HIP = [7, 14];
-  const TORSO_SH = { N: [3, 3], F: [11, 3], neck: [7, 0] };
+  TORSO.noapron = TORSO.up.map((r, j) => (j >= 2 && j <= 13 ? r.replace(/[wx]/g, (ch, i) => (j <= 3 && i >= 7 && i <= 18 ? ch : 'd')) : j === 20 || j === 21 ? r.replace(/w/g, 'd') : r));
+  TORSO.torn = TORSO.noapron.map((r, j) => (j === 6 || j === 9 ? r.replace('ddddddddd', 'ddsSSddsd') : j === 15 ? r.replace('dddddddddddd', 'dddSSdddddSd') : r));
+  const TKEY = {
+    d: { m: M.dress, look: 'cloth' },
+    w: { m: M.white, look: 'white' },
+    s: { m: M.skin, look: 'skin' },
+  };
+  const TORSO_HIP = [13, 27];
+  const TORSO_SH = { N: [4, 4], F: [21, 4], neck: [13, 0] };
 
-  // dress skirt with an apron panel in front and a frilled hem
+  // dress skirt: black pleats with an apron panel in front and a frilled hem (24 rows)
   function skirtRows(apron, swing = 0) {
     const rows = [];
-    const H = 13;
+    const H = 24;
     for (let j = 0; j < H; j++) {
-      const w = 10 + Math.round(j * 0.9);
-      const left = Math.round(9 - w / 2 + swing * (j / (H - 1)));
+      const w = 20 + Math.round(j * 0.75);
+      const left = Math.round(18 - w / 2 + swing * (j / (H - 1)));
       let r = '';
-      for (let i = 0; i < 22; i++) {
+      for (let i = 0; i < 40; i++) {
         const q = i - left;
         if (q < 0 || q >= w) { r += '.'; continue; }
-        const front = q >= w * 0.42 && q <= w - 1;
-        if (j === H - 1) r += (q % 2 ? 'h' : 'T');
-        else if (apron && front && j < H - 2) r += (q === Math.floor(w * 0.42) ? 'h' : (j === H - 3 ? 'h' : 'T'));
-        else r += q < w * 0.3 ? 'd' : ((q + (j >> 1)) % 3 === 0 ? 'd' : 'K');
+        const front = q >= w * 0.4 && q <= w - 2;
+        if (j >= H - 2) { r += (q + j) % 2 ? 'x' : 'w'; continue; }
+        if (apron && front && j < H - 4) { r += (q === Math.floor(w * 0.4) || j === H - 5) ? 'x' : (q > w * 0.75 ? 'W' : 'w'); continue; }
+        const pl = q % 5;
+        let t = pl === 0 ? 4 : pl === 1 ? 2 : pl === 2 ? 1 : 2;
+        if (q < w * 0.3) t = Math.min(4, t + 1);
+        if (j < 2) t = Math.min(4, t + 1);
+        r += 'EdDZZ'[t];
       }
       rows.push(r);
     }
     return rows;
   }
-  const SKIRT_HIP = [9, 0];
+  const SKEY = { E: [M.dress, 0], d: [M.dress, 1], D: [M.dress, 2], Z: [M.dress, 3], W: [M.white, 0], w: [M.white, 1], x: [M.white, 2] };
+  const SKIRT_HIP = [18, 0];
 
   const FOOT = {
-    shoe: ['.eEE....', 'eEEEEE..', 'eEEEEEEE', 'EEEEEEEE'].map((r) => r.replace(/E/g, 'e').replace(/^(.)e/, '$1l')),
-    tights: ['.hTT....', 'hTTTT...', 'hTTTTTT.', 'HHHHHHH.'],
+    shoe: [
+      '...dEEE.......',
+      '..dEEEEEEE....',
+      '.ddEEExxEEEE..',
+      '.dddEEEEEEEEEE',
+      'ddddddEEEEEEEE',
+      'DDDDDDDDDDDDDD',
+      '.ZZZZZZZZZZZZ.',
+    ],
+    tights: [
+      '...www........',
+      '..wwwwwww.....',
+      '.xwwwwwwwww...',
+      '.xxwwwwwwwwwww',
+      'xxxxxxwwwwwwww',
+      'XXXXXXXXXXXXXX',
+      '.XXXXXXXXXXXX.',
+    ],
   };
-  const FOOT_ANK = [2, 0];
+  const FOOT_ANK = [4, 0];
+  const FIST_SKIN = ['..ssS..', '.sSSSt.', 'sSSSSSt', 'sSStSSt', 'SSSSStt', '.SttTt.', '..TTT..'];
+  const HAND_SKIN = ['..sSS..', '.sSSSSt', 'sSSSSSt', 'sSSSSSt', '.SSSStt', '.tSSTt.', '..TTT..'];
 
   // ---------------------------------------------------------------- wolf bitmaps
   const WHEAD = {
     normal: [
-      '..gf....gf.........',
-      '.gffg..gffg........',
-      '.gfffgfffff........',
-      '..gfffffffffg......',
-      '..gffffffffffgg....',
-      '.gfffffffffffffg...',
-      '.gffffyYfffffffffg.',
-      '.gffffnnfffffffffffg',
-      '.gfffffffffffgggGGG.',
-      '..gfffffffffffrrRRg',
-      '..gffffffffffgCrCrg',
-      '...gfffffffffgRRRRg',
-      '....ggfffffffgggg..',
-      '......gffffff......',
+      '...gf.......gf..............',
+      '..gffg.....gffg.............',
+      '..gfffg...gffff.............',
+      '..gffffgggfffff.............',
+      '...gffffffffffffg...........',
+      '...gfffffffffffffgg.........',
+      '..gffffffffffffffffgg.......',
+      '..gfffffffffffffffffffg.....',
+      '.gffffyYYfffffffffffffgg....',
+      '.gffffNNNfffffffffffffffg...',
+      '.gfffffffffffffffffffffffg..',
+      '.gffffffffffffffffggggGGGGg.',
+      '.gffffffffffffffffgLllrrRRRg',
+      '..gffffffffffffffgLllCrCrCrg',
+      '..gfffffffffffffgLllRRRRRRRg',
+      '..gfffffffffffffgLlRRRCRCRGg',
+      '...gfffffffffffffgggggggggg.',
+      '....gfffffffffffffgLLLLg....',
+      '.....ggfffffffffffgllllg....',
+      '.......gffffffffffgggg......',
+      '........ffffffffff..........',
+      '........ffffffffff..........',
+      '.........fffffffff..........',
+      '.........ffffffff...........',
+      '..........fffffff...........',
+      '..........ffffff............',
     ],
   };
-  WHEAD.shout = WHEAD.normal.map((r, j) => (j === 9 ? '..gfffffffffffrrrRg' : j === 10 ? '..gffffffffffgCRCRg' : j === 11 ? '...gfffffffffgRRRRCg' : j === 12 ? '....ggfffffffgvCvg.' : r));
-  WHEAD.hurt = WHEAD.normal.map((r, j) => (j === 6 ? '.gffffnnfffffffffg.' : r));
-  const WHEAD_NECK = [8, 13];
+  WHEAD.shout = WHEAD.normal.map((r, j) => (j === 12 ? '.gffffffffffffffffgLllrrRRRg' : j === 13 ? '..gffffffffffffffgLllCRCRCRg' : j === 14 ? '..gfffffffffffffgLllRRRRRRRg' : j === 15 ? '..gfffffffffffffgLlRRRRRRRRg' : j === 16 ? '...gfffffffffffffgggvCvCvCgg' : r));
+  WHEAD.hurt = WHEAD.normal.map((r, j) => (j === 8 ? '.gffffNNNfffffffffffffgg....' : r));
+  WHEAD.calm = WHEAD.normal;
+  WHEAD.grin = WHEAD.shout;
+  const WHEAD_NECK = [13, 25];
   const WTORSO = {
     up: [
-      '......ffffff......',
-      '....fffFFFffff....',
-      '...ffFFFFFfffff...',
-      '..ffFFFFFFffffff..',
-      '..ffFFFFFFffffff..',
-      '..fffFFFFfffffff..',
-      '..ffffFFfffffffff.',
-      '..gffffffffffffff.',
-      '..ggfffffffffffg..',
-      '...ggfffffffffg...',
-      '...dKdKKdKKdKd....',
-      '...KKKKKKKKKKK....',
+      '..........ffffffff..........',
+      '.......ffffLLLLLLffff.......',
+      '.....ffffLLLLLLLLLffff......',
+      '...fffffLLLLLLLLLLffffff....',
+      '..ffffffLLLLLLLLLLfffffff...',
+      '..ffffffLLLLLLLLLLfffffff...',
+      '.fffffffLLLLLLLLLLffffffff..',
+      '.fffffff/LLLLLLLLffffff/ff..',
+      '.fffffff/LLLLLLLLffffff/ff..',
+      '.ffffffffLLLLLLLfffffffff...',
+      '.ffffffff/LLLLLffffffff/f...',
+      '..fffffffffLLLffffffffff....',
+      '..fffffffff/LLffffffff/f....',
+      '..ffffffffffffffffffffff....',
+      '...ffffffffffffffffffff.....',
+      '...ffffffffffffffffffff.....',
+      '....ffffffffffffffffff......',
+      '....ffffffffffffffffff......',
+      '....ffffffffffffffffff......',
+      '...ddddddddddddddddddd......',
+      '...ddZdddZdddZdddZdddd......',
+      '..dddddddddddddddddddd......',
+      '..dddddddddddddddddddd......',
+      '..dddddddddddddddddddd......',
+      '.dddddddddddddddddddddd.....',
+      '.dddddddddddddddddddddd.....',
     ],
   };
-  WTORSO.up = RIG.tall(WTORSO.up, [4, 7]);
-  const WTORSO_HIP = [8, 13];
-  const WTORSO_SH = { N: [3, 3], F: [14, 3], neck: [9, 0] };
-  const PAW = ['.wFF...', 'wFFFFF.', 'wFFFFFF', 'gggCgCC'];
-  const CLAW = ['CvC', 'fFf', 'fff'];
+  const WKEY = {
+    f: { m: M.fur, look: 'fur' },
+    l: { m: M.furLight, look: 'fur' },
+    d: { m: M.dress, look: 'cloth' },
+    z: { m: M.dress, flat: 4 },
+  };
+  const WTORSO_HIP = [13, 25];
+  const WTORSO_SH = { N: [4, 5], F: [22, 5], neck: [13, 0] };
+  const PAW = ['..lFF.........', '.lFFFFFF......', 'lFFFFFFFFF....', 'lFFFFFFFFFFF..', 'FFFFFFFFFFFFFF', 'ggggggggggggg.', '.gCgCgCgCgCgC.'];
+  const CLAWHAND = ['..FFF..', '.FFFFF.', 'FFFFFFg', 'FFFFFFg', 'gFFFFgg', '.ggggg.', '..CCC..'];
 
   const PARTS = [
     { id: 'headdress', label: '頭飾', en: 'HEADDRESS', hp: 35, zone: 'head', icon: 'band' },
@@ -170,18 +258,18 @@
     { id: 'shoes', label: '皮鞋', en: 'SHOES', hp: 45, zone: 'legs', icon: 'shoe' },
   ];
 
-  const SIZE = { w: 128, h: 108, ox: 60, oy: 100 };
-  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 13, thigh: 17, shin: 17, upper: 8.5, fore: 8.5, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 2, headH: 12, headW: 11 };
-  const WSPEC = { hipTorso: WTORSO_HIP, sh: WTORSO_SH, torsoRows: WTORSO.up, torsoPivot: 12, thigh: 18, shin: 18, upper: 11, fore: 11, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 3, headH: 14, headW: 18 };
+  const SIZE = { w: 232, h: 204, ox: 108, oy: 194 };
+  const SPEC = { hipTorso: TORSO_HIP, sh: TORSO_SH, torsoRows: TORSO.up, torsoPivot: 25, thigh: 31, shin: 31, upper: 15, fore: 15, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 4, headH: 24, headW: 20, bodyW: 11 };
+  const WSPEC = { hipTorso: WTORSO_HIP, sh: WTORSO_SH, torsoRows: WTORSO.up, torsoPivot: 23, thigh: 32, shin: 32, upper: 20, fore: 20, kneeBend: -1, elbowN: 1, elbowF: 1, hipSpread: 6, headH: 26, headW: 30, bodyW: 13 };
   const DEF = {
-    hip: [0, -37], lean: 0, face: 'normal', head: [0, 0],
-    fN: [-8, -2], fF: [9, -2], feetN: 'shoe', feetF: 'shoe',
-    hN: [-3, -42], hF: [9, -44], form: 'maid',
-    hair: { base: 100, droop: 92, wave: 1, phase: 0, len: 12 },
-    tail: { base: 150, droop: 120, wave: 1.2, phase: 0, len: 20 },
+    hip: [0, -66], lean: 0, face: 'normal', head: [0, 0],
+    fN: [-14, -3], fF: [16, -3], feetN: 'shoe', feetF: 'shoe',
+    hN: [-5, -76], hF: [16, -79], form: 'maid',
+    hair: { base: 100, droop: 92, wave: 1, phase: 0, len: 22 },
+    tail: { base: 150, droop: 120, wave: 1.2, phase: 0, len: 36 },
     broken: {},
   };
-  const WDEF = { hip: [0, -40], lean: 3, fN: [-10, -2], fF: [11, -2], hN: [3, -32], hF: [13, -40] };
+  const WDEF = { hip: [0, -72], lean: 5, fN: [-18, -3], fF: [20, -3], hN: [5, -58], hF: [23, -72] };
 
   function render(pose, opts = {}) {
     const p = Object.assign({}, DEF, pose);
@@ -196,31 +284,31 @@
     const headO = [J.neck[0] - HEAD_NECK[0], J.neck[1] - HEAD_NECK[1]];
     if (!p.hidden) {
       const H = p.hair;
-      RIG.mane(buf, M.hair, [headO[0] + TAIL_ROOT[0], headO[1] + TAIL_ROOT[1]], { ribbons: [{ off: [0, 0], w0: 3.5, w1: 1.5, len: H.len, dA: 0 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, sheen: false });
-      arm(buf, J.shF, J.eF, J.hF);
+      RIG.mane(buf, M.hair, [headO[0] + TAIL_ROOT[0], headO[1] + TAIL_ROOT[1]], { ribbons: [{ off: [0, 0], w0: 6, w1: 2, len: H.len, dA: 0 }], base: H.base, droop: H.droop, wave: H.wave, phase: H.phase, sheen: false, groove: 3 });
+      arm(buf, J.shF, J.eF, J.hF, p.grip !== 'F');
       leg(buf, J.hipF, J.kF, J.fF, br.shoes ? 'tights' : p.feetF);
       leg(buf, J.hipN, J.kN, J.fN, br.shoes ? 'tights' : p.feetN);
-      RIG.place(buf, M.dress, skirtRows(!br.apron, p.skirtSwing || 0), KEY, [J.hip[0], J.hip[1] + 1], SKIRT_HIP);
-      RIG.place(buf, M.dress, J.tb, KEY, J.hip, J.tAnchor);
+      RIG.place(buf, M.dress, skirtRows(!br.apron, p.skirtSwing || 0), SKEY, [J.hip[0], J.hip[1] + 2], SKIRT_HIP);
+      RIG.matmap(buf, J.rows, TKEY, J.hip, TORSO_HIP, { lean: J.lean, pivot: J.pivot, order: ['s', 'd', 'w'] });
       let head = HEAD[p.face] || HEAD.normal;
       if (br.headdress) head = NOBAND(head);
       if (br.ribbon) head = NORIBBON(head);
       RIG.place(buf, M.hair, head, KEY, J.neck, HEAD_NECK);
-      arm(buf, J.shN, J.eN, J.hN);
-      RIG.finish(buf, p, J, { rotUp: 9 });
+      arm(buf, J.shN, J.eN, J.hN, p.grip !== 'F');
+      RIG.finish(buf, p, J, { rotUp: 16 });
     }
-    if (p.smear) RIG.smear(buf, O, p, p.smear, p.reach || 9, p.smearKeys || ['hF', 'la']);
+    if (p.smear) RIG.smear(buf, O, p, p.smear, p.reach || 16, p.smearKeys || ['hF', 'la']);
     if (root.FX && p.fx) { root.FX.draw(buf, O, p.fx, 'over'); root.FX.outlineFx(buf); }
     return opts.flip ? PX.flipX(buf) : buf;
   }
-  function arm(buf, sh, el, hd) {
-    RIG.stroke(buf, M.dress, sh, el, 1.8);
-    RIG.stroke(buf, M.dress, el, hd, 1.5, { band: (i) => (i.t > 0.72 ? [M.white, 1] : null) });
-    RIG.hand(buf, M.skin, hd, 3);
+  function arm(buf, sh, el, hd, open) {
+    RIG.cyl(buf, M.dress, sh, el, (t) => 3.5 - t * 0.5, { look: 'cloth' });
+    RIG.cyl(buf, M.dress, el, hd, (t) => 3.1 - t * 0.3, { look: 'cloth', band: (i) => (i.t > 0.74 ? [M.white, RIG.sh(i.nx * 0.9, i.ny * 0.9, RIG.LOOK.white, i.x, i.y)] : null) });
+    RIG.place(buf, M.skin, open ? HAND_SKIN : FIST_SKIN, KEY, hd, [3, 3]);
   }
   function leg(buf, hip, knee, foot, fvn) {
-    RIG.stroke(buf, M.tights, hip, knee, 2.2);
-    RIG.stroke(buf, M.tights, knee, [foot[0], foot[1] - 1], 1.9);
+    RIG.cyl(buf, M.tights, hip, knee, (t) => 4.1 - t * 0.8, { look: 'white' });
+    RIG.cyl(buf, M.tights, knee, [foot[0], foot[1] - 2], (t) => 3.4 - t * 0.5, { look: 'white' });
     RIG.place(buf, fvn === 'tights' ? M.tights : M.shoe, FOOT[fvn] || FOOT.shoe, KEY, foot, FOOT_ANK);
   }
 
@@ -231,37 +319,38 @@
     const J = RIG.solve(q, WSPEC, O);
     if (!q.hidden) {
       const T = q.tail;
-      RIG.mane(buf, M.fur, [J.hip[0] - 4, J.hip[1] - 1], { ribbons: [{ off: [0, 0], w0: 4, w1: 2, len: T.len, dA: 0 }], base: T.base, droop: T.droop, wave: T.wave, phase: T.phase, sheen: false, tone: (i) => (i.q > 0.4 ? 1 : i.q < -0.4 ? 3 : 2) });
+      RIG.mane(buf, M.fur, [J.hip[0] - 8, J.hip[1] - 2], { ribbons: [{ off: [0, 0], w0: 8, w1: 3, len: T.len, dA: 0 }], base: T.base, droop: T.droop, wave: T.wave, phase: T.phase, sheen: false, groove: 3, tone: (i) => (i.q > 0.45 ? 1 : i.q < -0.4 ? 3 : 2) });
       wolfArm(buf, J.shF, J.eF, J.hF, q);
       wolfLeg(buf, J.hipF, J.kF, J.fF);
       wolfLeg(buf, J.hipN, J.kN, J.fN);
-      RIG.place(buf, M.dress, skirtRows(false, q.skirtSwing || 0).slice(0, 6), KEY, [J.hip[0], J.hip[1] + 1], SKIRT_HIP);
-      RIG.place(buf, M.fur, J.tb, KEY, J.hip, J.tAnchor);
+      RIG.place(buf, M.dress, skirtRows(false, q.skirtSwing || 0).slice(0, 12), SKEY, [J.hip[0], J.hip[1] + 2], SKIRT_HIP);
+      RIG.matmap(buf, J.rows, WKEY, J.hip, WTORSO_HIP, { lean: J.lean, pivot: J.pivot, order: ['d', 'z', 'f', 'l'] });
       RIG.place(buf, M.fur, WHEAD[q.face] || WHEAD.normal, KEY, J.neck, WHEAD_NECK);
       wolfArm(buf, J.shN, J.eN, J.hN, q);
-      RIG.finish(buf, q, J, { rotUp: 10 });
+      RIG.finish(buf, q, J, { rotUp: 18 });
     }
-    if (q.smear) RIG.smear(buf, O, q, q.smear, q.reach || 14, q.smearKeys || ['hF', 'la']);
+    if (q.smear) RIG.smear(buf, O, q, q.smear, q.reach || 26, q.smearKeys || ['hF', 'la']);
     if (root.FX && q.fx) { root.FX.draw(buf, O, q.fx, 'over'); root.FX.outlineFx(buf); }
     return opts.flip ? PX.flipX(buf) : buf;
   }
+  const tuft = (i) => ((Math.floor(i.t * 7) % 2 === 0) && i.u > 0.55 ? { shift: -1 } : (Math.floor(i.t * 7) % 2 === 1) && i.u < -0.6 ? { shift: 1 } : null);
   function wolfArm(buf, sh, el, hd, q) {
-    RIG.stroke(buf, M.fur, sh, el, 3.0);
-    RIG.stroke(buf, M.fur, el, hd, 2.6);
-    // claws: three bone spikes along the hand's direction
+    RIG.cyl(buf, M.fur, sh, el, (t) => 5.4 - t * 0.6, { look: 'fur', band: tuft });
+    RIG.cyl(buf, M.fur, el, hd, (t) => 4.8 - t * 0.6, { look: 'fur', band: tuft });
     const d = [hd[0] - el[0], hd[1] - el[1]], L = Math.hypot(d[0], d[1]) || 1, u = [d[0] / L, d[1] / L], n = [-u[1], u[0]];
+    RIG.place(buf, M.fur, CLAWHAND, KEY, hd, [3, 3]);
     const cl = new Part(buf, M.claw);
-    for (const s of [-2, 0, 2]) {
-      const bx = hd[0] + 0.5 + n[0] * s, by = hd[1] + 0.5 + n[1] * s;
-      PX.line(bx, by, bx + u[0] * (q.clawLen || 4), by + u[1] * (q.clawLen || 4), (x, y, i) => cl.add(x, y, { i }));
+    for (const s of [-3, 0, 3]) {
+      const bx = hd[0] + 0.5 + n[0] * s + u[0] * 3, by = hd[1] + 0.5 + n[1] * s + u[1] * 3;
+      PX.line(bx, by, bx + u[0] * (q.clawLen || 7), by + u[1] * (q.clawLen || 7), (x, y, i) => cl.add(x, y, { i }));
+      PX.line(bx + n[0] * 0.7, by + n[1] * 0.7, bx + n[0] * 0.7 + u[0] * (q.clawLen || 7) * 0.6, by + n[1] * 0.7 + u[1] * (q.clawLen || 7) * 0.6, (x, y) => { if (!cl.has(x, y)) cl.add(x, y, { i: 9 }); });
     }
-    cl.commit((i) => (i.i === 0 ? 3 : 1));
-    RIG.hand(buf, M.fur, hd, 3, (i) => (i.j === 0 ? 1 : i.j === 2 ? 3 : 2));
+    cl.commit((i) => (i.i === 9 ? 3 : i.i === 0 ? 3 : i.i < 3 ? 2 : 1));
   }
   function wolfLeg(buf, hip, knee, foot) {
-    RIG.stroke(buf, M.fur, hip, knee, 3.2);
-    RIG.stroke(buf, M.fur, knee, [foot[0], foot[1] - 1], 2.5);
-    RIG.place(buf, M.fur, PAW, KEY, foot, [2, 0]);
+    RIG.cyl(buf, M.fur, hip, knee, (t) => 5.8 - t * 1.0, { look: 'fur', band: tuft });
+    RIG.cyl(buf, M.fur, knee, [foot[0], foot[1] - 3], (t) => 4.6 - t * 0.6, { look: 'fur', band: tuft });
+    RIG.place(buf, M.fur, PAW, KEY, foot, [4, 0]);
   }
 
   function boxes(pose) {
@@ -272,11 +361,11 @@
   function anchors(pose) {
     const p = Object.assign({}, DEF, pose);
     const J = RIG.solve(p, SPEC, [0, 0]);
-    return { headdress: [J.neck[0] - 2, J.neck[1] - 12], apron: [J.hip[0] + 2, J.hip[1] - 4], ribbon: [J.neck[0], J.neck[1] - 1], shoes: [J.fN[0], J.fN[1]] };
+    return { headdress: [J.neck[0] - 4, J.neck[1] - 24], apron: [J.hip[0] + 4, J.hip[1] - 8], ribbon: [J.neck[0], J.neck[1] - 2], shoes: [J.fN[0], J.fN[1]] };
   }
 
   root.MAID = {
-    id: 'maid', name: '狼人メイド', title: '狼人のメイド（偽娘）', en: 'WEREWOLF MAID', height: '165cm', tint: '#c9a6ff',
-    M, KEY, HEAD, HEAD_NECK, TORSO, WHEAD, WTORSO, FOOT, SIZE, DEF, WDEF, SPEC, WSPEC, PARTS, render, boxes, anchors, skirtRows,
+    id: 'maid', name: '狼人メイド', title: '狼人のメイド（偽娘）', en: 'WEREWOLF MAID', height: '165cm', tint: '#ff9ab8',
+    M, KEY, HEAD, HEAD_NECK, TORSO, WHEAD, WHEAD_NECK, WTORSO, FOOT, SIZE, DEF, WDEF, SPEC, WSPEC, PARTS, render, boxes, anchors, skirtRows,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
