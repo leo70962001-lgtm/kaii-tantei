@@ -71,7 +71,7 @@
   }
   const hitAt = (x, y, age = 0, seed = 1, mat) => ({ type: 'hitmark', x, y, age, seed, mat });
   // Gemini sheet effects (src/sheetfx.js): an overlay entry and the matching absolute hit box
-  const SFX = (cell, o = {}) => ({ type: 'sheet', char: o.ch || 'jk', cell, x: o.x || 0, y: o.y || 0, age: o.age || 0, flip: !!o.flip });
+  const SFX = (cell, o = {}) => ({ type: 'sheet', char: o.ch || 'jk', cell, x: o.x || 0, y: o.y || 0, age: o.age || 0, flip: !!o.flip, whole: !!o.whole, sc: o.sc });
   const SBOX = (cell, o) => (root.FX && root.FX.sheetBox ? root.FX.sheetBox((o && o.ch) || 'jk', cell, o) : null);
   const dust = (x, y, age, seed = 3) => ({ type: 'dust', x, y, r: 3, n: 3, age, flat: true, spread: 1.2, seed });
   const hp = (ph, more) => Object.assign({ phase: ph }, more || {});
@@ -323,7 +323,7 @@
     // ---------------------------------------------------------------- specials
     // 居合・一閃: a low dash, a rising cut on the way through, then the sword comes over for the big crescent (sheet A row 5)
     const glint = (s) => ({ type: 'glint', x: -8, y: -22, s });
-    A.special = { label: '居合・一閃', frames: seq([
+    A.special = { label: '影分身・居合', frames: seq([
       { d: 90, ph: 'ANTICIPATION', p: { hip: [-1, -22], lean: 4, fN: [-12, -2], fF: [10, -2], hN: [-10, -22], hF: [-10, -20], sw: 150, swordLayer: 'back', head: [1, 1], face: 'shout', hair: hp(0.1, { base: 130, droop: 80, wave: 1.5 }) }, fx: [glint(2)] },
       { d: 70, ph: 'DASH', dx: 14, ghost: true, sfx: 'dash', inv: true, p: { hip: [2, -21], lean: 7, fN: [-16, -3], fF: [14, -2], hN: [-14, -20], hF: [-12, -18], sw: 160, head: [2, 1], hair: hp(0.3, { base: 176, droop: 20, wave: 1.2 }) }, fx: [{ type: 'streak', x0: -44, x1: -6, y: -34, w: 0, under: true, dither: true }, { type: 'streak', x0: -48, x1: -4, y: -26, w: 1, under: true, taper: true }, { type: 'streak', x0: -40, x1: -8, y: -18, w: 0, under: true, dither: true }] },
       { d: 60, ph: 'DASH', dx: 16, ghost: true, sfx: 'dash', inv: true, p: { fN: [-10, -6], fF: [18, -2], hair: hp(0.5, { base: 182, droop: 10 }) }, fx: [SFX(10, { x: -30 }), { type: 'streak', x0: -54, x1: -8, y: -32, w: 1, under: true, taper: true }, { type: 'streak', x0: -60, x1: -6, y: -24, w: 1, under: true, taper: true }, { type: 'streak', x0: -50, x1: -10, y: -16, w: 0, under: true, dither: true }] },
@@ -337,7 +337,7 @@
       { d: 80, p: Object.assign({}, S, { hair: hp(1.9) }) },
     ], S, K) };
     // 義手砲: the steel arm charges and fires an energy shot (sheet A row 6 / sheet B row 4)
-    A.special2 = { label: '義手砲', frames: seq([
+    A.special2 = { label: '電磁衝撃破', frames: seq([
       { d: 110, ph: 'ANTICIPATION', sfx: 'charge', p: Object.assign({ hN: [-10, -38], eN: [-12, -33], lean: -2, hip: [-2, -27], fN: [-11, -2], fF: [8, -2], head: [-1, 0], face: 'shout', hair: hp(0.1, { base: 90, wave: 1.6 }) }, punchBase), fx: [bolt(-10, -38, 3, 0.2, 9, { len: 6, n: 4 })] },
       { d: 90, ph: 'CHARGE', p: { hN: [14, -40], eN: null, lean: 0, hair: hp(0.25, { base: 110 }) }, fx: [E(21, { x: 2, y: -8 })] },
       { d: 60, ph: 'FIRE', ghost: true, sfx: 'heavy', shake: 2, spawn: 'shot', p: { hip: [7, -25], lean: 4, fF: [24, -2], fN: [-14, -2], hN: [32, -41], head: [3, 0], hair: hp(0.4, { base: 165, droop: 100, wave: 1.8 }) }, fx: [E(22, { x: 16, y: -12 })] },
@@ -345,6 +345,24 @@
       { d: 120, ph: 'RECOVER', p: { hN: [10, -34], lean: 1, hip: [2, -27], fF: [12, -2], fN: [-9, -2], face: 'normal', hair: hp(0.7, { base: 112 }) } },
       { d: 80, p: Object.assign({}, S, { hair: hp(0.9) }) },
     ], S, K), altWhenBroken: { arm: 'bump' } };
+    // 量子爆裂: the super — a rainbow charge around the body, then the sheet's explosion (newest sheet, 量子爆裂 row)
+    const aura = (a) => [
+      { type: 'bolt', x: 0, y: -38, r: 26, len: 10, n: 9, a0: -180, a1: 180, age: a, seed: 5, mat: 'ice' },
+      { type: 'bolt', x: 0, y: -36, r: 21, len: 8, n: 7, a0: -180, a1: 180, age: a, seed: 11, mat: 'fire' },
+      { type: 'bolt', x: 0, y: -40, r: 30, len: 9, n: 6, a0: -180, a1: 180, age: a * 0.7, seed: 17, mat: 'dark' },
+      { type: 'arc', c: [0, -36], r0: 23, r1: 31, a0: -170 + a * 260, a1: 40 + a * 260, age: a * 0.4, mat: 'ice' },
+      { type: 'arc', c: [0, -36], r0: 25, r1: 33, a0: 20 + a * 260, a1: 250 + a * 260, age: a * 0.4, mat: 'fire' },
+    ];
+    const boom = (age) => SFX(1, { ch: 'jk4', whole: true, sc: 3, y: -18, age });
+    A.super = { label: '量子爆裂', frames: seq([
+      { d: 150, ph: 'CHARGE', sfx: 'charge', shake: 1, p: Object.assign({ hip: [0, -26], lean: -1, hN: [-8, -40], eN: null, face: 'shout', head: [0, -1], hair: hp(0.1, { base: 60, droop: 20, wave: 2.5 }) }, punchBase), fx: aura(0) },
+      { d: 150, ph: 'CHARGE', shake: 2, p: { hN: [-9, -45], hair: hp(0.3, { base: 40, droop: 10, wave: 3 }) }, fx: aura(0.35) },
+      { d: 150, ph: 'CHARGE', shake: 3, p: { hN: [-10, -49], hip: [0, -25], hair: hp(0.55, { base: 20, droop: 0, wave: 3.5 }) }, fx: aura(0.7) },
+      { d: 70, ph: 'BURST', sfx: 'burst', shake: 7, hb: [-42, -72, 42, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2, p: { hN: [14, -52], hF: [-12, -30], sw: 150, lean: 2, hair: hp(0.8, { base: 90, droop: 0, wave: 4 }) }, fx: [boom(0)] },
+      { d: 120, ph: 'BURST', shake: 3, hb: [-48, -76, 48, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2, p: { hair: hp(0.95) }, fx: [boom(0.4)] },
+      { d: 160, ph: 'FADE', p: { face: 'normal', hair: hp(1.1, { base: 106, droop: 92, wave: 1 }) }, fx: [boom(0.8)] },
+      { d: 240, ph: 'RECOVER', p: Object.assign({}, S, { hair: hp(1.4) }) },
+    ], S, K) };
     // 投げ: both hands reach; on a grab the hold anim takes over (sheet B row 4)
     A.throw = { label: '投げ', frames: seq([
       { d: 60, ph: 'REACH', p: { grip: 'S', hN: [14, -36], eN: null, hF: [12, -38], lean: 3, hip: [2, -27], fF: [14, -2], fN: [-8, -2], head: [2, 0], hair: hp(0.1, { base: 130 }) } },

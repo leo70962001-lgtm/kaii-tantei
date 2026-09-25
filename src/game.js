@@ -140,14 +140,14 @@
   }
 
   // ------------------------------------------------------------ fighters
-  const ATTACKS = ['light', 'light2', 'light3', 'light4', 'heavy', 'heavy2', 'heavy3', 'special', 'special2', 'air', 'air2', 'crouchLight', 'crouchHeavy', 'throw', 'throwHit', 'bump', 'bite', 'claw'];
+  const ATTACKS = ['light', 'light2', 'light3', 'light4', 'heavy', 'heavy2', 'heavy3', 'special', 'special2', 'super', 'air', 'air2', 'crouchLight', 'crouchHeavy', 'throw', 'throwHit', 'bump', 'bite', 'claw'];
   const LOW = { crouchHeavy: 1 }, HIGH = { air: 1, air2: 1 };
   function makeFighter(C, slot) {
     const f = {
       C, slot, form: C.form0, x: 0, y: 0, vx: 0, vy: 0, face: 1, hp: C.stats.hp, maxhp: C.stats.hp,
       parts: {}, anim: null, fi: 0, ft: 0, air: false, hitIds: new Set(), stun: 0, freeze: 0, combo: 0, comboT: 0,
       input: {}, prev: {}, ai: null, dmgMul: C.stats.dmg, defMul: C.stats.def, speedMul: 1, jumpMul: 1, breaks: 0,
-      trail: [], queue: null, tapT: 0, tapDir: 0, batOut: false, wantTransform: false, face_: null, blind: false, koed: false, wins: 0, flashT: 0,
+      meter: 0, trail: [], queue: null, tapT: 0, tapDir: 0, batOut: false, wantTransform: false, face_: null, blind: false, koed: false, wins: 0, flashT: 0,
     };
     for (const p of C.R.PARTS) f.parts[p.id] = { hp: p.hp, max: p.hp, broken: false };
     return f;
@@ -192,6 +192,15 @@
     play(f, f.input.down && !f.air ? 'crouch' : 'idle');
   }
 
+  // C = 影分身・居合, ↓C = 電磁衝撃破, C with X held = 量子爆裂 when the meter is full
+  function specialOf(f) {
+    const I = f.input, A0 = A(f);
+    return I.down && A0.special2 ? 'special2' : 'special';
+  }
+  function trySuper(f, press) {
+    if (!press('sup') || f.air || f.meter < 100 || !A(f).super) return false;
+    f.meter = 0; play(f, 'super'); sim.callout('量子爆裂！', '#ff9ef2', 1000); return true;
+  }
   // per-tick control from the input struct (player or CPU)
   function control(f, o) {
     const I = f.input, P = f.prev;
@@ -206,7 +215,8 @@
     if (isAttack(f)) {
       // chains and cancels inside attack windows
       const an = A(f)[f.anim];
-      if (fr.cancel && press('special') && !f.air) { const sp = I.down && A(f).special2 ? 'special2' : 'special'; if (A(f)[sp]) return play(f, sp); }
+      if (fr.cancel && trySuper(f, press)) return;
+      if (fr.cancel && press('special') && !f.air) { const sp = specialOf(f); if (A(f)[sp]) return play(f, sp); }
       if (fr.chain && (press('light') || press('heavy'))) {
         const nx = press('light') ? (an.nextLight || an.next) : (an.nextHeavy || an.next);
         if (nx && !f.air && A(f)[nx]) return play(f, nx);
@@ -222,7 +232,8 @@
     }
     // grounded, free
     if (press('up')) { f.jumpDir = I[fwd] ? 1 : I[bwd] ? -1 : 0; return play(f, 'jump'); }
-    if (press('special')) { const sp = I.down && A(f).special2 ? 'special2' : 'special'; if (A(f)[sp]) return play(f, sp); }
+    if (trySuper(f, press)) return;
+    if (press('special')) { const sp = specialOf(f); if (A(f)[sp]) return play(f, sp); }
     if (I.down) {
       if (press('down') && f.swordLost && pickUpSword(f)) { play(f, 'crouch'); return; }
       if (press('light')) return play(f, 'crouchLight');
@@ -348,7 +359,7 @@
     for (const p of sim.projs) {
       if (p.dead) continue;
       const def = sim.fighters[1 - p.owner.slot];
-      const hb = p.kind === 'shot' ? [p.x - 14, G - p.y - 10, p.x + 14, G - p.y + 10] : [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
+      const hb = p.kind === 'shot' ? [p.x - 26, G - p.y - 13, p.x + 26, G - p.y + 13] : [p.x - 11, G - p.y - 9, p.x + 11, G - p.y + 9];
       const hz = hurtboxes(def);
       const zones = Object.keys(hz).filter((z) => overlap(hb, hz[z]));
       if (!zones.length || cur(def).inv) continue;
@@ -362,6 +373,7 @@
     const dmg = fr.dmg * att.dmgMul * def.defMul;
     const wasHurt = def.stun > 0 || ['hurt', 'hurtLow', 'down'].includes(def.anim) || def.air;
     def.hp = Math.max(0, def.hp - dmg);
+    att.meter = Math.min(100, (att.meter || 0) + 9); def.meter = Math.min(100, (def.meter || 0) + 5);
     att.combo = wasHurt ? att.combo + 1 : 1; att.comboT = 900;
     if (att.combo >= 2) sim.comboText(att, att.combo);
     def.freeze = fr.kd ? 7 : 4; att.freeze = fr.kd ? 6 : 3;
@@ -478,6 +490,7 @@
       return;
     }
     // in range
+    if (f.meter >= 100 && A(f).super && d < 84 && r < 0.5) { I.sup = true; hold({}, 3); return; }
     const p = rnd();
     if (p < 0.1 && d < 44 && A(f).throw && !foe.air) { I[dir] = true; I.heavy = true; hold({ [dir]: true }, 4); }
     else if (p < 0.34) { I.light = true; hold({ light: false }, 14); ai.chain = 3; }
@@ -539,6 +552,7 @@
     }
     sim.projs = []; sim.props = []; sim.particles = []; sim.texts = [];
     for (const f of sim.fighters) { f.swordLost = false; f.held = null; }
+    if (sim.round === 1) for (const f of sim.fighters) f.meter = 0;
     sim.timer = 60000; sim.phase = 'intro'; sim.introT = 0; sim.slow = 1; sim.camX = W / 2 - VW / 2; sim.camTarget = sim.camX;
   }
 
@@ -635,8 +649,8 @@
 
   // ------------------------------------------------------------ input
   const KEYS = {
-    ArrowLeft: [0, 'left'], ArrowRight: [0, 'right'], ArrowUp: [0, 'up'], ArrowDown: [0, 'down'], z: [0, 'light'], x: [0, 'heavy'], c: [0, 'special'],
-    a: [1, 'left'], d: [1, 'right'], w: [1, 'up'], s: [1, 'down'], j: [1, 'light'], k: [1, 'heavy'], l: [1, 'special'],
+    ArrowLeft: [0, 'left'], ArrowRight: [0, 'right'], ArrowUp: [0, 'up'], ArrowDown: [0, 'down'], z: [0, 'light'], x: [0, 'heavy'], c: [0, 'special'], v: [0, 'sup'],
+    a: [1, 'left'], d: [1, 'right'], w: [1, 'up'], s: [1, 'down'], j: [1, 'light'], k: [1, 'heavy'], l: [1, 'special'], i: [1, 'sup'],
   };
   const held = [{}, {}], stick = [{}, {}]; // stick: a press that lasts at least one simulation tick
   let uiPress = null;
@@ -665,7 +679,7 @@
   document.querySelectorAll('[data-press]').forEach((b) => b.addEventListener('click', () => { ensureAudio(); uiPress = { slot: 0, key: b.dataset.press }; }));
 
   function applyInput() {
-    for (const f of sim.fighters) if (!f.ai) { for (const k of ['left', 'right', 'up', 'down', 'light', 'heavy', 'special']) { f.input[k] = !!held[f.slot][k] || !!stick[f.slot][k]; stick[f.slot][k] = false; } }
+    for (const f of sim.fighters) if (!f.ai) { for (const k of ['left', 'right', 'up', 'down', 'light', 'heavy', 'special', 'sup']) { f.input[k] = !!held[f.slot][k] || !!stick[f.slot][k]; stick[f.slot][k] = false; } }
   }
 
   // ------------------------------------------------------------ screens
@@ -748,7 +762,7 @@
   function shotImg(face, t) {
     const key = face + ':' + ((t >> 2) & 1);
     if (shotImgs[key]) return shotImgs[key];
-    const part = window.FX.sheetPart('jk2', 32);
+    const part = window.FX.sheetPart('jk4', 0, { whole: true, sc: 2 });
     let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
     for (let y = 0; y < part.h; y++) for (let x = 0; x < part.w; x++) if (part.px[y * part.w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const w = x1 - x0 + 1, h = y1 - y0 + 1, c = new Uint32Array(w * h);
@@ -757,7 +771,7 @@
       const v = part.px[(y + y0) * part.w + (x + x0)];
       if (!v) continue;
       if (flicker && ((x + y) & 3) === 0) continue;
-      c[y * w + (face > 0 ? w - 1 - x : x)] = v;
+      c[y * w + (face > 0 ? x : w - 1 - x)] = v;
     }
     return (shotImgs[key] = toCanvas(c, w, h));
   }
@@ -874,6 +888,8 @@
       const right = f.slot === 1;
       const x0 = right ? VW - 12 - 42 - BW : 12 + 42;
       bar(x0, 10, BW, 9, f.hp / f.maxhp, f.hp / f.maxhp > 0.3 ? '#ffd24a' : '#ff5a5a', '#5a1a24', right);
+      const full = (f.meter || 0) >= 100;
+      bar(right ? x0 + BW - 70 : x0, 20, 70, 2, (f.meter || 0) / 100, full && (sim.t >> 7) % 2 ? '#ffffff' : '#7dffef', '#22304a', right);
       const pr = portrait(f);
       lx.drawImage(pr, right ? VW - 12 - 38 : 12, 4);
       f.C.R.PARTS.forEach((P, i) => {
