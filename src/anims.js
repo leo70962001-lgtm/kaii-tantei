@@ -144,13 +144,13 @@
       { d: 70, air: 'fly', ghost: true, p: Object.assign({ flash: 1, lean: -2, face: 'hurt', head: [-1, 0], hair: hp(0.1, { base: S.hair.base - 60, droop: 10, wave: 1.5 }) }, V.hurtPose || {}) },
       { d: 70, air: 'fly', ghost: true, p: { flash: 0, rot: -40, fF: [10, -8], fN: [4, -6] } },
       { d: 80, air: 'fly', ghost: true, p: { rot: -75, hair: hp(0.3, { base: 20 }) } },
-      { d: 90, air: 'land', sfx: 'slam', shake: 2, lift: -16, p: { rot: -90, hair: hp(0.5, { base: 0, droop: 0, wave: 0.4 }) }, fx: [dust(-14, 14, 0.15, 4)] },
-      { d: 90, air: 'land', lift: -14, p: { rot: -84 }, fx: [dust(-14, 14, 0.6, 4)] },
-      { d: 400, air: 'lying', lift: -16, inv: true, p: { rot: -90, face: 'calm', flash: 0 } },
+      { d: 90, air: 'land', sfx: 'slam', shake: 2, lift: -38, p: { rot: -90, hair: hp(0.5, { base: 0, droop: 0, wave: 0.4 }) }, fx: [dust(-14, 14, 0.15, 4)] },
+      { d: 90, air: 'land', lift: -36, p: { rot: -84 }, fx: [dust(-14, 14, 0.6, 4)] },
+      { d: 400, air: 'lying', lift: -38, inv: true, p: { rot: -90, face: 'calm', flash: 0 } },
     ], S, keys) };
     A.getup = { label: '起身', frames: seq([
-      { d: 120, inv: true, lift: -12, p: { rot: -60, face: 'hurt', fN: [-6, -4], fF: [6, -6], hair: hp(0.2, { base: 40, droop: 60 }) } },
-      { d: 110, inv: true, lift: -4, p: Object.assign({ rot: -20 }, V.crouch, { face: 'normal' }) },
+      { d: 120, inv: true, lift: -24, p: { rot: -60, face: 'hurt', fN: [-6, -4], fF: [6, -6], hair: hp(0.2, { base: 40, droop: 60 }) } },
+      { d: 110, inv: true, lift: -7, p: Object.assign({ rot: -20 }, V.crouch, { face: 'normal' }) },
       { d: 110, inv: true, lift: 0, p: Object.assign({}, S, { lean: 1, hair: hp(0.5) }) },
     ], S, keys) };
     A.lose = { label: '敗北', loop: true, frames: seq([{ d: 300, p: V.losePose || V.crouch }, { d: 300, p: Object.assign({}, V.losePose || V.crouch, { hair: hp(0.5) }) }], S, keys) };

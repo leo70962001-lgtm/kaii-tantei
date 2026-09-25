@@ -21,8 +21,8 @@
   }
   :root[data-theme="light"] { --paper: #eceff7; --panel: #f8f9fd; --ink: #161b3d; --ink-2: #4c5582; --rule: #cfd5e8; --shu: #c32f3c; --shu-ink: #fff; --kin: #d9862a; --plate: #1f2550; --plate-top: #3b4580; --plate-ink: #eef1fb; --stage-edge: #0d1030; --focus: #3764bf; color-scheme: light; }
   html, body { background: var(--paper); margin: 0; }
-  body { color: var(--ink); font: 15px/1.6 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; padding: 16px 16px 40px; }
-  .wrap { max-width: 1180px; margin: 0 auto; }
+  body { color: var(--ink); font: 15px/1.6 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; padding: 10px 10px 24px; }
+  .wrap { max-width: 1460px; margin: 0 auto; }
   header.top { display: grid; gap: 6px; margin-bottom: 14px; }
   .brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .seal { width: 40px; height: 40px; display: grid; place-items: center; background: var(--shu); color: var(--shu-ink); font: 22px/1 "DotGothic16", monospace;
@@ -30,7 +30,7 @@
   h1 { margin: 0; font: 400 clamp(24px, 4vw, 34px)/1.1 "DotGothic16", "Noto Sans TC", monospace; letter-spacing: 0.06em; }
   .sub { margin: 0; color: var(--ink-2); max-width: 70ch; }
   .band { height: 8px; margin-top: 4px; background: repeating-linear-gradient(90deg, var(--shu) 0 16px, var(--kin) 16px 20px, #1b2150 20px 36px); }
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
   @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
   .stage { position: relative; width: 100%; background: var(--stage-edge); padding: 6px; box-sizing: border-box; display: grid; place-items: center; outline: none;
     clip-path: polygon(0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 6px), 0 calc(100% - 6px)); }
@@ -59,11 +59,6 @@
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
-    <div class="brand"><span class="seal" aria-hidden="true">鬼</span><h1>怪異探偵部　PART BREAK</h1></div>
-    <p class="sub">東京鬼高校・怪異探偵部の三人——改造人間のJK、吸血鬼のニート、狼人のメイド——手繪點陣格鬥。每個角色有四個可破壞部位：打壞義手就打不出重拳、打碎筆電她會暴走、撕掉女僕的封印緞帶……狼會出來。</p>
-    <div class="band" aria-hidden="true"></div>
-  </header>
   <div class="layout">
     <section aria-label="遊戲畫面">
       <div class="stage" id="stage" tabindex="0" aria-label="格鬥遊戲畫面，用鍵盤操作">
@@ -74,37 +69,6 @@
         <div class="grp"><button type="button" data-hold="up">跳</button><button type="button" data-hold="light">小</button><button type="button" data-hold="heavy">大</button><button type="button" data-hold="special">必殺</button><button type="button" data-press="start">START</button></div>
       </div>
     </section>
-    <aside class="panel" aria-label="說明">
-      <div>
-        <h2>操作 1P</h2>
-        <dl class="keys">
-          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>移動／按住後退＝防禦。連按兩下前＝衝刺、後＝後跳</dd>
-          <dt><kbd>↑</kbd></dt><dd>跳躍（空中 Z＝空中義手、X＝空中斬）</dd>
-          <dt><kbd>↓</kbd></dt><dd>蹲下；↓Z 屈み義手、↓X 足払い（下段，要蹲防）</dd>
-          <dt><kbd>Z</kbd> <kbd>X</kbd></dt><dd>Z 義手連段：ジャブ→ストレート→横薙ぎ→ハイキック；X 刀連段：袈裟斬→刺突→回天斬（兩條連段可互接）。貼身按 →+X＝投げ</dd>
-          <dt><kbd>C</kbd></dt><dd>居合・一閃；↓C＝義手砲（光彈）。連段中可取消</dd>
-          <dt><kbd>G</kbd></dt><dd>切換 WebGL（three.js：視差、發光、鏡頭）／2D 畫布</dd>
-          <dt><kbd>B</kbd></dt><dd>切換骨骼綁定紙娃娃（站姿圖零件綁在骨架上、60fps 補間）／原本的逐格繪製</dd>
-          <dt><kbd>Enter</kbd></dt><dd>開始／決定　<kbd>P</kbd> 暫停　<kbd>M</kbd> 音效</dd>
-        </dl>
-      </div>
-      <div>
-        <h2>操作 2P</h2>
-        <dl class="keys">
-          <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>移動</dd>
-          <dt><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></dt><dd>小／大／必殺</dd>
-        </dl>
-      </div>
-      <div>
-        <h2>部位破壞</h2>
-        <div class="cast">
-          <div class="c"><i style="background:#ff5a6e"></i><div><b>改造人間（JK）170cm</b>義手・義足・刀・制服。義手壞了重拳變肩撞；義足壞了變慢；刀斷了變短。刀只在她攻擊時被打才會受損。</div></div>
-          <div class="c"><i style="background:#ffd24a"></i><div><b>吸血鬼（ニート）152cm</b>眼鏡・筆電・拖鞋・呆毛。筆電碎了就改用牙齒和爪子，速度變快。必殺技把使い魔（蝙蝠貓）射出去。</div></div>
-          <div class="c"><i style="background:#c9a6ff"></i><div><b>狼人（メイド）165cm</b>頭飾・圍裙・封印・皮鞋。封印緞帶被打斷就會狼化：體型變大、攻擊變重、回一點血。</div></div>
-        </div>
-      </div>
-      <p class="notes">被打中的部位（頭／身／腳）決定哪個零件受損；血條下面的圖示變黃是快壞、紅叉是已破壞。每破壞一個部位額外扣 4 點 HP。兩勝制、每回合 60 秒。</p>
-    </aside>
   </div>
 </div>
 <script src="src/px.js"></script>

@@ -74,6 +74,7 @@
   const T = (x, y) => [1, 0, 0, 1, x, y];
   const R = (a) => [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0];
   const S = (sx, sy) => [sx, 0, 0, sy, 0, 0];
+  const apply = (m, p) => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
   // a part hung from joint A: rotated by `ang` about its pivot, optionally stretched along its rest axis
   function hang(part, A, ang, stretch) {
     return mul(mul(mul(T(A[0], A[1]), R(ang)), S(1, stretch || 1)), T(-part.pivot[0], -part.pivot[1]));
@@ -84,7 +85,7 @@
     const vx = B[0] - A[0], vy = B[1] - A[1];
     const ang = Math.atan2(vy, vx) - Math.atan2(ry, rx);
     const rl = Math.hypot(rx, ry) || 1, vl = Math.hypot(vx, vy);
-    const k = Math.max(0.6, Math.min(1.6, vl / rl));
+    const k = Math.max(0.82, Math.min(1.3, vl / rl));
     // stretch along the rest axis: rotate into the axis frame, scale, rotate back
     const ra = Math.atan2(ry, rx);
     const st = mul(mul(R(ra), S(k, 1)), R(-ra));
@@ -124,12 +125,17 @@
     const push = (part, m) => out.push({ img: img(part), m, w: part.w, h: part.h });
     const br = broken || {};
     const hair = p.hair || {};
+    const lag = p.lag || 0;   // motion lag (rad): the hair and skirt trail behind when she moves
     const sway = rad(((hair.base ?? 106) - 106) * 0.35 + Math.sin((hair.phase || 0) * Math.PI * 2) * 3 * (hair.wave || 1));
+    const headPart = p.face === 'hurt' ? P.headHurt : p.face === 'shout' ? P.headShout : P.head;
     const swordAng = rad(p.sw ?? 0);
     const swordPart = p.noBlade ? P.hilt : br.blade ? P.swordShort : P.sword;
     const drawSword = !(p.grip === 'S' || p.noSword);
     // back to front
-    push(P.hairB, hang(P.hairB, [J.neck[0] - 1, J.neck[1] + 1], sway));
+    // back hair: the upper mass swings from the head, the lower one hangs from its tip and swings more
+    const m1 = hang(P.hairB1, [J.neck[0] - 1, J.neck[1] + 1], sway * 0.6 + lag);
+    push(P.hairB1, m1);
+    push(P.hairB2, hang(P.hairB2, apply(m1, P.hairB1.tip), sway * 1.1 + lag * 1.7));
     push(P.uArmF, span(P.uArmF, J.shF, J.eF));
     push(P.fArmF, span(P.fArmF, J.eF, J.hF));
     push(P.handF, hang(P.handF, J.hF, 0));
@@ -142,13 +148,19 @@
     push(P.footN, hang(P.footN, J.fN, 0));
     // torso shears with the lean (the rig shifts rows above the hip); the skirt follows the hips
     const lean = p.lean || 0, k = -lean / Math.max(1, P.torso.pivot[1]);
-    push(P.skirt, mul(mul(T(J.hip[0], J.hip[1]), [1, 0, k * 0.5, 1, 0, 0]), T(-P.skirt.pivot[0], -P.skirt.pivot[1])));
+    const swing = (p.skirtSwing || 0) * 0.02 + lag * 0.35;
+    push(P.skirt, mul(mul(mul(T(J.hip[0], J.hip[1]), R(swing)), [1, 0, k * 0.5, 1, 0, 0]), T(-P.skirt.pivot[0], -P.skirt.pivot[1])));
     push(P.torso, mul(mul(T(J.hip[0], J.hip[1]), [1, 0, k, 1, 0, 0]), T(-P.torso.pivot[0], -P.torso.pivot[1])));
     const head = p.head || [0, 0];
-    push(P.head, hang(P.head, [J.neck[0] + head[0], J.neck[1] + head[1]], rad(lean * 0.6)));
+    push(headPart, hang(headPart, [J.neck[0] + head[0], J.neck[1] + head[1]], rad(lean * 0.6)));
     push(P.hairF, hang(P.hairF, [J.neck[0] + head[0] - 5, J.neck[1] + head[1] - 2], sway * 0.5));
     push(P.uArmN, span(P.uArmN, J.shN, J.eN));
-    if (!br.arm) push(P.fArmN, span(P.fArmN, J.eN, J.hN));
+    if (!br.arm) {
+      push(P.fArmN, span(P.fArmN, J.eN, J.hN));
+      // the fist turns with the forearm
+      const fa = Math.atan2(J.hN[1] - J.eN[1], J.hN[0] - J.eN[0]) - Math.atan2(P.fArmN.tip[1] - P.fArmN.pivot[1], P.fArmN.tip[0] - P.fArmN.pivot[0]);
+      push(P.handN, hang(P.handN, J.hN, fa));
+    }
     if (drawSword && p.swordLayer === 'front') push(swordPart, hang(swordPart, J.hF, swordAng));
     // knockdown spin: the rig turns the whole body about a point above the hip
     if (p.rot) {
@@ -157,5 +169,5 @@
     }
     return out;
   }
-  root.PUPPET = { build, skeleton, place, mul, T, parts: () => parts };
+  root.PUPPET = { build, skeleton, place, mul, T, R, apply, parts: () => parts };
 })(typeof window !== 'undefined' ? window : globalThis);

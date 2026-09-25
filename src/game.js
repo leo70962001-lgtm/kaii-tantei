@@ -11,7 +11,7 @@
   const ROSTER = [
     { id: 'jk', R: window.JK, forms: { jk: ANIMS.jk() }, form0: 'jk', color: '#ff5a6e',
       stats: { walk: 3.1, back: 2.4, dash: 7.6, jumpV: 9.4, hp: 100, def: 0.66, dmg: 1 },
-      onBreak: { arm: (f) => { f.dmgMul *= 0.9; }, leg: (f) => { f.speedMul *= 0.75; f.jumpMul *= 0.85; }, blade: (f) => { f.dmgMul *= 0.85; }, uniform: (f) => { f.defMul *= 1.1; } },
+      onBreak: { arm: (f) => { f.dmgMul *= 0.9; }, leg: (f) => { f.speedMul *= 0.75; f.jumpMul *= 0.85; }, blade: (f) => { f.dmgMul *= 0.85; loseSword(f); }, uniform: (f) => { f.defMul *= 1.1; } },
     },
     { id: 'vamp', R: window.VAMP, forms: { vamp: ANIMS.vamp() }, form0: 'vamp', color: '#ffd24a',
       stats: { walk: 3.4, back: 2.7, dash: 8.1, jumpV: 9.7, hp: 92, def: 0.68, dmg: 1 },
@@ -50,6 +50,7 @@
     const fr = an.frames[fi];
     const pose = Object.assign({}, fr.pose, { broken: brokenOf(f) });
     if (f.batOut) pose.noBat = true;
+    if (f.swordLost) pose.noSword = true;
     if (f.face_ && pose.face === 'normal') pose.face = f.face_;
     const b = f.C.R.render(pose, {});
     const fl = PX.flipX(b);
@@ -223,6 +224,7 @@
     if (press('up')) { f.jumpDir = I[fwd] ? 1 : I[bwd] ? -1 : 0; return play(f, 'jump'); }
     if (press('special')) { const sp = I.down && A(f).special2 ? 'special2' : 'special'; if (A(f)[sp]) return play(f, sp); }
     if (I.down) {
+      if (press('down') && f.swordLost && pickUpSword(f)) { play(f, 'crouch'); return; }
       if (press('light')) return play(f, 'crouchLight');
       if (press('heavy')) return play(f, A(f).crouchHeavy ? 'crouchHeavy' : 'crouchLight');
       const blk = I[bwd] && o.threat;
@@ -411,6 +413,22 @@
     f.batOut = true;
     sim.projs.push({ owner: f, x: f.x + 29 * f.face, y: 65, vx: 6.1 * f.face, life: 70, flap: 0, t: 0 });
   }
+  // the katana leaves her hand: a spinning prop that lands blade-first and waits to be picked up (↓ beside it)
+  function loseSword(f) {
+    if (f.swordLost) return;
+    f.swordLost = true;
+    sim.props.push({ kind: 'sword', owner: f, x: f.x + 6 * f.face, y: 72, vx: -f.face * (2.4 + rnd() * 1.6) * 1.6, vy: 6.5 + rnd() * 2, rot: -40, vr: -18 * f.face, landed: false, dead: false, t: 0 });
+    sim.callout('刀が飛んだ！', '#9fe3ff', 900);
+  }
+  function pickUpSword(f) {
+    const sw = sim.props.find((p) => p.kind === 'sword' && p.owner === f && p.landed && !p.dead && Math.abs(p.x - f.x) < 28);
+    if (!sw) return false;
+    sw.dead = true; f.swordLost = false;
+    const P = f.parts.blade; if (P) { P.broken = false; P.hp = Math.max(P.hp, P.max * 0.5); }
+    f.dmgMul /= 0.85; f.breaks = Math.max(0, f.breaks - 1);
+    sim.callout('刀を拾った', f.C.color, 800); sfx('click');
+    return true;
+  }
   function spawnShot(f) {
     sim.projs.push({ owner: f, kind: 'shot', x: f.x + 36 * f.face, y: 60, vx: 6.6 * f.face, life: 56, flap: 0, t: 0 });
   }
@@ -447,6 +465,10 @@
     // defend
     if (foeAtt && d < 126 && r < 0.35 + 0.45 * lvl) { hold({ [away]: true, down: rnd() < 0.4 }, 10 + Math.floor(rnd() * 10)); return; }
     if (foe.anim === 'down' && d < 90) { hold({ [away]: true }, 10); return; }
+    if (f.swordLost && !foeAtt) {
+      const sw = sim.props.find((p) => p.kind === 'sword' && p.owner === f && p.landed && !p.dead);
+      if (sw) { const sd = sw.x - f.x; if (Math.abs(sd) < 22) { I.down = true; hold({ down: true }, 4); return; } if (Math.abs(sd) < 170 && r < 0.7) { hold({ [sd > 0 ? 'right' : 'left']: true }, 8); return; } }
+    }
     if (d > reach + 25) {
       if (r < 0.06 * lvl && f.C.id !== 'maid') { I.special = true; if (A(f).special2 && rnd() < 0.7) { I.down = true; hold({ down: true }, 6); } else hold({}, 6); return; }
       if (r < 0.14) { I[dir] = true; hold({ [dir]: true }, 6); ai.tapTwice = 1; return; }
@@ -475,7 +497,7 @@
 
   // ------------------------------------------------------------ simulation state
   const sim = {
-    t: 0, phase: 'title', fighters: [], projs: [], particles: [], texts: [], camX: 80, camTarget: 80, shake: 0, timer: 60000, round: 1, mode: '1p', sel: [0, 0], selStep: 0, koT: 0, slow: 1, level: 0.6,
+    t: 0, phase: 'title', fighters: [], projs: [], props: [], particles: [], texts: [], camX: 80, camTarget: 80, shake: 0, timer: 60000, round: 1, mode: '1p', sel: [0, 0], selStep: 0, koT: 0, slow: 1, level: 0.6,
     introT: 0, resultT: 0, winner: null, demoT: 0,
     callout(text, color, ms, f) { this.texts.push({ text, color, t: ms, life: ms, f, kind: 'big' }); },
     comboText(f, n) { this.texts = this.texts.filter((t) => !(t.kind === 'combo' && t.f === f)); this.texts.push({ text: n + ' HITS', color: f.C.color, t: 800, life: 800, f, kind: 'combo' }); },
@@ -515,7 +537,8 @@
       if (f.ai) f.ai.wait = 0;
       play(f, 'idle');
     }
-    sim.projs = []; sim.particles = []; sim.texts = [];
+    sim.projs = []; sim.props = []; sim.particles = []; sim.texts = [];
+    for (const f of sim.fighters) { f.swordLost = false; f.held = null; }
     sim.timer = 60000; sim.phase = 'intro'; sim.introT = 0; sim.slow = 1; sim.camX = W / 2 - VW / 2; sim.camTarget = sim.camX;
   }
 
@@ -560,6 +583,12 @@
         p.x += p.vx; p.t++;
         if (p.kind === 'shot') { p.y = 60; } else { p.flap = (p.t >> 3) & 1; p.y = 65 + Math.sin(p.t * 0.25) * 5 * (p.owner.blind ? 3 : 1); }
         if (--p.life <= 0 || p.x < sim.camX - 30 || p.x > sim.camX + VW + 30) p.dead = true;
+      }
+      for (const sw of sim.props) {
+        if (sw.dead || sw.landed) continue;
+        sw.x += sw.vx; sw.y += sw.vy; sw.vy -= 0.5; sw.rot += sw.vr; sw.t++;
+        if (sw.y <= 0) { sw.landed = true; sw.rot = sw.vx > 0 ? 58 : 122; sw.y = 60 * Math.sin(58 * Math.PI / 180) - 12; sfx('click'); sim.spark(sw.x, G, 'hit'); }
+        sw.x = clamp(sw.x, 30, W - 30);
       }
       for (const p of sim.projs) if (p.dead && p.owner.batOut) p.owner.batOut = false;
       sim.projs = sim.projs.filter((p) => !p.dead);
@@ -763,7 +792,7 @@
         if (puppet) {
           const sk = PUP.skeleton(an, f.fi, f.ft); f.sk = sk;
           const sh = [1, 0, -f.face * 0.5, -0.07, sx + 0.5 * f.face * lift, G + 0.07 * lift];
-          for (const it of PUP.place(sk.J, sk.p, 'dark', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(sh, right ? it.m : mirX(it.m)), a: 0.35 });
+          for (const it of PUP.place(sk.J, Object.assign({}, sk.p, { noSword: !!f.swordLost || sk.p.noSword, lag: f._lag || 0 }), 'dark', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(sh, right ? it.m : mirX(it.m)), a: 0.35 });
         } else list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - (right ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07], a: 0.35 });
       }
     }
@@ -784,6 +813,12 @@
     if (puppet) {
       const sk = f.sk && f.sk.an === an && f.sk.fi === f.fi && f.sk.ft === f.ft ? f.sk : PUP.skeleton(an, f.fi, f.ft);
       sk.an = an; sk.fi = f.fi; sk.ft = f.ft; f.sk = sk;
+      // motion lag: how fast the head moves forward this frame (world + pose), smoothed
+      const vx = (f.x - (f._lx ?? f.x)) * f.face + (sk.J.neck[0] - (f._ln ?? sk.J.neck[0]));
+      f._lx = f.x; f._ln = sk.J.neck[0];
+      const target = Math.max(-0.45, Math.min(0.45, vx * 0.05));
+      f._lag = (f._lag || 0) + (target - (f._lag || 0)) * 0.3;
+      sk.p = Object.assign({}, sk.p, { noSword: !!f.swordLost || sk.p.noSword, lag: f._lag });
       // reflection on the road, then the body, then the frame's effects (bloom sources) on top
       const rf = [1, 0, 0, -1, sx, 2 * G - sy];
       for (const it of PUP.place(sk.J, sk.p, 'cv', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(rf, right ? it.m : mirX(it.m)), a: 0.2 });
@@ -861,6 +896,13 @@
       if (p.dead) continue;
       if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t); list.push({ k: 'img', img: im, x: Math.round(p.x - camX - im.width / 2), y: Math.round(G - p.y - im.height / 2), a: 1, glow: true }); continue; }
       list.push({ k: 'img', img: batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), x: Math.round(p.x - camX - 12), y: Math.round(G - p.y - 7), a: 1 });
+    }
+    for (const sw of sim.props) {
+      if (sw.dead || !window.PUPPET) continue;
+      const part = window.PUPPET.build().sword, PUP = window.PUPPET;
+      const m = PUP.mul(PUP.mul(PUP.T(Math.round(sw.x - camX), Math.round(G - sw.y)), PUP.R(sw.rot * Math.PI / 180)), PUP.T(-part.pivot[0], -part.pivot[1]));
+      if (!sw.landed) list.push({ k: 'blob', x: Math.round(sw.x - camX), y: G - 2, w: 9 });
+      list.push({ k: 'skew', img: part.cv, m, a: 1 });
     }
     for (const p of sim.particles) {
       if (p.ring) { list.push({ k: 'ring', x: p.x - camX, y: p.y, r: p.r * (1.6 - p.life / 12), col: p.col, a: p.life / 12 }); continue; }
