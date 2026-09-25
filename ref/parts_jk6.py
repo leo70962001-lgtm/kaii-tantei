@@ -136,20 +136,20 @@ variant('headHurt', paint_hurt); variant('headShout', paint_shout)
 # front strands (over the near shoulder) and the back mass in two hanging pieces (upper from the head, lower from the upper)
 add('hairF', (11, 22, 19, 46), (16, 23), keep=lambda x, y, p: hair(p), ncol=4)
 add('hairB1', (27, 18, 47, 41), (28, 22), tip=(35, 40), keep=lambda x, y, p: hair(p) and not (x <= 30 and y <= 22), ncol=4)
-add('hairB2', (27, 38, 47, 64), (35, 40), keep=lambda x, y, p: hair(p), ncol=4)
+add('hairB2', (27, 38, 47, 64), (35, 40), keep=lambda x, y, p: hair(p) and not (43 <= y <= 59 and abs(x - (44 - (y - 44) * 0.5)) <= 2.2), ncol=4)
 # torso: collar, sailor top, scarf, midriff — the steel arm, its sleeve and the back hair are not part of it
 add('torso', (7, 21, 34, 50), (20, 50),
-    clear=lambda x, y, p: (x <= 19 and y >= 40 and chrome(p)) or (x <= 18 and 26 <= y <= 47 and not (x >= 14 and y <= 27) and not hair(p)),
+    clear=lambda x, y, p: (x <= 19 and y >= 40 and chrome(p)) or (x <= 18 and 26 <= y <= 47 and not (x >= 14 and y <= 27) and not hair(p)) or (x >= 32 and y >= 44 and skin(p)),
     inpaint=lambda x, y, p: p[3] == 0 and x <= 18 and 27 <= y <= 46 and x >= 12, ncol=None)
 # skirt over the hips
 add('skirt', (7, 47, 37, 72), (20, 50),
-    clear=lambda x, y, p: (x <= 18 and y <= 66 and (chrome(p) or sat(p) > 70)) or (x <= 17 and 55 <= y <= 66) or (x >= 30 and y <= 60 and hair(p)) or red(p) or (y >= 66 and skin(p)) or (x >= 34 and y <= 60),
+    clear=lambda x, y, p: (x <= 18 and y <= 66 and (chrome(p) or sat(p) > 70)) or (x <= 17 and 55 <= y <= 66) or (x >= 30 and y <= 60 and hair(p)) or red(p) or (y >= 66 and skin(p)) or (x >= 34 and y <= 60) or (x >= 31 and skin(p)),
     fill_right=None, tile=((19, 30), lambda x, y, p: p[3] == 0 and 8 <= x <= 18 and 48 <= y <= 70), ncol=6)
 # legs: near = the boot leg (image left), far = the chrome leg (image right)
 add('thighN', (8, 68, 22, 88), (15, 50), tip=(15, 84), extend_top=50, clear=lambda x, y, p: skirt(p) or blade(p) or skin(p) and y < 70, ncol=8)
-add('shinN', (8, 82, 22, 110), (15, 84), tip=(13, 108), clear=lambda x, y, p: blade(p), capped=True, ncol=8)
+add('shinN', (8, 82, 22, 110), (15, 84), tip=(15, 105), clear=lambda x, y, p: blade(p), capped=True, ncol=8)
 add('thighF', (22, 68, 36, 88), (25, 50), tip=(28, 84), extend_top=50, extend='tile', clear=lambda x, y, p: skirt(p) or hair(p), ncol=8)
-add('shinF', (22, 82, 36, 110), (28, 84), tip=(28, 108), capped=True, ncol=7)
+add('shinF', (22, 82, 36, 110), (28, 84), tip=(27, 103), capped=True, ncol=7)
 # steel arm: the sleeve puff goes with the upper arm, the forearm ends in the fist
 add('uArmN', (7, 26, 19, 46), (12, 30), tip=(13, 43), clear=lambda x, y, p: hair(p) or red(p) or (y >= 44 and not chrome(p)), inpaint=lambda x, y, p: p[3] == 0 and 28 <= y <= 42 and 9 <= x <= 17, ncol=7)
 add('fArmN', (9, 42, 19, 58), (13, 43), tip=(14, 56), clear=lambda x, y, p: hair(p) or skirt(p) or (y <= 45 and white(p)) or (x >= 17 and y >= 50 and not chrome(p)), capped=True, ncol=8)
@@ -194,7 +194,7 @@ def katana(blade):
     return im
 for name, blade in (('sword', 56), ('swordShort', 22), ('hilt', 0)):
     im = katana(blade); im.save('part_%s.png' % name)
-    parts[name] = {'w': im.width, 'h': im.height, 'd': base64.b64encode(im.tobytes()).decode('ascii'), 'pivot': [6, 3], 'name': name}
+    parts[name] = {'w': im.width, 'h': im.height, 'd': base64.b64encode(im.tobytes()).decode('ascii'), 'pivot': [11, 3], 'name': name}
     if blade: parts[name]['tip'] = [im.width - 2, 3]
 js = ('// jk-parts.js — the JK standing picture cut into cutout-puppet parts (ref/parts_jk.py): RGBA base64,\n'
       '// pivot = the joint the part hangs from, tip = its far joint (limbs), in part pixels. Facing +x.\n'

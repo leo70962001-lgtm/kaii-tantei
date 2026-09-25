@@ -40,7 +40,7 @@
     M.chrome = material('jk_chrome', ['#ffffff', '#dfe9f2', '#a9b3c4', '#6f7591', '#4a4868'], '#12162a', { softInk: '#6f7591' });
     M.stocking = material('jk_stock', ['#6a6d80', '#41434f', '#2c2e38', '#1d1e26', '#111117'], '#050610', { softInk: '#1d1e26' });
     const KEY = R.KEY;
-    const SPEC = specOf(C, { thigh: 34, shin: 24, upper: 13, fore: 13, headH: 26, headW: 22, bodyW: 12 });
+    const SPEC = specOf(C, { thigh: 34, shin: 21, upper: 13, fore: 13, headH: 26, headW: 22, bodyW: 12 });
     const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 60 });
     // the puppet (src/puppet.js) binds picture parts to this same skeleton
     R.castSpec = SPEC; R.castDef = DEF; R.solve = (pose, O) => RIG.solve(Object.assign({}, DEF, pose), SPEC, O || [0, 0]);
@@ -61,7 +61,7 @@
         RIG.cyl(buf, M.skin, J.shF, J.eF, (t) => 3.2 - t * 0.4, { look: 'skin' });
         RIG.cyl(buf, M.skin, J.eF, J.hF, (t) => 2.8 - t * 0.3, { look: 'skin' });
         RIG.place(buf, M.skin, p.grip === 'S' || p.noSword ? HAND : FIST, KEY, J.hF, [3, 3]);
-        if (p.swordLayer === 'back') sword(buf, J.hF, p, br);
+        if (p.swordLayer === 'back' || p.swordLayer === 'mid') sword(buf, J.hF, p, br);
         // far leg: the chrome prosthetic (plates, a knee ring), its boot from the sheet
         chromeLeg(buf, J.hipF, J.kF, J.fF, br.leg);
         // near leg: the black thigh-high, the loafer from the sheet

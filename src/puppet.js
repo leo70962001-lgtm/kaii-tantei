@@ -142,13 +142,16 @@
     push(P.uArmF, span(P.uArmF, J.shF, J.eF));
     push(P.fArmF, span(P.fArmF, J.eF, J.hF));
     push(P.handF, hang(P.handF, J.hF, 0));
-    if (drawSword && p.swordLayer !== 'front') push(swordPart, hang(swordPart, J.hF, swordAng));
-    push(P.thighF, span(P.thighF, J.hipF, J.kF));
-    push(P.shinF, span(P.shinF, J.kF, J.fF));
-    if (!br.leg) push(P.footF, hang(P.footF, J.fF, 0));
+    // sword layers: 'back' behind both legs, 'mid' between them (the picture: in front of the back leg, behind
+    // the chrome leg), 'front' over everything; the back (boot) leg is drawn first, the chrome leg over it
+    if (drawSword && p.swordLayer === 'back') push(swordPart, hang(swordPart, J.hF, swordAng));
     push(P.thighN, span(P.thighN, J.hipN, J.kN));
     push(P.shinN, span(P.shinN, J.kN, J.fN));
     push(P.footN, hang(P.footN, J.fN, 0));
+    if (drawSword && (p.swordLayer === 'mid' || !p.swordLayer)) push(swordPart, hang(swordPart, J.hF, swordAng));
+    push(P.thighF, span(P.thighF, J.hipF, J.kF));
+    push(P.shinF, span(P.shinF, J.kF, J.fF));
+    if (!br.leg) push(P.footF, hang(P.footF, J.fF, 0));
     // torso shears with the lean (the rig shifts rows above the hip); the skirt follows the hips
     const rq = 1 / (P.torso.res || 1), lean = p.lean || 0, k = -lean * (P.torso.res || 1) / Math.max(1, P.torso.pivot[1]);
     const swing = (p.skirtSwing || 0) * 0.02 + lag * 0.35;

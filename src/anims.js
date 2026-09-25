@@ -166,9 +166,11 @@
   // Poses follow her Gemini action sheets (ref/jk_actions2.jpg = 突き / 蹴り / 屈み / 連段 / 居合 / 義手砲,
   // ref/jk_actions3.jpg = 待機・移動 / 連段 / 跳攻 / 特殊・投げ / 受け・被撃・倒れ / 勝敗): the sword rides
   // low behind the hip, punches and kicks come from the steel arm and the chrome leg, sword cuts lunge deep.
+  // (world = x*1.8, (y-11)*1.615 for joints, (y-13)*1.615 for hands, y*1.615 for feet: the picture's hip (-1,-63),
+  //  wrists (-7,-57) steel / (15,-59) sword, ankles (-6,-8) / (6,-10), blade down-back through the legs)
   const JK_S = {
-    hip: [0, -27], lean: 0, fN: [-9, -2], fF: [11, -2], feetN: 'flat', feetF: 'flat',
-    hN: [-5, -25], hF: [-6, -24], sw: 62, grip: 'F', swordLayer: 'back', noBlade: false, face: 'normal', head: [0, 0], rot: 0,
+    hip: [-0.5, -28], lean: 0, fN: [-3.3, -5], fF: [3.3, -6.2], feetN: 'flat', feetF: 'flat',
+    hN: [-3.9, -22.3], hF: [8.3, -23.5], sw: 122, grip: 'F', swordLayer: 'mid', noBlade: false, face: 'normal', head: [0, 0], rot: 0,
     hair: { base: 106, droop: 92, wave: 1, phase: 0, len: 32 }, tail: {},
   };
   const JK_KEYS = ['hF', 'sw'];
@@ -182,7 +184,7 @@
       stride: 9,
       breath: {},
       // walking: the sword hangs low behind the hip, the body leans in (sheet B row 1)
-      walkHands: (sw, back) => ({ hN: [-6 + Math.round(sw * 1.5), -26], hF: [-5 + Math.round(sw * 0.7), -25], sw: 124 + Math.round(sw * 5), swordLayer: 'back', lean: back ? -1 : 2 }),
+      walkHands: (sw, back) => ({ hN: [-4 + Math.round(sw * 1.5), -23], hF: [8 + Math.round(sw * 0.7), -24], sw: 122 + Math.round(sw * 5), swordLayer: 'back', lean: back ? -1 : 2 }),
       dashHands: { hN: [-9, -24], hF: [-8, -20], sw: 160, swordLayer: 'back' },
       crouch: { hip: [1, -16], lean: 3, fN: [-10, -2], fF: [12, -2], hN: [-2, -15], hF: [-4, -14], sw: 162, swordLayer: 'back', head: [1, 1] },
       // guard: the steel forearm up in front of the face, the sword kept low (sheet B row 5)
@@ -212,10 +214,12 @@
     };
     const A = movement(JK_S, V, JK_KEYS);
     const S = JK_S, K = JK_KEYS;
-    // stance: the standing picture itself
+    // stance: the standing picture, assembled from its own parts, breathing
     A.idle = { label: '構え', loop: true, frames: seq([
-      { d: 420, p: { full: true } },
-      { d: 420, p: { full: true, dy: 1 } },
+      { d: 260, p: { hair: hp(0) } },
+      { d: 260, p: { hip: [S.hip[0], S.hip[1] + 0.5], hair: hp(0.25) } },
+      { d: 260, p: { hip: [S.hip[0], S.hip[1] + 1], hN: [S.hN[0], S.hN[1] + 0.6], hF: [S.hF[0], S.hF[1] + 0.6], hair: hp(0.5) } },
+      { d: 260, p: { hip: [S.hip[0], S.hip[1] + 0.5], hN: S.hN, hF: S.hF, hair: hp(0.75) } },
     ], S, K) };
     A.idle2 = { label: '構え直し', frames: seq([
       { d: 140, p: { hF: [2, -34], sw: 175, swordLayer: 'front', hN: [-6, -27], eN: null, head: [0, 0], hair: hp(0.1, { base: 110 }) } },
