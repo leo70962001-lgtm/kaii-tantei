@@ -168,7 +168,7 @@
   }
   function enter(f) {
     const fr = cur(f);
-    if (fr.ghost) { f.trail.push({ an: A(f)[f.anim], fi: f.fi, x: f.x, y: f.y + (fr.lift || 0), face: f.face, t: sim.t, mask: maskOf(f) }); if (f.trail.length > 5) f.trail.shift(); }
+    if (fr.ghost) { f.trail.push({ an: A(f)[f.anim], fi: f.fi, x: f.x, y: f.y + (fr.lift || 0), face: f.face, t: sim.t, mask: maskOf(f), sk: f.sk || null }); if (f.trail.length > 5) f.trail.shift(); }
     if (fr.dx) f.x = clamp(f.x + fr.dx * f.face, 24, W - 24);
     if (fr.shake) sim.shake = Math.max(sim.shake, fr.shake);
     if (fr.sfx) sfx(fr.sfx);
@@ -616,6 +616,7 @@
     ensureAudio();
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (k === 'g' && !e.repeat && glc) { wantGL = !wantGL; if (!wantGL) gl = null; glc.style.display = wantGL ? '' : 'none'; }
+    if (k === 'b' && !e.repeat) usePuppet = !usePuppet;
     const m = KEYS[k];
     if (m) { e.preventDefault(); if (!held[m[0]][m[1]]) { uiPress = uiPress || { slot: m[0], key: m[1] }; stick[m[0]][m[1]] = true; } held[m[0]][m[1]] = true; }
     if (e.key === 'Enter') { e.preventDefault(); uiPress = { slot: 0, key: 'start' }; }
@@ -686,6 +687,7 @@
   const ctx = cv.getContext('2d');
   const glc = document.getElementById('gl');
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
+  let usePuppet = !/\bpuppet=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
     try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35 }); }
@@ -750,19 +752,48 @@
     const sx = Math.round(f.x - camX), sy = Math.round(G - lift);
     const oxL = S.w - 1 - S.ox;
     const right = f.face > 0;
+    // the cutout puppet: parts bound to the interpolated skeleton (JK only, not for the standing picture)
+    const PUP = window.PUPPET, puppet = usePuppet && PUP && f.C.id === 'jk' && !fr.pose.full && !fr.pose.hidden;
+    const mirX = (m) => [-m[0], m[1], -m[2], m[3], -m[4], m[5]];
+    const toScreen = (m, ox, oy, face) => { const q = face > 0 ? m : mirX(m); return [q[0], q[1], q[2], q[3], q[4] + ox, q[5] + oy]; };
+    const brk = brokenOf(f);
     if (!fr.pose.hidden) {
       list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(11, 22 - f.y * 0.15) });
-      if (lift >= 0) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - (right ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07], a: 0.35 });
+      if (lift >= 0) {
+        if (puppet) {
+          const sk = PUP.skeleton(an, f.fi, f.ft); f.sk = sk;
+          const sh = [1, 0, -f.face * 0.5, -0.07, sx + 0.5 * f.face * lift, G + 0.07 * lift];
+          for (const it of PUP.place(sk.J, sk.p, 'dark', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(sh, right ? it.m : mirX(it.m)), a: 0.35 });
+        } else list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - (right ? S.ox : oxL) + S.oy * f.face * 0.5 + lift * f.face * 0.5), G + S.oy * 0.07 + lift * 0.07], a: 0.35 });
+      }
     }
     for (const g of f.trail) {
       const age = (sim.t - g.t) / 200;
       if (age >= 1) continue;
+      const gfr = g.an.frames[g.fi];
+      if (usePuppet && PUP && g.sk && f.C.id === 'jk' && !gfr.pose.full && !gfr.pose.hidden) {
+        const gx = Math.round(g.x - camX), gy = Math.round(G - g.y);
+        for (const it of PUP.place(g.sk.J, g.sk.p, f.C.color, brk)) list.push({ k: 'skew', img: it.img, m: toScreen(it.m, gx, gy, g.face), a: 0.4 * (1 - age) });
+        continue;
+      }
       const gi = cache.get(f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask);
       if (!gi) continue;
       list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? S.ox : oxL)), y: Math.round(G - g.y - S.oy), a: 0.4 * (1 - age) });
     }
     f.trail = f.trail.filter((g) => sim.t - g.t < 200);
-    list.push({ k: 'img', img: right ? img.R : img.L, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, fx: right ? img.FR : img.FL, refl: !fr.pose.hidden });
+    if (puppet) {
+      const sk = f.sk && f.sk.an === an && f.sk.fi === f.fi && f.sk.ft === f.ft ? f.sk : PUP.skeleton(an, f.fi, f.ft);
+      sk.an = an; sk.fi = f.fi; sk.ft = f.ft; f.sk = sk;
+      // reflection on the road, then the body, then the frame's effects (bloom sources) on top
+      const rf = [1, 0, 0, -1, sx, 2 * G - sy];
+      for (const it of PUP.place(sk.J, sk.p, 'cv', brk)) list.push({ k: 'skew', img: it.img, m: PUP.mul(rf, right ? it.m : mirX(it.m)), a: 0.2 });
+      for (const it of PUP.place(sk.J, sk.p, sk.p.flash ? 'white' : 'cv', brk)) list.push({ k: 'skew', img: it.img, m: toScreen(it.m, sx, sy, f.face), a: 1 });
+      const fxi = right ? img.FR : img.FL;
+      if (fxi) list.push({ k: 'img', img: fxi, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, glow: true });
+    } else {
+      f.sk = null;
+      list.push({ k: 'img', img: right ? img.R : img.L, x: sx - (right ? S.ox : oxL), y: sy - S.oy, a: 1, fx: right ? img.FR : img.FL, refl: !fr.pose.hidden });
+    }
   }
   function draw2D(list) {
     for (const it of list) {

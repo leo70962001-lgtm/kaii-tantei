@@ -42,6 +42,8 @@
     const KEY = R.KEY;
     const SPEC = specOf(C, { thigh: 34, shin: 24, upper: 13, fore: 13, headH: 26, headW: 22, bodyW: 12 });
     const DEF = Object.assign({}, R.DEF, { hip: [0, -61], fN: [-13, -3], fF: [15, -3], hN: [2, -52], hF: [18, -66], blade: 60 });
+    // the puppet (src/puppet.js) binds picture parts to this same skeleton
+    R.castSpec = SPEC; R.castDef = DEF; R.solve = (pose, O) => RIG.solve(Object.assign({}, DEF, pose), SPEC, O || [0, 0]);
     function render(pose, opts = {}) {
       const p = Object.assign({}, DEF, pose);
       const br = p.broken || {};

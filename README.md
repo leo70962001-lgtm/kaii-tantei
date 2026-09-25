@@ -35,6 +35,8 @@ node server.js 5200
 - 舞台 480×270、JK 約 110px：待機就是站姿圖本身，其他動作的頭髮、臉、制服、裙子也是站姿圖的原始像素，四肢由骨架驅動。站姿圖用黑底單人版（ref/jk_solo.jpg，`ref/extract_solo.py` 切圖：飄髮、刀柄、刀尖完整），`src/cast.js` 組裝。
 - 攻擊的斬擊效果來自 Gemini 動作表（ref/jk_actions.jpg）：`ref/frames.py` 依 4px 像素格切格、把青色效果與人物分開，`ref/clean.py` 去雜點並統一調色盤，`src/sheetfx.js` 把效果 Scale3x 放大三倍疊在對應招式上，判定框就是效果的範圍（`hbAbs`）。
 - 招式姿勢照兩張 Gemini 動作表（ref/jk_actions2.jpg：突き／義足踢／蹲攻／連段／居合／義手砲，ref/jk_actions3.jpg：待機移動／連段／跳攻／特殊技・投げ／受擊倒地／勝敗）：`ref/frames2.py` 去掉標題色帶後切格（src/frames-jk2.js、frames-jk3.js），表上的青色能量效果（義手砲的光暈、光彈）直接疊用。Z 義手連段四段、X 刀連段三段、蹲攻兩種、空中兩種、投げ、居合、義手砲光彈（投射物）。
+- **three.js 畫面層**（`src/gl.js`，three r170 放在 `vendor/three/`，index.html 用 importmap 載入）：遊戲每格先產生一份繪製清單（角色圖、剪影影子、殘影、粒子），2D 畫布與 WebGL 共用。WebGL 版把清單畫成透視場景裡的貼圖面片：角色所在平面 1:1 對到 480×270 的低解析度 render target（像素不糊），遠景層放在真實深度由相機產生視差，KO 時相機推進，路面有淡倒影，能量特效／月亮／路燈走第二個 bloom pass（three.js 的 selective bloom 作法，用 camera layers）。按 G 切回 2D 畫布，`?gl=0` 一開始就關。
+- **骨骼綁定紙娃娃**（`src/puppet.js`、`src/jk-parts.js`，`ref/parts_jk.py` 從黑底站姿圖切件）：頭、前後髮、上身、裙、兩條大腿小腿、義手上臂前臂、鞋子，各帶樞軸（掛在哪個關節）與末端關節，綁到既有骨架（`JK.solve` 解出關節）上：肢體零件依兩端關節旋轉並沿骨長拉伸，上身隨 lean 剪切，倒地時整體旋轉；皮膚色的另一隻手臂與刀由骨架程式畫成直的零件再旋轉。相鄰兩格之間關節做 60fps 補間（進入命中格用加速曲線）。影子＝零件走地面剪切、殘影＝零件染色、倒影＝零件鏡射。按 B 切回逐格繪製，`?puppet=0` 一開始就關。待機仍是站姿圖本身。
 - 標題選「練習（木人）」可對著不動的 JK 練招（計時停止、打倒後自動回血）；「1P vs CPU」是 JK 鏡像戰。
 - 吸血鬼與女僕的程式還在（`src/vamp.js`、`src/maid.js`），但暫時不在選角名單內。
 
