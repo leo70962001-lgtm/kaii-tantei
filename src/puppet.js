@@ -49,8 +49,8 @@
     // the far arm: its sleeve from the sheet when cut, the skin forearm and hand as the rig draws them (at the parts' density)
     const seg = (len, r0, r1) => { const L = Math.round(len * res), b = new PX.Buf(L + 12 * res, 14 * res); RIG.cyl(b, M.skin, [6 * res, 7 * res], [6 * res + L, 7 * res], (t) => (r0 - t * (r0 - r1)) * res, { look: 'skin' }); PX.outline(b); return fromBuf(b, [6 * res, 7 * res], [6 * res + L, 7 * res], res); };
     if (!parts.uArmF) parts.uArmF = seg(SPEC.upper, 3.2, 2.8);
-    parts.fArmF = seg(SPEC.fore, 2.8, 2.5);
-    { const b = new PX.Buf(12 * res, 12 * res); RIG.ball(b, M.skin, [6 * res, 6 * res], 3 * res, 'skin'); PX.outline(b); parts.handF = fromBuf(b, [6 * res, 6 * res], null, res); }
+    if (!parts.fArmF) parts.fArmF = seg(SPEC.fore, 2.8, 2.5);
+    if (!parts.handF) { const b = new PX.Buf(12 * res, 12 * res); RIG.ball(b, M.skin, [6 * res, 6 * res], 3 * res, 'skin'); PX.outline(b); parts.handF = fromBuf(b, [6 * res, 6 * res], null, res); }
     // the sword: hilt (red wrap), guard, a 60 px blade; pivot at the grip; a hilt-only variant for smear frames
     const sword = (bladeLen) => {
       const L = 14 + bladeLen, b = new PX.Buf(L + 6, 12);
