@@ -48,7 +48,13 @@
       const buf = new PX.Buf(opts.w || SIZE.w, opts.h || SIZE.h);
       const O = [opts.ox ?? SIZE.ox, opts.oy ?? SIZE.oy];
       const J = RIG.solve(p, SPEC, O);
-      if (!p.hidden) {
+      if (!p.hidden && p.full && C.full) {
+        // the standing picture itself (idle): arms, sword and prosthetics as painted
+        RIG.blitImg(buf, C.full, [O[0] + (p.dx || 0), O[1] + (p.dy || 0)], C.full.feet, { sep: false });
+        const br2 = p.broken || {};
+        if (root.FX && (br2.arm || br2.leg)) root.FX.draw(buf, O, [br2.arm ? { type: 'bolt', x: -8, y: -50, r: 3, len: 6, n: 3, a0: -180, a1: 180, age: 0.3, seed: 4, mat: 'ice' } : null, br2.leg ? { type: 'bolt', x: 12, y: -20, r: 3, len: 5, n: 2, a0: -180, a1: 180, age: 0.4, seed: 8, mat: 'ice' } : null].filter(Boolean), 'over');
+        RIG.finish(buf, p, J, { rotUp: 16 });
+      } else if (!p.hidden) {
         // far arm: skin (the sleeve puff is part of the body), a fist or an open hand
         RIG.cyl(buf, M.skin, J.shF, J.eF, (t) => 3.2 - t * 0.4, { look: 'skin' });
         RIG.cyl(buf, M.skin, J.eF, J.hF, (t) => 2.8 - t * 0.3, { look: 'skin' });

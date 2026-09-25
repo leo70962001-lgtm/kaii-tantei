@@ -126,7 +126,9 @@ def main():
     body = body.transpose(Image.FLIP_LEFT_RIGHT)
     boot = crop(jk, (5, 99, 15, 110)).transpose(Image.FLIP_LEFT_RIGHT)
     loafer = crop(jk, (17, 101, 27, 110)); clear(loafer, mask(loafer, lambda x, y, p: p[3] > 0 and sat(p) < 30 and lum(p) > 110)); loafer = loafer.transpose(Image.FLIP_LEFT_RIGHT)
+    full = jk.transpose(Image.FLIP_LEFT_RIGHT)
     out['jk'] = {'body': part(body, hip=[16, 49], shN=[6, 28], shF=[28, 28], neck=[17, 24], headBox=[9, 0, 25, 24]),
+                 'full': part(full, feet=[16, 110]),
                  'shoeF': part(boot, ank=[5, 1]), 'shoeN': part(loafer, ank=[5, 1])}
     body.save('p_jk_body.png')
     # vampire: the laptop is its own part; hands / sleeves masked; the jacket behind the laptop inpainted from above

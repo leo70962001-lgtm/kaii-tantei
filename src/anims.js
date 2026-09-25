@@ -195,6 +195,10 @@
     };
     const A = movement(JK_S, V, JK_KEYS);
     const S = JK_S, K = JK_KEYS;
+    A.idle = { label: '構え', loop: true, frames: seq([
+      { d: 420, p: { full: true } },
+      { d: 420, p: { full: true, dy: 1 } },
+    ], S, K) };
     // 小斬: one hand, horizontal
     A.light = { label: '突き', frames: seq([
       { d: 70, ph: 'ANTICIPATION', p: { hF: [4, -26], sw: 175, swordLayer: 'front', lean: -2, hip: [-1, -27], hair: hp(0.1, { base: 96 }) } },
