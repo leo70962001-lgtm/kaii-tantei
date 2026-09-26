@@ -148,10 +148,31 @@ def geom(c):
 
 BG = {}
 def sheet_bg(tag, sheet):
-    if tag not in BG:
+    key = id(sheet)
+    if key not in BG:
         small = sheet.resize((sheet.width // 4, sheet.height // 4))
-        BG[tag] = Counter(small.getdata()).most_common(1)[0][0]
-    return BG[tag]
+        BG[key] = Counter(small.getdata()).most_common(1)[0][0]
+    return BG[key]
+
+# ---- the vector re-draw of sheet B (ref/jk_actions3v.jpg, 「用這圖來做判斷」): same layout (global shift 0), cleaner
+# shapes, but some cells carry new effects (lightning / fire on the kicks, blood on the hits, dust) that the cutter's
+# effect masks do not know; a cell uses the vector sheet unless it adds such pixels inside the figure's box.
+ALT = {'B': 'jk_actions3v.jpg'}
+def blood(p):
+    r, g, b = p[:3]; return r > 90 and g < 48 and b < 48 and r > 2.2 * max(g, b)
+def pick_sheet(tag, c, base, alt):
+    if alt is None or 'novector' in sys.argv: return base
+    g = geom(c)[0]; f = CSCALE if tag == 'C' else 1.0
+    nx0 = (g['sX'] - g['ax']) / f; ny0 = (g['sY'] - g['ay']) / f
+    X0, Y0 = int(nx0 * GRID) - 2, int(ny0 * GRID) - 2; X1, Y1 = int((nx0 + g['w'] / f) * GRID) + 2, int((ny0 + g['h'] / f) * GRID) + 2
+    def extra(sheet):
+        n = 0; px = sheet.load()
+        for y in range(max(0, Y0), min(sheet.height, Y1)):
+            for x in range(max(0, X0), min(sheet.width, X1)):
+                p = px[x, y]
+                if is_fx(classify(p, 0.5)) or blood(p): n += 1
+        return n
+    return base if extra(alt) - extra(base) > 40 else alt
 def window(sheet, tag, g, X, Y, s=1.0):
     """the source pixels behind sprite pixel (X, Y) (UP-scale coordinates, cell scale s), background dropped"""
     f = CSCALE if tag == 'C' else 1.0
@@ -433,11 +454,14 @@ def main():
     review_only = 'review' in sys.argv
     src, i, j, data = load_cells()
     sheets = {t: Image.open(SHEETS[t]).convert('RGB') for t in SHEETS}
+    alts = {t: Image.open(fn).convert('RGB') for t, fn in ALT.items() if os.path.exists(fn)}
+    used = Counter()
     before, after = [], []
     for tag in ('A', 'B', 'C'):
         for c in data[tag]:
             g = geom(c)[0]
-            res = refine_cell(tag, c, sheets[tag])
+            chosen = pick_sheet(tag, c, sheets[tag], alts.get(tag)); used['vector' if chosen is alts.get(tag) else 'base'] += 1
+            res = refine_cell(tag, c, chosen)
             if not res: continue
             out, eff, s = res
             a = ANALYSIS['cells'].get('%s%d' % (tag, c['i'])); eye = None
@@ -466,7 +490,7 @@ def main():
                 out.save(os.path.join('art', 'cells', '%s%d.png' % (tag, c['i'])))
     if not review_only:
         open('../src/sprites-jk.js', 'w', encoding='utf-8', newline='\n').write(src[:i] + json.dumps(data) + src[j:])
-        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in ('A', 'B', 'C')), 'cells refined at UP', UP)
+        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in ('A', 'B', 'C')), 'cells refined at UP', UP, 'sources', dict(used))
     S = 6 // UP * 2 if UP > 1 else 6
     sel = list(range(0, len(after), max(1, len(after) // 40)))[:40]
     W = sum(after[k].width * S + 6 for k in sel) + 6
