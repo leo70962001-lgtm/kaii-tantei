@@ -27,12 +27,30 @@ from PIL import Image, ImageDraw
 SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg'}
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
-OUT = (14, 12, 24)
+OUT = (20, 23, 42)                                     # the sheets' own outline colour (analyze_b.py: median of L < 30)
 UP = 2 if 'x2' in sys.argv else 1
 LIGHT_PASS = 'nolight' not in sys.argv
+BASE_H = {'A': 164, 'B': 164, 'C': 123}               # the idle figure's source height per sheet (analyze_b.py)
 
-# ---- material ramps (shade, base, light) from the standing picture / hand.py palette
-RAMPS = {
+# ---- material ramps (shade, base, light): the sheets' OWN colours, measured by analyze_b.py (luminance
+# percentiles per material with the median chroma; the shirt's base taken at its lit percentile so it reads white)
+SHEET_PAL = {                                          # measured on the sheets (muted: JPEG + the sheets' grey light)
+    'hair':    [(34, 34, 55), (49, 48, 68), (69, 70, 87)],
+    'skin':    [(170, 122, 112), (195, 149, 137), (242, 200, 172)],
+    'top':     [(150, 148, 162), (210, 212, 222), (240, 242, 246)],
+    'collar':  [(41, 49, 79), (60, 70, 95), (101, 113, 135)],
+    'scarf':   [(150, 45, 70), (190, 70, 90), (220, 120, 130)],
+    'skirt':   [(59, 70, 108), (75, 90, 131), (101, 113, 145)],
+    'chrome':  [(66, 66, 84), (98, 97, 114), (189, 185, 194)],
+    'stock':   [(34, 35, 55), (41, 43, 64), (49, 52, 73)],
+    'boot':    [(18, 20, 39), (23, 26, 45), (30, 32, 52)],
+    'blade':   [(214, 223, 228), (238, 241, 241), (255, 254, 228)],
+    'hilt':    [(167, 38, 89), (227, 64, 74), (222, 127, 139)],
+    'guard':   [(170, 160, 81), (219, 200, 84), (225, 221, 93)],
+    'sheen':   [(183, 157, 172), (167, 223, 162), (205, 253, 172)],
+    'line':    [OUT, OUT, OUT],
+}
+PIC_PAL = {                                            # the standing picture's colours (cleaner, more saturated)
     'hair':    [(12, 13, 26), (28, 30, 48), (54, 58, 86)],
     'skin':    [(216, 164, 140), (242, 203, 176), (250, 226, 208)],
     'top':     [(178, 186, 206), (226, 230, 240), (250, 251, 255)],
@@ -48,6 +66,21 @@ RAMPS = {
     'sheen':   [(120, 200, 160), (142, 216, 168), (214, 144, 208)],
     'line':    [OUT, OUT, OUT],
 }
+RAMPS = SHEET_PAL if 'sheetpal' in sys.argv else PIC_PAL
+REGIONS = 'regions' in sys.argv                        # affinity regions for materials (the per-pixel majority keeps
+                                                       # the small faces crisper, so it is the default; regions flood them)
+# ---- per-cell analysis (art/analysis_b.json): source heights → a per-cell scale that removes the sheets' size drift
+# (the walk figures are drawn 8 % smaller than the idle ones), and the measured eye position
+ANALYSIS = json.load(open(os.path.join('art', 'analysis_b.json'))) if os.path.exists(os.path.join('art', 'analysis_b.json')) else {'cells': {}}
+def cell_scale(tag, c):
+    """upright cells (narrow, full height) are scaled to the sheet's idle height; the others take their row's median"""
+    a = ANALYSIS['cells'].get('%s%d' % (tag, c['i']))
+    if not a or 'noscale' in sys.argv: return 1.0
+    def upright(v): return v['w'] / max(1, v['h']) < 0.62 and v['h'] >= BASE_H[tag] * 0.8
+    if upright(a): return BASE_H[tag] / a['h']
+    row = [BASE_H[tag] / v['h'] for k, v in ANALYSIS['cells'].items() if k[0] == tag and v['row'] == a['row'] and upright(v)]
+    if not row: return 1.0
+    row.sort(); return row[len(row) // 2]
 FX_RAMPS = {
     'cyan':    [(70, 160, 200), (110, 226, 240), (220, 250, 255)],
     'magenta': [(150, 60, 160), (232, 90, 220), (255, 200, 250)],
@@ -119,25 +152,91 @@ def sheet_bg(tag, sheet):
         small = sheet.resize((sheet.width // 4, sheet.height // 4))
         BG[tag] = Counter(small.getdata()).most_common(1)[0][0]
     return BG[tag]
-def window(sheet, tag, g, X, Y):
-    """the source pixels behind sprite pixel (X, Y) (UP-scale coordinates), background dropped; also the bg count"""
+def window(sheet, tag, g, X, Y, s=1.0):
+    """the source pixels behind sprite pixel (X, Y) (UP-scale coordinates, cell scale s), background dropped"""
     f = CSCALE if tag == 'C' else 1.0
     nx0 = (g['sX'] - g['ax']) / f; ny0 = (g['sY'] - g['ay']) / f
-    cx = (nx0 + (X + 0.5) / (f * UP)) * GRID; cy = (ny0 + (Y + 0.5) / (f * UP)) * GRID
-    half = GRID / f / UP / 2
+    cx = (nx0 + (X + 0.5) / (f * UP * s)) * GRID; cy = (ny0 + (Y + 0.5) / (f * UP * s)) * GRID
+    half = GRID / f / UP / s / 2
     xs = range(max(0, int(cx - half + 0.5)), min(sheet.width, int(cx + half + 0.5)))
     ys = range(max(0, int(cy - half + 0.5)), min(sheet.height, int(cy + half + 0.5)))
     bg = sheet_bg(tag, sheet); keep = []; nbg = 0
     for y in ys:
         for x in xs:
             p = sheet.getpixel((x, y))
-            if abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) >= 48: keep.append(p)
+            if abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) >= 48: keep.append((x, y, p))
             else: nbg += 1
     return keep, nbg
 
-def upscale_mask(m41, w41, h41):
-    w, h = w41 * UP, h41 * UP
-    return [[m41[y // UP][x // UP] for x in range(w)] for y in range(h)], w, h
+# ---- affinity segmentation of the source (「學習 affinity」): neighbouring source pixels with a high colour affinity
+# (L1 distance ≤ AFF_T) are united into regions (union-find), tiny regions are absorbed by their most similar
+# neighbour, and each REGION — not each pixel — gets a material from its mean colour and height, and a tone from
+# its mean luminance. Regions are the sheet's own colour clusters, so borders are clean and the shading is the
+# cluster shading of the drawing itself.
+AFF_T = 34; AFF_MIN = 8
+def segment(sheet, tag, coords):
+    """coords: the set of source (x, y) the cell's windows touch → {(x, y): region id}, {id: (meanRGB, size, cy)}"""
+    if not coords: return {}, {}
+    bg = sheet_bg(tag, sheet)
+    xs = [q[0] for q in coords]; ys = [q[1] for q in coords]
+    X0, Y0, X1, Y1 = max(0, min(xs) - 1), max(0, min(ys) - 1), min(sheet.width - 1, max(xs) + 1), min(sheet.height - 1, max(ys) + 1)
+    W = X1 - X0 + 1; H = Y1 - Y0 + 1
+    col = {}; ok = {}
+    for y in range(Y0, Y1 + 1):
+        for x in range(X0, X1 + 1):
+            p = sheet.getpixel((x, y)); col[(x, y)] = p
+            ok[(x, y)] = abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) >= 48 and lum(p) >= 26 and not is_fx(classify(p, 0.5))
+    parent = {}
+    def find(a):
+        while parent[a] != a: parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb: parent[rb] = ra
+    for q in ok:
+        if ok[q]: parent[q] = q
+    for (x, y) in list(parent):
+        p = col[(x, y)]
+        for nb in ((x + 1, y), (x, y + 1)):
+            if nb in parent:
+                r = col[nb]
+                if abs(p[0] - r[0]) + abs(p[1] - r[1]) + abs(p[2] - r[2]) <= AFF_T: union((x, y), nb)
+    members = {}
+    for q in parent: members.setdefault(find(q), []).append(q)
+    # absorb tiny regions into the most similar neighbouring region (by mean colour)
+    def mean(ps): return tuple(sum(col[q][k] for q in ps) / len(ps) for k in range(3))
+    means = {r: mean(ps) for r, ps in members.items()}
+    changed = True
+    while changed:
+        changed = False
+        for r, ps in sorted(members.items(), key=lambda kv: len(kv[1])):
+            if len(ps) >= AFF_MIN or r not in members: continue
+            nbrs = Counter()
+            for (x, y) in ps:
+                for nb in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if nb in parent:
+                        rr = find(nb)
+                        if rr != r and rr in members: nbrs[rr] += 1
+            if not nbrs: continue
+            m = means[r]
+            best = min(nbrs, key=lambda rr: sum(abs(means[rr][k] - m[k]) for k in range(3)) - nbrs[rr] * 0.5)
+            parent[r] = best; members[best] += ps; del members[r]
+            means[best] = mean(members[best]); changed = True
+    label = {}; info = {}
+    for r, ps in members.items():
+        cy = sum(q[1] for q in ps) / len(ps)
+        info[r] = (means[r], len(ps), cy)
+        for q in ps: label[q] = r
+    return label, info
+
+def upscale_mask(m41, w41, h41, s=1.0):
+    w, h = max(1, round(w41 * UP * s)), max(1, round(h41 * UP * s))
+    return [[m41[min(h41 - 1, int(y / (UP * s)))][min(w41 - 1, int(x / (UP * s)))] for x in range(w)] for y in range(h)], w, h
+def to_cell(tag, g, s, sx, sy):
+    """source px → cell px (UP-scale coordinates, cell scale s)"""
+    f = CSCALE if tag == 'C' else 1.0
+    nx0 = (g['sX'] - g['ax']) / f; ny0 = (g['sY'] - g['ay']) / f
+    return (sx / GRID - nx0) * f * UP * s - 0.5, (sy / GRID - ny0) * f * UP * s - 0.5
 def dilate(m, w, h):
     out = [[False] * w for _ in range(h)]
     for y in range(h):
@@ -146,8 +245,8 @@ def dilate(m, w, h):
     return out
 
 def refine_cell(tag, c, sheet):
-    g, m41, e41 = geom(c); w41, h41 = g['w'], g['h']
-    base, w, h = upscale_mask(m41, w41, h41); ebase, _, _ = upscale_mask(e41, w41, h41)
+    g, m41, e41 = geom(c); w41, h41 = g['w'], g['h']; s = cell_scale(tag, c)
+    base, w, h = upscale_mask(m41, w41, h41, s); ebase, _, _ = upscale_mask(e41, w41, h41, s)
     cand = dilate(base, w, h) if UP > 1 else base
     ecand = dilate(ebase, w, h) if UP > 1 else ebase
     # the silhouette from the source: inside the (dilated) cutter mask, a pixel is figure when its window is mostly
@@ -156,10 +255,10 @@ def refine_cell(tag, c, sheet):
     for y in range(h):
         for x in range(w):
             if not (cand[y][x] or ecand[y][x]): continue
-            keep, nbg = window(sheet, tag, g, x, y); win[(x, y)] = keep
+            keep, nbg = window(sheet, tag, g, x, y, s); win[(x, y)] = keep
             n = len(keep) + nbg
             if n == 0: continue
-            fx = Counter(classify(p, 0.5) for p in keep if is_fx(classify(p, 0.5)))
+            fx = Counter(classify(q[2], 0.5) for q in keep if is_fx(classify(q[2], 0.5)))
             nfx = sum(fx.values())
             if ecand[y][x] and nfx >= max(1, n * 0.5) and nfx >= len(keep) * 0.5:
                 emask[y][x] = True; ecls[(x, y)] = fx.most_common(1)[0][0]; continue
@@ -170,26 +269,50 @@ def refine_cell(tag, c, sheet):
     for y in range(h):
         for x in range(w):
             if ecand[y][x] and not mask[y][x] and not emask[y][x] and win.get((x, y)):
-                pale = [p for p in win[(x, y)] if lum(p) > 150 and sat(p) < 60]
+                pale = [q for q in win[(x, y)] if lum(q[2]) > 150 and sat(q[2]) < 60]
                 if len(pale) >= len(win[(x, y)]) * 0.5 and ebase[y][x]: emask[y][x] = True; ecls[(x, y)] = 'white'
     ys = [y for y in range(h) if any(mask[y])]
     if not ys: return None
     top, bot = min(ys), max(ys)
+    # affinity regions of the source under the figure; each region → one material (mean colour + centroid height)
+    coords = set(q[:2] for (x, y) in win if mask[y][x] for q in win[(x, y)])
+    label, info = segment(sheet, tag, coords) if REGIONS else ({}, {})
+    src_ys = [q[1] for q in coords]; stop, sbot = (min(src_ys), max(src_ys)) if src_ys else (0, 1)
+    rmat = {}
+    for r, (mean, size, cy) in info.items():
+        hy = (cy - stop) / max(1, sbot - stop)
+        rmat[r] = classify(tuple(int(v) for v in mean), min(1, max(0, hy)))
+        if is_fx(rmat[r]): rmat[r] = 'line'
     mat = [[None] * w for _ in range(h)]; tone = [[1] * w for _ in range(h)]; lums = {}
     for y in range(h):
         hy = (y - top) / max(1, bot - top)
         for x in range(w):
             if not mask[y][x]: continue
-            blk = [p for p in win.get((x, y), []) if not is_fx(classify(p, hy))]
-            if not blk: mat[y][x] = 'line'; lums[(x, y)] = 0; continue
-            cls = Counter(classify(p, hy) for p in blk); n = sum(cls.values())
-            m = None
+            qs = win.get((x, y), [])
+            n = len(qs)
+            if not REGIONS:                               # per-pixel majority (the earlier pass)
+                blk = [q[2] for q in qs if not is_fx(classify(q[2], hy))]
+                if not blk: mat[y][x] = 'line'; lums[(x, y)] = 0; continue
+                cls = Counter(classify(p, hy) for p in blk); m = None
+                for small in ('skin', 'scarf', 'guard', 'sheen', 'hilt'):
+                    if cls.get(small, 0) >= max(2, len(blk) * 0.25): m = small; break
+                if m is None: m = cls.most_common(1)[0][0]
+                mat[y][x] = m; ls = sorted(lum(p) for p in blk if classify(p, hy) == m)
+                lums[(x, y)] = ls[len(ls) // 2] if ls else lum(blk[0]); continue
+            regs = Counter(label[q[:2]] for q in qs if q[:2] in label)
+            if not regs:                                  # only dark line pixels (or nothing) under this sprite pixel
+                blk = [q[2] for q in qs if not is_fx(classify(q[2], hy))]
+                mat[y][x] = 'line'; lums[(x, y)] = sorted(lum(p) for p in blk)[len(blk) // 2] if blk else 0; continue
+            # small features win at a quarter of the window, otherwise the region covering most of it
+            r = None
             for small in ('skin', 'scarf', 'guard', 'sheen', 'hilt'):
-                if cls.get(small, 0) >= max(2, n * 0.25): m = small; break
-            if m is None: m = cls.most_common(1)[0][0]
-            mat[y][x] = m
-            ls = sorted(lum(p) for p in blk if classify(p, hy) == m)
-            lums[(x, y)] = ls[len(ls) // 2] if ls else lum(blk[0])
+                cnt = sum(k for rr, k in regs.items() if rmat[rr] == small)
+                if cnt >= max(1, n * 0.25): r = max((rr for rr in regs if rmat[rr] == small), key=lambda rr: regs[rr]); break
+            if r is None: r = regs.most_common(1)[0][0]
+            # a dark line pixel majority still reads as a line (the sheet's inner outlines)
+            dark = sum(1 for q in qs if lum(q[2]) < 26)
+            if dark > n * 0.5: mat[y][x] = 'line'; lums[(x, y)] = 0; continue
+            mat[y][x] = rmat[r]; lums[(x, y)] = lum(info[r][0])
     # the two legs: split dark (stocking) / light (chrome) per COLUMN of the cell's leg pixels
     legs = [(x, y) for y in range(h) for x in range(w) if mat[y][x] in ('chrome', 'stock')]
     if len(legs) >= 6 * UP:
@@ -270,20 +393,29 @@ def refine_cell(tag, c, sheet):
             for x in range(w):
                 if not emask[y][x]: continue
                 fam = ecls[(x, y)]; ps = win.get((x, y), [])
-                L = sorted(lum(p) for p in ps)[len(ps) // 2] if ps else 200
+                L = sorted(lum(q[2]) for q in ps)[len(ps) // 2] if ps else 200
                 ramp = FX_RAMPS[fam]; ep[x, y] = ramp[0 if L < 130 else (2 if L > 215 else 1)] + (255,)
-    return out, eff
+    return out, eff, s
 
-def features(im):
-    """the face: red eye under a dark lash at the front-top of the skin blob, the white streak in the hair in front"""
+def features(im, eye=None):
+    """the face: red eye under a dark lash at the measured eye position (analyze_b.py: the dark blob in the sheet's
+    face) or, without a measurement, at the front-top of the skin blob; the white streak in the hair in front"""
     px = im.load(); w, h = im.size
     skin = [(x, y) for y in range(h) for x in range(w) if px[x, y][3] and px[x, y][:3] in RAMPS['skin']]
     if len(skin) < 4 * UP: return
     ys = sorted(set(y for _, y in skin)); ytop = ys[0]
-    ey = min(ytop + 2 * UP, ys[-1])
-    row = [x for (x, y) in skin if y == ey and y <= ytop + 4 * UP]
-    if not row: return
-    ex = max(row)
+    ex = ey = None
+    if eye:
+        cx, cy = int(round(eye[0])), int(round(eye[1]))
+        near = [(x, y) for (x, y) in skin if abs(x - cx) <= 2 * UP and abs(y - cy) <= 2 * UP]
+        if near:
+            ey = min(near, key=lambda q: abs(q[1] - cy))[1]
+            ex = max(x for (x, y) in near if y == ey)
+    if ex is None:
+        ey = min(ytop + 2 * UP, ys[-1])
+        row = [x for (x, y) in skin if y == ey and y <= ytop + 4 * UP]
+        if not row: return
+        ex = max(row)
     if UP == 1:
         px[ex, ey] = (196, 44, 62, 255)
         if ey - 1 >= 0 and px[ex, ey - 1][3] and px[ex, ey - 1][:3] in RAMPS['skin']: px[ex, ey - 1] = OUT + (255,)
@@ -307,14 +439,18 @@ def main():
             g = geom(c)[0]
             res = refine_cell(tag, c, sheets[tag])
             if not res: continue
-            out, eff = res; features(out)
+            out, eff, s = res
+            a = ANALYSIS['cells'].get('%s%d' % (tag, c['i'])); eye = None
+            if a and a.get('eye'):
+                eye = to_cell(tag, g, s, a['srcBox'][0] + a['eye']['x'], a['srcBox'][1] + a['eye']['y'])
+            features(out, eye)
             w, h = out.size
             before.append(Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
             after.append(out)
             if not review_only:
                 c['w'], c['h'] = w, h
-                c['ax'] = g['ax'] * UP + (UP - 1); c['ay'] = g['ay'] * UP + (UP - 1)
-                c['sX'] = g['sX'] * UP; c['sY'] = g['sY'] * UP
+                c['ax'] = int(round((g['ax'] + 0.5) * UP * s - 0.5)); c['ay'] = int(round((g['ay'] + 1) * UP * s - 1))
+                c['sX'] = int(round(g['sX'] * UP * s)); c['sY'] = int(round(g['sY'] * UP * s)); c['scale'] = round(s, 4)
                 c['f'] = base64.b64encode(out.tobytes()).decode('ascii')
                 c['e'] = base64.b64encode(eff.tobytes()).decode('ascii') if eff else None
                 c['refined'] = 2; c['res'] = UP
@@ -337,7 +473,7 @@ def main():
     H = max(before[k].height * S * (UP if before[k].height * UP <= after[k].height else 1) for k in sel) + max(after[k].height for k in sel) * S + 30
     sheet = Image.new('RGBA', (W, H), (121, 139, 141, 255)); x = 6
     for k in sel:
-        b, a = before[k], after[k]; sb = S * (a.height // b.height)
+        b, a = before[k], after[k]; sb = S * max(1, a.height // b.height)
         sheet.alpha_composite(b.resize((b.width * sb, b.height * sb), Image.NEAREST), (x, 6))
         sheet.alpha_composite(a.resize((a.width * S, a.height * S), Image.NEAREST), (x, 18 + b.height * sb))
         x += a.width * S + 6
