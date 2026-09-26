@@ -734,12 +734,12 @@
   window.addEventListener('resize', fit);
   if (window.ResizeObserver) new ResizeObserver(fit).observe(holder);
 
-  // the energy shot: the hand-drawn projectile cell H70 (ref/hand.py, effect pixels only), drawn flying +x
+  // the energy shot: the Gemini sheet's projectile cell (effect pixels only), flipped to fly +x
   const shotImgs = {};
   function shotImg(face, t) {
     const key = face + ':' + ((t >> 2) & 1);
     if (shotImgs[key]) return shotImgs[key];
-    const fr = window.SPR.frame('H', 70);
+    const fr = window.SPR.frame('A', 36);
     const src = face > 0 ? (fr.FR || fr.R) : (fr.FL || fr.L);
     const c2 = document.createElement('canvas'); c2.width = fr.w; c2.height = fr.h; const g2 = c2.getContext('2d'); g2.drawImage(src, 0, 0);
     if ((t >> 2) & 1) { const id = g2.getImageData(0, 0, fr.w, fr.h), d = id.data; for (let p = 0; p < fr.w * fr.h; p++) if (((p % fr.w) + Math.floor(p / fr.w)) % 4 === 0) d[p * 4 + 3] = 0; g2.putImageData(id, 0, 0); }
