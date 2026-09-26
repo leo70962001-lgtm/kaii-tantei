@@ -14,14 +14,26 @@
   // the small pixel-art scale: cells are drawn at their native size (a standing figure is 41 px; ref/pixelize.py
   // brings sheet C to the same size) and shown at an integer ×2, nearest-neighbour, so every sprite pixel is a
   // crisp 2×2 world-pixel block like the references at zoom
-  const SCALE = { A: 1, B: 1, C: 1, V: 1, H: 2 };   // A/B/C = 82-px cells (ref/refine2.py x2) drawn 1:1; H = hand-drawn 41-px frames ×2
-  const RES = { A: 2, B: 2, C: 2, V: 2, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
+  // cell px → world px. A/B/C/V = the sheets' own pixels (ref/refine2.py raw: 164-px cells) drawn at 0.5, which is
+  // 1:1 on the 2× (960×540) canvas; H = hand-drawn 41-px frames ×2. A scale < 1 keeps the canvases at cell size and
+  // the drawers size them (frame.w/h in world px, frame.ds = the draw scale).
+  const SCALE = { A: 0.5, B: 0.5, C: 0.5, V: 0.5, H: 2 };
+  const RES = { A: 4, B: 4, C: 4, V: 4, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
   const HEAD_H = 27;   // (picture-head overlay; inactive unless the sheet data carries 'heads')
   const hasDoc = typeof document !== 'undefined';
 
-  function decode(b64, w, h) {
+  function decode(b64, w, h, enc) {
     const bin = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
-    const out = new Uint32Array(w * h), u8 = new Uint8Array(out.buffer);
+    const out = new Uint32Array(w * h);
+    if (enc === 'prle') {
+      // palette + run-length (ref/refine2.py prle()): [npal][r g b × npal][count index]... ; index 0 = transparent
+      const n = bin.charCodeAt(0), pal = new Uint32Array(n + 1);
+      for (let k = 0; k < n; k++) pal[k + 1] = (255 << 24 | bin.charCodeAt(1 + k * 3 + 2) << 16 | bin.charCodeAt(1 + k * 3 + 1) << 8 | bin.charCodeAt(1 + k * 3)) >>> 0;
+      let p = 1 + n * 3, o = 0;
+      while (p + 1 < bin.length && o < out.length) { const run = bin.charCodeAt(p), idx = bin.charCodeAt(p + 1); p += 2; const v = pal[idx]; for (let r = 0; r < run && o < out.length; r++) out[o++] = v; }
+      return out;
+    }
+    const u8 = new Uint8Array(out.buffer);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     // fully transparent pixels must be 0 (they compare as "empty" everywhere)
     for (let i = 0; i < out.length; i++) if (!(out[i] >>> 24)) out[i] = 0;
@@ -91,12 +103,12 @@
   function cell(tag, i) {
     const key = tag + i;
     if (cells.has(key)) return cells.get(key);
-    const c = SHEETS[tag][i], k = SCALE[tag];
+    const c = SHEETS[tag][i], k0 = SCALE[tag], ds = k0 < 1 ? k0 : 1, k = k0 < 1 ? 1 : k0;   // ds: drawn smaller than the pixels
     const w = Math.round(c.w * k), h = Math.round(c.h * k);
-    const fig = up(decode(c.f, c.w, c.h), c.w, c.h, k);
-    const eff = c.e ? up(decode(c.e, c.w, c.h), c.w, c.h, k) : null;
+    const fig = up(decode(c.f, c.w, c.h, c.enc), c.w, c.h, k);
+    const eff = c.e ? up(decode(c.e, c.w, c.h, c.enc), c.w, c.h, k) : null;
     const Rd = Math.round;
-    const o = { tag, i, w, h, k, fig, eff, ax: Rd((c.ax + 0.5) * k), ay: Rd((c.ay + 1) * k) - 1, sX: c.sX, sY: c.sY, head: c.head || null,
+    const o = { tag, i, w, h, k, ds, fig, eff, ax: Rd((c.ax + 0.5) * k), ay: Rd((c.ay + 1) * k) - 1, sX: c.sX, sY: c.sY, head: c.head || null,
       figBox: c.fig ? [Rd(c.fig[0] * k), Rd(c.fig[1] * k), Rd((c.fig[2] + 1) * k), Rd((c.fig[3] + 1) * k)] : null,
       effBox: c.eff ? [Rd(c.eff[0] * k), Rd(c.eff[1] * k), Rd((c.eff[2] + 1) * k), Rd((c.eff[3] + 1) * k)] : null };
     cells.set(key, o);
@@ -117,7 +129,7 @@
       }
     }
     const union = (key) => { let b = null; for (const p of parts) { const q = p.c[key]; if (!q) continue; const r = [q[0] + p.dx, q[1] + p.dy, q[2] + p.dx, q[3] + p.dy]; b = b ? [Math.min(b[0], r[0]), Math.min(b[1], r[1]), Math.max(b[2], r[2]), Math.max(b[3], r[3])] : r; } return b; };
-    return { tag: main.tag, i: main.i, w, h, k: main.k, fig, eff: anyEff ? eff : null, ax: -x0, ay: -y0, sX: main.sX, sY: main.sY, figBox: union('figBox'), effBox: union('effBox') };
+    return { tag: main.tag, i: main.i, w, h, k: main.k, ds: main.ds, fig, eff: anyEff ? eff : null, ax: -x0, ay: -y0, sX: main.sX, sY: main.sY, figBox: union('figBox'), effBox: union('effBox') };
   }
   // a sub-rectangle of a cell (cell px), re-anchored at the bottom centre of what it holds
   function cropped(c, box) {
@@ -131,7 +143,7 @@
     }
     if (bx1 < 0) { bx0 = 0; by0 = 0; bx1 = w - 1; by1 = h - 1; }
     const ax = Math.round((bx0 + bx1) / 2), ay = by1;
-    return { tag: c.tag, i: c.i, w, h, k, fig, eff: anyEff ? eff : null, ax, ay, sX: c.sX, sY: c.sY, figBox: [bx0 - ax, by0 - ay, bx1 + 1 - ax, by1 + 1 - ay], effBox: null };
+    return { tag: c.tag, i: c.i, w, h, k, ds: c.ds, fig, eff: anyEff ? eff : null, ax, ay, sX: c.sX, sY: c.sY, figBox: [bx0 - ax, by0 - ay, bx1 + 1 - ax, by1 + 1 - ay], effBox: null };
   }
   function toCanvas(c32, w, h) {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -161,7 +173,9 @@
       GR: toCanvas(sil, w, h), GL: toCanvas(flipped(sil, w, h), w, h),
       WR: toCanvas(white, w, h), WL: toCanvas(flipped(white, w, h), w, h),
     } : { fig: c.fig, eff: c.eff };
-    Object.assign(e, { w, h, ox: c.ax, oy: c.ay, oxL: w - 1 - c.ax, figBox: c.figBox, effBox: c.effBox, k: c.k });
+    // world-px metrics: the canvases stay at cell size, drawn at ds (1 for the H sheet, 0.5 for the 164-px sheets)
+    const ds = c.ds || 1, sc = (b) => b ? b.map((v) => v * ds) : null;
+    Object.assign(e, { w: w * ds, h: h * ds, ox: c.ax * ds, oy: c.ay * ds, oxL: (w - 1 - c.ax) * ds, figBox: sc(c.figBox), effBox: sc(c.effBox), k: c.k, ds, pw: w, ph: h });
     frames.set(key, e);
     return e;
   }
@@ -169,13 +183,14 @@
   let swordCv = null;
   function sword() {
     if (swordCv || !hasDoc) return swordCv;
-    const c = cell('A', 3), k = c.k * RES.A;
+    const c = cell('A', 3), k = c.k * RES.A;   // cell px per 41-px-scale unit (the offsets below are authored at 41)
     const x0 = c.ax + 6 * k, y0 = c.ay - 26 * k, x1 = c.w, y1 = c.ay - 13 * k;
     let bx0 = 1e9, by0 = 1e9, bx1 = -1, by1 = -1;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (c.fig[y * c.w + x]) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
     const w = bx1 - bx0 + 1, h = by1 - by0 + 1, px = new Uint32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px[y * w + x] = c.fig[(y + by0) * c.w + x + bx0];
-    swordCv = { cv: toCanvas(px, w, h), w, h, pivot: [4, Math.round(h / 2)] };
+    const ds = c.ds || 1;   // the prop canvas is at cell size; the game draws it through a matrix scaled by ds
+    swordCv = { cv: toCanvas(px, w, h), w: w * ds, h: h * ds, pivot: [4 / ds, Math.round(h / 2)], ds };
     return swordCv;
   }
   root.SPR = { SCALE, sheets: SHEETS, cell, frame, sword, decode, up, toCanvas, HEADS };

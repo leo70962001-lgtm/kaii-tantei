@@ -17,10 +17,12 @@ rows.forEach((r, j) => r.forEach(({ fr, img }, i) => {
   const gy = Y + (OY - (fr.lift || 0)) * S;
   cv.rect(X, gy, CW * S, 1, PX.hex('#ffe64a'));
   if (img && !fr.pose.hidden) {
-    const w = img.w, h = img.h;
+    const w = img.pw || img.w, h = img.ph || img.h, ds = img.ds || 1;   // pixel size; drawn at S·ds (ds 0.5 for the 164-px sheets)
     const buf = { w, h, c: new Uint32Array(w * h) };
     for (let k = 0; k < w * h; k++) buf.c[k] = img.fig[k] || (img.eff ? img.eff[k] : 0);
-    cv.blit(buf, X + (OX - img.ox) * S, Y + (OY - (fr.lift || 0) - img.oy) * S, S);
+    const s2 = S * ds;
+    if (s2 >= 1) cv.blit(buf, X + (OX - img.ox) * S, Y + (OY - (fr.lift || 0) - img.oy) * S, s2);
+    else { const W2 = Math.round(w * s2), H2 = Math.round(h * s2), b2 = { w: W2, h: H2, c: new Uint32Array(W2 * H2) }; for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) b2.c[y * W2 + x] = buf.c[Math.floor(y / s2) * w + Math.floor(x / s2)]; cv.blit(b2, X + (OX - img.ox) * S, Y + (OY - (fr.lift || 0) - img.oy) * S, 1); }
     cv.rect(X + OX * S - 1, gy - 1, 3, 3, PX.hex('#ff3030'));
   }
   if (fr.hb) {

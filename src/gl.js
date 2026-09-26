@@ -142,7 +142,7 @@ export function createGL(o) {
     for (const it of list) {
       order++;
       if (it.k === 'img') {
-        const t = tex(it.img), w = it.img.width, h = it.img.height;
+        const t = tex(it.img), w = it.w || it.img.width, h = it.h || it.img.height;   // world size (164-px sheets draw at 0.5)
         const m = imgPool.get(); m.material.map = t; m.material.opacity = it.a; place(m, it.x, it.y, w, h, order);
         m.layers.set(0); if (it.glow) m.layers.enable(GLOW);
         if (it.fx) { const f = fxPool.get(); f.material.map = tex(it.fx); f.material.opacity = 1; place(f, it.x, it.y, w, h, order); }

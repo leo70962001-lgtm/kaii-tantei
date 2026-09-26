@@ -29,7 +29,8 @@ TAGS = ('A', 'B', 'C', 'V')
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
 OUT = (20, 23, 42)                                     # the sheets' own outline colour (analyze_b.py: median of L < 30)
-UP = 2 if 'x2' in sys.argv else 1
+RAW = 'raw' in sys.argv                                # raw: the sheet's own pixels 1:1 (164-px cells drawn at 0.5 → 1:1 on the 2× canvas)
+UP = 4 if RAW else (2 if 'x2' in sys.argv else 1)
 LIGHT_PASS = 'nolight' not in sys.argv
 BASE_H = {'A': 164, 'B': 164, 'C': 123, 'V': 164}     # the idle figure's source height per sheet (analyze_b.py)
 
@@ -129,6 +130,34 @@ def classify(p, hy):
     if L > 36: return 'stock' if hy > 0.55 else 'hair'
     return 'boot' if hy > 0.88 else ('stock' if hy > 0.6 else 'hair')
 def is_fx(cls): return cls in FX_RAMPS
+
+def prle(im):
+    """palette + run-length encoding of an RGBA cell (index 0 = transparent, ≤ 255 colours; runs of ≤ 255):
+    bytes = [npal] [r g b × npal] [count index] ...  → base64. Decoded by src/sprite.js decode()."""
+    im = im.convert('RGBA'); w, h = im.size; px = list(im.getdata())
+    opaque = [p[:3] for p in px if p[3]]
+    cols = sorted(set(opaque), key=lambda c: opaque.count(c) if len(opaque) < 4000 else 0)
+    if len(set(opaque)) > 255:
+        q = Image.new('RGB', (len(opaque), 1)); q.putdata(opaque); q = q.quantize(255, method=Image.Quantize.MEDIANCUT)
+        pal = q.getpalette()[:255 * 3]; palette = [tuple(pal[k:k + 3]) for k in range(0, len(pal), 3)]
+        idx_of = {}
+        def index(c):
+            if c not in idx_of: idx_of[c] = 1 + min(range(len(palette)), key=lambda k: sum((palette[k][j] - c[j]) ** 2 for j in range(3)))
+            return idx_of[c]
+    else:
+        palette = sorted(set(opaque)); idx_of = {c: k + 1 for k, c in enumerate(palette)}
+        def index(c): return idx_of[c]
+    out = bytearray([len(palette)])
+    for c in palette: out += bytes(c)
+    run = 0; cur = None
+    for p in px:
+        k = index(p[:3]) if p[3] else 0
+        if k == cur and run < 255: run += 1
+        else:
+            if cur is not None: out += bytes((run, cur))
+            cur = k; run = 1
+    if cur is not None: out += bytes((run, cur))
+    return base64.b64encode(bytes(out)).decode('ascii')
 
 def load_cells():
     src = open('../src/sprites-jk.js', encoding='utf-8').read()
@@ -317,6 +346,18 @@ def refine_cell(tag, c, sheet):
     ys = [y for y in range(h) if any(mask[y])]
     if not ys: return None
     top, bot = min(ys), max(ys)
+    if RAW:
+        # the sheet's own pixels: one source pixel per sprite pixel (UP 4), colours untouched, no synthetic outline
+        out = Image.new('RGBA', (w, h), (0, 0, 0, 0)); op = out.load(); eff = None; ep = None
+        if any(any(r) for r in emask): eff = Image.new('RGBA', (w, h), (0, 0, 0, 0)); ep = eff.load()
+        for y in range(h):
+            for x in range(w):
+                qs = win.get((x, y))
+                if not qs: continue
+                p = qs[0][2]
+                if mask[y][x]: op[x, y] = (p[0], p[1], p[2], 255)
+                elif emask[y][x] and ep is not None: ep[x, y] = (p[0], p[1], p[2], 255)
+        return out, eff, s
     # affinity regions of the source under the figure; each region → one material (mean colour + centroid height)
     coords = set(q[:2] for (x, y) in win if mask[y][x] for q in win[(x, y)])
     label, info = segment(sheet, tag, coords) if REGIONS else ({}, {})
@@ -489,7 +530,7 @@ def main():
             a = ANALYSIS['cells'].get('%s%d' % (tag, c['i'])); eye = None
             if a and a.get('eye'):
                 eye = to_cell(tag, g, s, a['srcBox'][0] + a['eye']['x'], a['srcBox'][1] + a['eye']['y'])
-            features(out, eye)
+            if not RAW: features(out, eye)
             w, h = out.size
             before.append(Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
             after.append(out)
@@ -497,9 +538,12 @@ def main():
                 c['w'], c['h'] = w, h
                 c['ax'] = int(round((g['ax'] + 0.5) * UP * s - 0.5)); c['ay'] = int(round((g['ay'] + 1) * UP * s - 1))
                 c['sX'] = int(round(g['sX'] * UP * s)); c['sY'] = int(round(g['sY'] * UP * s)); c['scale'] = round(s, 4)
-                c['f'] = base64.b64encode(out.tobytes()).decode('ascii')
-                c['e'] = base64.b64encode(eff.tobytes()).decode('ascii') if eff else None
-                c['refined'] = 2; c['res'] = UP
+                if RAW:                                   # palette + run-length encoding (decoded by src/sprite.js decode())
+                    c['f'] = prle(out); c['e'] = prle(eff) if eff else None; c['enc'] = 'prle'
+                else:
+                    c['f'] = base64.b64encode(out.tobytes()).decode('ascii')
+                    c['e'] = base64.b64encode(eff.tobytes()).decode('ascii') if eff else None; c.pop('enc', None)
+                c['refined'] = 3 if RAW else 2; c['res'] = UP
                 op = out.load()
                 xs = [x for y in range(h) for x in range(w) if op[x, y][3]]; ys = [y for y in range(h) for x in range(w) if op[x, y][3]]
                 c['fig'] = [min(xs) - c['ax'], min(ys) - c['ay'], max(xs) - c['ax'], max(ys) - c['ay']] if xs else None

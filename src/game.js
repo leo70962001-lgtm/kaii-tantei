@@ -741,8 +741,10 @@
     if (shotImgs[key]) return shotImgs[key];
     const fr = window.SPR.frame('A', 36);
     const src = face > 0 ? (fr.FR || fr.R) : (fr.FL || fr.L);
-    const c2 = document.createElement('canvas'); c2.width = fr.w; c2.height = fr.h; const g2 = c2.getContext('2d'); g2.drawImage(src, 0, 0);
-    if ((t >> 2) & 1) { const id = g2.getImageData(0, 0, fr.w, fr.h), d = id.data; for (let p = 0; p < fr.w * fr.h; p++) if (((p % fr.w) + Math.floor(p / fr.w)) % 4 === 0) d[p * 4 + 3] = 0; g2.putImageData(id, 0, 0); }
+    const pw = fr.pw || fr.w, ph = fr.ph || fr.h;   // canvas pixels (the 164-px sheets draw at 0.5: fr.w/h are world px)
+    const c2 = document.createElement('canvas'); c2.width = pw; c2.height = ph; const g2 = c2.getContext('2d'); g2.drawImage(src, 0, 0);
+    if ((t >> 2) & 1) { const id = g2.getImageData(0, 0, pw, ph), d = id.data; for (let p = 0; p < pw * ph; p++) if (((p % pw) + Math.floor(p / pw)) % 4 === 0) d[p * 4 + 3] = 0; g2.putImageData(id, 0, 0); }
+    c2.worldW = fr.w; c2.worldH = fr.h;
     return (shotImgs[key] = c2);
   }
   const batImgs = {};
@@ -767,7 +769,9 @@
     const ox = right ? img.ox : img.oxL, oy = img.oy;
     if (!fr.pose.hidden) {
       list.push({ k: 'blob', x: sx, y: G - 2, w: Math.max(9, 17 - f.y * 0.12) });
-      if (lift >= 0 && img.SR) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [1, 0, -f.face * 0.5, -0.07, Math.round(sx - ox + oy * f.face * 0.5 + lift * f.face * 0.5), G + oy * 0.07 + lift * 0.07], a: 0.35 });
+      // the ground shadow: the ink silhouette sheared onto the road; ds = the frame's draw scale (cell px → world px)
+      const ds = img.ds || 1;
+      if (lift >= 0 && img.SR) list.push({ k: 'skew', img: right ? img.SR : img.SL, m: [ds, 0, -f.face * 0.5 * ds, -0.07 * ds, Math.round(sx - ox + oy * f.face * 0.5 + lift * f.face * 0.5), G + oy * 0.07 + lift * 0.07], a: 0.35 });
     }
     // afterimages (tinted silhouettes of earlier ghost frames)
     for (const g of f.trail) {
@@ -775,18 +779,18 @@
       if (age >= 1) continue;
       const gi = cache.get(f.C.id + ':' + g.an.form + ':' + g.an.id + ':' + g.fi + ':' + g.mask);
       if (!gi || !gi.GR) continue;
-      list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? gi.ox : gi.oxL)), y: Math.round(G - g.y - gi.oy), a: 0.4 * (1 - age) });
+      list.push({ k: 'img', img: g.face > 0 ? gi.GR : gi.GL, x: Math.round(g.x - camX - (g.face > 0 ? gi.ox : gi.oxL)), y: Math.round(G - g.y - gi.oy), w: gi.w, h: gi.h, a: 0.4 * (1 - age) });
     }
     f.trail = f.trail.filter((g) => sim.t - g.t < 200);
     if (fr.pose.hidden || !img.R) return;
     const flash = !!fr.pose.flash || (f.flashT > 0 && f.flashT % 2 === 0);
-    list.push({ k: 'img', img: flash ? (right ? img.WR : img.WL) : (right ? img.R : img.L), x: sx - ox, y: sy - oy, a: 1, fx: right ? img.FR : img.FL, refl: true });
+    list.push({ k: 'img', img: flash ? (right ? img.WR : img.WL) : (right ? img.R : img.L), x: sx - ox, y: sy - oy, w: img.w, h: img.h, a: 1, fx: right ? img.FR : img.FL, refl: true });
   }
   function draw2D(list) {
     for (const it of list) {
       if (it.k === 'blob') { lx.fillStyle = 'rgba(4,6,20,0.55)'; for (let r = 0; r < 5; r++) { const ww = Math.round(it.w - Math.abs(r - 2) * 3); lx.fillRect(it.x - ww, it.y + r, ww * 2, 1); } }
       else if (it.k === 'skew') { lx.save(); lx.globalAlpha = it.a; lx.transform(...it.m); lx.drawImage(it.img, 0, 0); lx.restore(); }
-      else if (it.k === 'img') { lx.globalAlpha = it.a; lx.drawImage(it.img, it.x, it.y); lx.globalAlpha = 1; }
+      else if (it.k === 'img') { lx.globalAlpha = it.a; lx.drawImage(it.img, it.x, it.y, it.w || it.img.width, it.h || it.img.height); lx.globalAlpha = 1; }
       else if (it.k === 'rect') { lx.fillStyle = it.col; lx.fillRect(it.x, it.y, it.w, it.h); }
       else if (it.k === 'ring') { lx.strokeStyle = it.col; lx.globalAlpha = it.a; lx.beginPath(); lx.arc(it.x, it.y, it.r, 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; }
     }
@@ -848,14 +852,15 @@
     for (const f of fs) fighterList(list, f, camX);
     for (const p of sim.projs) {
       if (p.dead) continue;
-      if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t); list.push({ k: 'img', img: im, x: Math.round(p.x - camX - im.width / 2), y: Math.round(G - p.y - im.height / 2), a: 1, glow: true }); continue; }
+      if (p.kind === 'shot') { const im = shotImg(p.vx > 0 ? 1 : -1, p.t), iw = im.worldW || im.width, ih = im.worldH || im.height; list.push({ k: 'img', img: im, x: Math.round(p.x - camX - iw / 2), y: Math.round(G - p.y - ih / 2), w: iw, h: ih, a: 1, glow: true }); continue; }
       list.push({ k: 'img', img: batImg(p.flap, p.vx > 0 ? 1 : -1, p.owner.parts.laptop && p.owner.parts.laptop.broken), x: Math.round(p.x - camX - 12), y: Math.round(G - p.y - 7), a: 1 });
     }
     for (const sw of sim.props) {
       if (sw.dead || !window.SPR) continue;
       const part = window.SPR.sword(); if (!part) continue;
       const a = sw.rot * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), px = Math.round(sw.x - camX), py = Math.round(G - sw.y);
-      const m = [cs, sn, -sn, cs, px - (cs * part.pivot[0] - sn * part.pivot[1]), py - (sn * part.pivot[0] + cs * part.pivot[1])];
+      const d = part.ds || 1, pv0 = part.pivot[0] * d, pv1 = part.pivot[1] * d;   // the prop canvas is at cell size; drawn at ds
+      const m = [cs * d, sn * d, -sn * d, cs * d, px - (cs * pv0 - sn * pv1), py - (sn * pv0 + cs * pv1)];
       if (!sw.landed) list.push({ k: 'blob', x: px, y: G - 2, w: 9 });
       list.push({ k: 'skew', img: part.cv, m, a: 1 });
     }
@@ -989,5 +994,6 @@
   // warm the cache for the idle frames so the first fight does not stutter
   requestAnimationFrame((t) => { last = t; frame(t); });
 
-  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas };
+  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas,
+    renderOnce: () => { drawWorld(); ctx.imageSmoothingEnabled = false; if (gl) ctx.clearRect(0, 0, cv.width, cv.height); else { ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height); } ctx.drawImage(low, 0, 0, cv.width, cv.height); drawHudText(); } };   // one frame on demand (tests while the tab is hidden)
 })();
