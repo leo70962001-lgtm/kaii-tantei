@@ -23,6 +23,7 @@ SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg'
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
 OUT = (14, 12, 24)
+LIGHT_PASS = 'nolight' not in sys.argv                 # consistent top-left rim light / bottom-right shade (see below)
 
 # ---- material ramps (shade, base, light) from the standing picture / hand.py palette
 RAMPS = {
@@ -182,8 +183,23 @@ def refine_cell(tag, c, sheet):
                     cnt = Counter(same); t, n = cnt.most_common(1)[0]
                     if n >= len(same) * 0.6: nt[y][x] = t
         tone = nt
-    # light from the top-left: the first pixel of a material along a row from the left and the top row get the light
-    # tone only if the block was already at least base (keeps the sheet's own shading readable)
+    # consistent light from the top-left (2D game art 101): inside each material region a pixel whose upper or left
+    # neighbour is another material / the outline / outside is lit (base → light), one whose lower or right neighbour
+    # is gets the shade (base → shade); pixels the sheet already shaded keep their tone. Only for regions ≥ 3 px wide.
+    if LIGHT_PASS:
+        def other(x, y, m):
+            return not (0 <= x < w and 0 <= y < h and mask[y][x]) or mat[y][x] != m or mat[y][x] == 'line'
+        nt = [row[:] for row in tone]
+        for y in range(h):
+            for x in range(w):
+                m = mat[y][x]
+                if not mask[y][x] or m in ('line', 'boot', 'hilt', 'guard', 'sheen'): continue
+                lit = other(x - 1, y, m) or other(x, y - 1, m)
+                shd = other(x + 1, y, m) or other(x, y + 1, m)
+                inner = not other(x - 1, y, m) and not other(x + 1, y, m)
+                if lit and not shd and tone[y][x] == 1: nt[y][x] = 2
+                elif shd and not lit and tone[y][x] == 1: nt[y][x] = 0
+        tone = nt
     out = Image.new('RGBA', (w, h), (0, 0, 0, 0)); op = out.load()
     for y in range(h):
         for x in range(w):
