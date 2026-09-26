@@ -1029,7 +1029,8 @@
 (function (root) {
   'use strict';
   const PX = root.PX;
-  const W = 720, H = 270, VW = 480, GROUND = 240, FAR_W = 600, PXM = 52;   // world px per metre on the fight plane
+  const W = 720, H = 270, VW = 480, GROUND = 240, FAR_W = 600, FRONT_W = 800, PXM = 52;   // world px per metre on the fight plane
+  let TREES = null;   // which near-layer pixels the sakura canopies cover (so lights behind them stay behind them)
   const hx = PX.hex;
   const rgba = (hex, a) => ((hx(hex) & 0x00ffffff) | ((a & 255) << 24)) >>> 0;   // a translucent pixel (both renderers blend it)
   const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
@@ -1195,11 +1196,13 @@
     for (const [dx, dy] of [[0, -1], [0, -2], [0, -3], [0, -4], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]]) L.set(214 + dx, 122 + dy, hx('#302010'));   // the shop clock
     // sakura trees behind the wall (×0.6), in the reference's way: clumps of blossom shaded from the upper right,
     // a darker rim on each clump, dark branches showing in the gaps, the odd brighter petal
-    const sakura = (cx, cy, rx, ry, seed) => {
-      for (let y = cy + ry * 0.5; y < 190; y++) for (let i = -3; i <= 3; i++) L.set(cx + i, y, i < -1 ? hx('#3a2a38') : i > 1 ? hx('#1a1020') : hx('#2a1c30'));
+    TREES = layer(W, H);
+    const sakura = (cx, cy, rx, ry, seed, T) => {
+      T = T || L;
+      if (T === L) for (let y = cy + ry * 0.5; y < 190; y++) for (let i = -3; i <= 3; i++) { T.set(cx + i, y, i < -1 ? hx('#3a2a38') : i > 1 ? hx('#1a1020') : hx('#2a1c30')); TREES.set(cx + i, y, 1); }   // the trunk (the front-layer canopies hang in from above)
       const GAP = hx('#2a1c30');
-      ellipse(L, cx, cy, rx * 0.86, ry * 0.86, hx('#3a2240'));
-      for (const [bx, by] of [[-rx * 0.6, -ry * 0.3], [rx * 0.55, -ry * 0.45], [-rx * 0.25, -ry * 0.8], [rx * 0.2, -ry * 0.9], [rx * 0.75, ry * 0.05], [-rx * 0.8, ry * 0.1]]) { line(L, cx, cy + ry * 0.4, cx + bx, cy + by, GAP); line(L, cx + 1, cy + ry * 0.4, cx + bx + 1, cy + by, hx('#1a1020')); }
+      ellipse(T, cx, cy, rx * 0.86, ry * 0.86, hx('#3a2240')); if (T === L) ellipse(TREES, cx, cy, rx * 0.86, ry * 0.86, 1);
+      for (const [bx, by] of [[-rx * 0.6, -ry * 0.3], [rx * 0.55, -ry * 0.45], [-rx * 0.25, -ry * 0.8], [rx * 0.2, -ry * 0.9], [rx * 0.75, ry * 0.05], [-rx * 0.8, ry * 0.1]]) { line(T, cx, cy + ry * 0.4, cx + bx, cy + by, GAP); line(T, cx + 1, cy + ry * 0.4, cx + bx + 1, cy + by, hx('#1a1020')); if (T === L) { line(TREES, cx, cy + ry * 0.4, cx + bx, cy + by, 1); line(TREES, cx + 1, cy + ry * 0.4, cx + bx + 1, cy + by, 1); } }
       const SH = hx('#6a3454'), MID = hx('#a85a7c'), LIT = hx('#d88aa4'), HI = hx('#f4bcd0'), RIM = hx('#4a2440');
       const n = Math.round(rx * ry / 48), clumps = [];
       for (let k = 0; k < n; k++) {
@@ -1212,13 +1215,15 @@
           const d = Math.hypot(x - px, y - py) / pr + HS(x, y, seed + 5) * 0.14;
           if (d > 1.04) continue;
           const lx = (x - px) / pr, ly = (y - py) / pr, l = lx * 0.6 - ly * 0.8;   // light from the upper right (moon / lamps)
-          if (d > 0.9) { L.set(x, y, l < 0.2 || dith(x, y, 0.5) ? RIM : SH); continue; }
+          if (T === L) TREES.set(x, y, 1);
+          if (d > 0.9) { T.set(x, y, l < 0.2 || dith(x, y, 0.5) ? RIM : SH); continue; }
           const c = l > 0.5 ? HI : l > 0.05 ? LIT : l > -0.45 ? MID : SH;
-          L.set(x, y, HS(x, y, seed + 6) < 0.04 ? hx('#fff0f4') : c);
+          T.set(x, y, HS(x, y, seed + 6) < 0.04 ? hx('#fff0f4') : c);
         }
       }
     };
     sakura(118, 96, 70, 52, 13); sakura(586, 90, 78, 58, 17); sakura(704, 112, 54, 42, 19);
+    SAKURA = sakura;
     // ---- the wall (1.0 m): a block wall with a coping, mortar joints, grime, a poster; open between the gate pillars
     const wall = (x0, x1) => {
       for (let y = 188; y < GROUND; y++) for (let x = x0; x < x1; x++) {
@@ -1288,8 +1293,38 @@
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) c[y * w + x] = L.c[(y * 2) * L.w + x * 2];
     return { w, h, c };
   }
-  let FAR = null, NEAR = null;
-  function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); } return { far: FAR, near: NEAR }; }
+  let SAKURA = null;
+  // the front layer: sakura branches reaching into the top corners, nearer than the fighters (the reference frames its
+  // city with blossoms); 800 px wide because it scrolls faster (×1.25) than the street
+  function paintFront() {
+    const L = layer(FRONT_W, H);
+    SAKURA(30, -52, 150, 96, 23, L); SAKURA(790, -46, 140, 88, 29, L);
+    // a few dark branches hanging into the frame from those canopies
+    for (const [x0, y0, x1, y1] of [[120, 40, 210, 96], [150, 30, 250, 60], [700, 36, 600, 90], [690, 24, 560, 48]]) { line(L, x0, y0, x1, y1, hx('#1a1020')); line(L, x0 + 1, y0, x1 + 1, y1, hx('#2a1c30')); }
+    for (const [x, y, r] of [[196, 88, 7], [232, 56, 6], [180, 70, 6], [612, 84, 7], [575, 46, 6], [640, 62, 6]]) {
+      for (let yy = y - r; yy <= y + r; yy++) for (let xx = x - r; xx <= x + r; xx++) { const d = Math.hypot(xx - x, yy - y) / r + HS(xx, yy, 31) * 0.15; if (d > 1) continue; const l = (xx - x) / r * 0.6 - (yy - y) / r * 0.8; L.set(xx, yy, d > 0.9 ? hx('#4a2440') : l > 0.5 ? hx('#f4bcd0') : l > 0 ? hx('#d88aa4') : hx('#a85a7c')); }
+    }
+    return L;
+  }
+  // the lit panes of the apartment windows, minus whatever a canopy covers: row spans in stage coordinates
+  const WINSPANS = [];
+  function windowSpans() {
+    for (const [wx, wy] of WINDOWS) {
+      const spans = [];
+      for (let y = wy; y < wy + 25; y++) {
+        if (y === wy + 12) continue;                        // the sash stays painted
+        let x0 = -1;
+        for (let x = wx; x <= wx + 21; x++) {
+          const pane = x < wx + 21 && x !== wx + 10 && !TREES.get(x, y);
+          if (pane && x0 < 0) x0 = x;
+          if (!pane && x0 >= 0) { spans.push([x0, y, x - x0, y < wy + 13]); x0 = -1; }
+        }
+      }
+      WINSPANS.push(spans);
+    }
+  }
+  let FAR = null, NEAR = null, FRONT = null;
+  function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); FRONT = paintFront(); windowSpans(); } return { far: FAR, near: NEAR, front: FRONT, frontRate: 1.25 }; }
 
   // ---------------------------------------------------------------- living background (「背景加入會動的物體」)
   // Everything is a pure function of the sim time t (ms), so nothing needs state: falling cherry petals swaying in
@@ -1322,12 +1357,11 @@
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (H(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
       out.push({ x: 34, y: 148, w: 48, h: 92, col: hx('#c0e8ff'), a: 0.03 * f });
     }
-    // windows switching (the apartment block, 21×25 panes)
+    // windows switching (the apartment block, 21×25 panes) — only the parts of a pane no sakura canopy covers, so the
+    // light stays behind the trees (「窗子的燈光在櫻花樹後」)
     for (let k = 0; k < 4; k++) {
-      const slot = Math.floor(s / 1.1) + k * 7, on = H(slot, 9, 21) > 0.5, [wx, wy] = WINDOWS[Math.floor(H(slot, 10, 21) * WINDOWS.length) % WINDOWS.length];
-      out.push({ x: wx, y: wy, w: 21, h: 25, col: on ? hx('#ffd98a') : hx('#0f1130'), a: 1 });
-      if (on) out.push({ x: wx, y: wy + 13, w: 21, h: 12, col: hx('#e0b850'), a: 1 });
-      out.push({ x: wx + 10, y: wy, w: 1, h: 25, col: hx('#2c3060'), a: 1 }); out.push({ x: wx, y: wy + 12, w: 21, h: 1, col: hx('#2c3060'), a: 1 });
+      const slot = Math.floor(s / 1.1) + k * 7, on = H(slot, 9, 21) > 0.5, wi = Math.floor(H(slot, 10, 21) * WINDOWS.length) % WINDOWS.length;
+      for (const [x, y, w, top] of WINSPANS[wi] || []) out.push({ x, y, w, h: 1, col: on ? (top ? hx('#ffd98a') : hx('#e0b850')) : hx('#0f1130'), a: 1 });
     }
     // wisps drifting over the moon (far layer)
     for (const [k, y0, len, col, spd] of [[0, 62, 70, '#2c2b66', 3.2], [1, 74, 48, '#272560', 2.4], [2, 92, 90, '#232258', 1.8]]) {
@@ -1552,7 +1586,7 @@
     return propCache.get(key);
   }
 
-  root.STAGE = { W, H, VW, GROUND, FAR_W, PXM, paint, half, anim, breakables, propImage, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
+  root.STAGE = { W, H, VW, GROUND, FAR_W, FRONT_W, PXM, paint, half, anim, breakables, propImage, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -2327,7 +2361,7 @@
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, RS }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
@@ -2344,6 +2378,7 @@
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
   const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
+  const FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null, FRONT_RATE = BG.frontRate || 1.25;   // blossoms in front of the fighters
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -2550,6 +2585,7 @@
       lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
       lx.drawImage(NEAR, -camX, 0);
       draw2D(list);
+      if (FRONT) lx.drawImage(FRONT, -Math.round(camX * FRONT_RATE), 0);
       lx.setTransform(RS, 0, 0, RS, 0, 0);
     }
     if (sim.phase !== 'title' && sim.phase !== 'select') hudPixels();

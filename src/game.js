@@ -767,7 +767,7 @@
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, RS }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
@@ -784,6 +784,7 @@
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
   const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
+  const FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null, FRONT_RATE = BG.frontRate || 1.25;   // blossoms in front of the fighters
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -990,6 +991,7 @@
       lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
       lx.drawImage(NEAR, -camX, 0);
       draw2D(list);
+      if (FRONT) lx.drawImage(FRONT, -Math.round(camX * FRONT_RATE), 0);
       lx.setTransform(RS, 0, 0, RS, 0, 0);
     }
     if (sim.phase !== 'title' && sim.phase !== 'select') hudPixels();

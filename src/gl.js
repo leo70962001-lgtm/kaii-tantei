@@ -21,7 +21,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const GLOW = 1;
 
 export function createGL(o) {
-  const { canvas, VW, VH, G, far, near, farRate } = o;
+  const { canvas, VW, VH, G, far, near, farRate, front, frontRate } = o;
   const RS = o.RS || 1;   // render target scale: world units stay VW × VH, the target has RS× the pixels
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
@@ -87,6 +87,11 @@ export function createGL(o) {
   farMesh.renderOrder = -2; nearMesh.renderOrder = -1;
   farMesh.scale.set(far.width * s, VH * s, 1); farMesh.position.z = -d;
   nearMesh.scale.set(near.width, near.height, 1);
+  // the front layer sits nearer than the fight plane (z > 0, scaled down to look the same size) so it scrolls faster and
+  // draws over the fighters
+  const sf = front ? 1 / (frontRate || 1.25) : 1, df = D * (sf - 1);
+  const frontMesh = front ? layerMesh(front, false) : null;
+  if (frontMesh) { frontMesh.renderOrder = 100000; frontMesh.scale.set(front.width * sf, VH * sf, 1); frontMesh.position.z = -df; }
 
   // ---------------------------------------------------------------- pools
   class Pool {
@@ -137,6 +142,7 @@ export function createGL(o) {
     camera.lookAt(cx, cy, 0);
     nearMesh.position.set(-camX + near.width / 2, -near.height / 2, 0);
     farMesh.position.set(VW / 2 - camX - VW * s / 2 + far.width * s / 2, -VH / 2, -d);
+    if (frontMesh) frontMesh.position.set(VW / 2 - camX - VW * sf / 2 + front.width * sf / 2, -VH / 2, -df);
     for (const p of pools) p.reset();
     let order = 0;
     for (const it of list) {
