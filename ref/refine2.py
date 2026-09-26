@@ -324,6 +324,37 @@ def dilate(m, w, h):
             if any(0 <= x + dx < w and 0 <= y + dy < h and m[y + dy][x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)): out[y][x] = True
     return out
 
+def dehalo(out, mask, w, h):
+    """The sheet anti-aliases its dark outline against a pale background, so the outermost figure ring is a pale
+    lilac band (「白邊」: depth-0 mean L 114 vs 76 deeper in). (A) An opaque border pixel that is light while a dark
+    outline pixel sits right behind it becomes a soft rim pixel (alpha 127); two passes catch a 2-px band.
+    (B) Every partially transparent pixel takes the colour of the darkest opaque pixel within 2 px, keeping its
+    alpha — the edge fades through the outline colour, never through the background's."""
+    op = out.load()
+    def lum(p): return 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
+    N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    for _ in range(2):
+        border = [(x, y) for y in range(h) for x in range(w) if op[x, y][3] == 255 and any(not (0 <= x + dx < w and 0 <= y + dy < h) or op[x + dx, y + dy][3] < 255 for dx, dy in N4)]
+        bset = set(border); changed = []
+        for x, y in border:
+            p = op[x, y]; L = lum(p)
+            if L < 110: continue
+            inner = [op[x + dx, y + dy] for dx in (-2, -1, 0, 1, 2) for dy in (-2, -1, 0, 1, 2)
+                     if (dx or dy) and 0 <= x + dx < w and 0 <= y + dy < h and op[x + dx, y + dy][3] == 255 and (x + dx, y + dy) not in bset]
+            if not inner: continue
+            dark = min(inner, key=lum)
+            if lum(dark) < 70 and L - lum(dark) > 50: changed.append((x, y, dark))
+        for x, y, dark in changed: op[x, y] = (dark[0], dark[1], dark[2], 127)
+        if not changed: break
+    rim = [(x, y) for y in range(h) for x in range(w) if 0 < op[x, y][3] < 255]
+    for x, y in rim:
+        best = None
+        for r in (1, 2):
+            cands = [op[x + dx, y + dy] for dx in range(-r, r + 1) for dy in range(-r, r + 1)
+                     if (dx or dy) and max(abs(dx), abs(dy)) == r and 0 <= x + dx < w and 0 <= y + dy < h and op[x + dx, y + dy][3] == 255]
+            if cands: best = min(cands, key=lum); break
+        if best is not None: op[x, y] = (best[0], best[1], best[2], op[x, y][3])
+
 def refine_cell(tag, c, sheet):
     g, m41, e41 = geom(c); w41, h41 = g['w'], g['h']; s = cell_scale(tag, c)
     base, w, h = upscale_mask(m41, w41, h41, s); ebase, _, _ = upscale_mask(e41, w41, h41, s)
@@ -408,6 +439,7 @@ def refine_cell(tag, c, sheet):
                     if u: op[x, y] = u
                 elif emask[y][x] and ep is not None:
                     p = src_px(x, y); u = unblend(p); ep[x, y] = u if u else (p[0], p[1], p[2], 255)
+        if 'halo' not in sys.argv: dehalo(out, mask, w, h)
         return out, eff, s
     # affinity regions of the source under the figure; each region → one material (mean colour + centroid height)
     coords = set(q[:2] for (x, y) in win if mask[y][x] for q in win[(x, y)])

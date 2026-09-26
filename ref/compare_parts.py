@@ -1,7 +1,8 @@
 # compare_parts.py — 「每一個動作都拆開依據部位比較」: for every action cell of the V sheet, compare the sheet's drawing
 # with what the game draws, PART BY PART (height bands of the figure: head / torso / hips+skirt / legs), for the
 # previous 82-px flat-tone cells (ref/art/sprites-jk-82flat.js, shown ×2 as the game drew them) and the current raw
-# 164-px cells (src/sprites-jk.js). Per part: mean colour error vs the sheet (L1 / 3, 0–255), number of distinct
+# 164-px cells (src/sprites-jk.js). The sheet's outermost ring (its anti-aliasing against the pale background) is
+# skipped in the colour error since the game deliberately keeps the outline colour there (refine2 dehalo). Per part: mean colour error vs the sheet (L1 / 3, 0–255), number of distinct
 # colours, and edge energy relative to the sheet (1.0 = as much detail). Output: ref/art/compare/V<i>.png (sheet |
 # old | new | error maps) and ref/art/compare/report.json + report.md (averages per part).
 import os, sys, json, base64
@@ -42,11 +43,14 @@ def edge_energy(im, box):
 def stats(src, img, box):
     """mean L1/3 colour error over source-opaque pixels, colour count of img, edge energy ratio img/src"""
     sp, ip = src.load(), img.load(); x0, y0, x1, y1 = box; err = 0; n = 0; cols = set(); miss = 0
+    W, H = src.size
     for y in range(y0, y1):
         for x in range(x0, x1):
             a = sp[x, y]; b = ip[x, y]
             if b[3]: cols.add(b[:3])
             if not a[3]: continue
+            # the sheet's rim ring (touching the outside) is background-tinted anti-aliasing: not part of the truth
+            if any(not (0 <= x + dx < W and 0 <= y + dy < H) or not sp[x + dx, y + dy][3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))): continue
             n += 1
             if not b[3]: miss += 1; err += 96; continue
             err += sum(abs(a[k] - b[k]) for k in range(3)) / 3
