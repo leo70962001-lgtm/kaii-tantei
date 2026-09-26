@@ -718,7 +718,9 @@
     for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) c[y * w + x] = h.c[(y >> 1) * h.w + (x >> 1)];
     return toCanvas(c, w, hh);
   }
-  const FAR = chunky(BG.far), NEAR = chunky(BG.near);
+  // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
+  // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
+  const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -791,7 +793,7 @@
       if (it.k === 'blob') { lx.fillStyle = 'rgba(4,6,20,0.55)'; for (let r = 0; r < 5; r++) { const ww = Math.round(it.w - Math.abs(r - 2) * 3); lx.fillRect(it.x - ww, it.y + r, ww * 2, 1); } }
       else if (it.k === 'skew') { lx.save(); lx.globalAlpha = it.a; lx.transform(...it.m); lx.drawImage(it.img, 0, 0); lx.restore(); }
       else if (it.k === 'img') { lx.globalAlpha = it.a; lx.drawImage(it.img, it.x, it.y, it.w || it.img.width, it.h || it.img.height); lx.globalAlpha = 1; }
-      else if (it.k === 'rect') { lx.fillStyle = it.col; lx.fillRect(it.x, it.y, it.w, it.h); }
+      else if (it.k === 'rect') { lx.fillStyle = it.col; if (it.a !== undefined && it.a < 1) lx.globalAlpha = it.a; lx.fillRect(it.x, it.y, it.w, it.h); lx.globalAlpha = 1; }
       else if (it.k === 'ring') { lx.strokeStyle = it.col; lx.globalAlpha = it.a; lx.beginPath(); lx.arc(it.x, it.y, it.r, 0, Math.PI * 2); lx.stroke(); lx.globalAlpha = 1; }
     }
   }
@@ -846,8 +848,19 @@
     }
   }
 
+  // the living background (src/stage.js anim): stage-coordinate rects → screen rects (far items with the far layer's
+  // parallax); `front` items go over the fighters, the rest behind them (still in front of the painted layers)
+  function stageAnim(list, camX, front) {
+    for (const it of STAGE.anim(sim.t)) {
+      if (!!it.front !== front) continue;
+      const x = Math.round(it.x - (it.far ? camX * 0.35 : camX));
+      if (x + it.w < -4 || x > VW + 4) continue;
+      list.push({ k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a });
+    }
+  }
   function worldList(camX) {
     const list = [];
+    stageAnim(list, camX, false);
     const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
     for (const f of fs) fighterList(list, f, camX);
     for (const p of sim.projs) {
@@ -868,6 +881,7 @@
       if (p.ring) { list.push({ k: 'ring', x: p.x - camX, y: p.y, r: p.r * (1.6 - p.life / 12), col: p.col, a: p.life / 12 }); continue; }
       list.push({ k: 'rect', x: Math.round(p.x - camX), y: Math.round(p.y), w: p.size || 1, h: p.size || 1, col: p.col });
     }
+    stageAnim(list, camX, true);
     return list;
   }
   function drawWorld() {

@@ -124,5 +124,72 @@
   let FAR = null, NEAR = null;
   function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); } return { far: FAR, near: NEAR }; }
 
-  root.STAGE = { W, H, VW, GROUND, FAR_W, paint, half, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
+  // ---------------------------------------------------------------- living background (「背景加入會動的物體」)
+  // Everything is a pure function of the sim time t (ms), so nothing needs state: falling cherry petals swaying in
+  // the wind (most behind the fighters, a few in front), the gate and street lamps flickering, windows of the near
+  // block switching on and off, clouds drifting over the moon, stars twinkling, a flight of bats now and then, and a
+  // cat that walks the wall top every so often. Items are stage coordinates: { far, x, y, w, h, col, a, front }.
+  const HS = PX.hash, PINK = ['#ffb7cc', '#f7a3bd', '#ffd6e0', '#e88fa8'];   // CSS colours: the draw list's rects take strings
+  function anim(t) {
+    const out = [], s = t / 1000, H = HS, hx = (c) => c;
+    // petals
+    for (let k = 0; k < 34; k++) {
+      const vy = 14 + H(k, 1, 21) * 16, per = 1.4 + H(k, 2, 21) * 2.2, amp = 5 + H(k, 3, 21) * 10;
+      const y = ((H(k, 4, 21) * 300 + s * vy) % (GROUND + 30)) - 12;
+      const x = ((H(k, 5, 21) * W + s * (10 + H(k, 6, 21) * 12) + Math.sin(s / per * Math.PI * 2 + k) * amp) % W + W) % W;
+      const big = H(k, 7, 21) > 0.6, front = k % 5 === 0;
+      out.push({ x: Math.round(x), y: Math.round(y), w: big ? 3 : 2, h: 2, col: PINK[k & 3], a: front ? 0.9 : 0.75, front });
+      if (big) out.push({ x: Math.round(x) + 1, y: Math.round(y) - 1, w: 1, h: 1, col: PINK[(k + 1) & 3], a: 0.6, front });
+    }
+    // lamp flicker: a warm halo whose strength wobbles (gate lamps at the pillars, the tall street lamp)
+    for (const [k, lx0, ly0, lw, lh, r] of [[0, 322, 141, 10, 12, 16], [1, 418, 141, 10, 12, 16], [2, 579, 105, 9, 9, 14]]) {
+      const f = 0.55 + 0.45 * Math.sin(s * 9 + k * 2) * Math.sin(s * 3.3 + k) + (H(Math.floor(s * 12) + k, 8, 21) > 0.9 ? -0.35 : 0);
+      out.push({ x: lx0 - r, y: ly0 - r, w: lw + r * 2, h: lh + r * 2, col: hx('#ffd070'), a: 0.05 + 0.05 * f });
+      out.push({ x: lx0 - (r >> 1), y: ly0 - (r >> 1), w: lw + r, h: lh + r, col: hx('#ffe4a0'), a: 0.08 + 0.08 * f });
+    }
+    // windows switching (the near block, x 54–264, y 150–204)
+    for (let k = 0; k < 6; k++) {
+      const slot = Math.floor(s / 0.9) + k * 7, on = H(slot, 9, 21) > 0.5;
+      const wx = 54 + Math.floor(H(slot, 10, 21) * 21) * 10, wy = 150 + Math.floor(H(slot, 11, 21) * 6) * 9;
+      out.push({ x: wx, y: wy, w: 3, h: 3, col: on ? hx('#ffe08a') : hx('#0f1130'), a: 1 });
+      if (on) out.push({ x: wx, y: wy + 1, w: 3, h: 2, col: hx('#e0b850'), a: 1 });
+    }
+    // clouds drifting over the moon (far layer)
+    for (const [k, y0, len, col, spd] of [[0, 62, 70, '#2c2b66', 3.2], [1, 74, 48, '#272560', 2.4], [2, 92, 90, '#232258', 1.8]]) {
+      const x0 = ((k * 170 + s * spd) % (FAR_W + 140)) - 70;
+      for (let x = 0; x < len; x += 2) {
+        const bump = (x % 13 < 9) ? 2 : 0;
+        out.push({ far: true, x: x0 + x, y: y0 + ((x / 2) & 1) - bump, w: 2, h: 2 + bump, col: hx(col), a: 0.9 });
+      }
+    }
+    // twinkling stars (far)
+    for (let k = 0; k < 14; k++) {
+      const x = Math.floor(H(k, 1, 11) * FAR_W), y = Math.floor(Math.pow(H(k, 2, 11), 1.5) * 150);
+      const tw = 0.5 + 0.5 * Math.sin(s * (1.5 + H(k, 12, 21) * 3) + k * 1.7);
+      out.push({ far: true, x, y, w: 1, h: 1, col: hx('#ffffff'), a: tw });
+    }
+    // bats crossing the sky every 14 s (far)
+    const bp = (s % 14) / 14;
+    if (bp < 0.45) for (let k = 0; k < 3; k++) {
+      const bx = FAR_W + 40 - bp / 0.45 * (FAR_W + 80) + k * 22, by = 58 + k * 9 + Math.sin(s * 6 + k) * 4, flap = Math.floor(s * 10 + k) & 1;
+      out.push({ far: true, x: bx, y: by, w: 2, h: 1, col: hx('#0a0b1c'), a: 1 });
+      out.push({ far: true, x: bx - 3, y: by - flap, w: 3, h: 1, col: hx('#0a0b1c'), a: 1 });
+      out.push({ far: true, x: bx + 2, y: by - flap, w: 3, h: 1, col: hx('#0a0b1c'), a: 1 });
+    }
+    // a cat walking the wall top every 26 s (near, behind the fighters)
+    const cp = (s % 26) / 26;
+    if (cp > 0.7) {
+      const u = (cp - 0.7) / 0.3, cx = 690 - u * 200, cy = 181, step = Math.floor(s * 6) & 1;
+      const C = hx('#0c0d1e');
+      out.push({ x: cx, y: cy + 2, w: 11, h: 4, col: C, a: 1 });                       // body
+      out.push({ x: cx - 4, y: cy + 1, w: 5, h: 4, col: C, a: 1 });                    // head (walking left)
+      out.push({ x: cx - 4, y: cy - 1, w: 1, h: 2, col: C, a: 1 }); out.push({ x: cx - 1, y: cy - 1, w: 1, h: 2, col: C, a: 1 });   // ears
+      out.push({ x: cx + 11, y: cy - 2 + step, w: 1, h: 5, col: C, a: 1 });          // tail
+      out.push({ x: cx + 1 + step, y: cy + 6, w: 1, h: 2, col: C, a: 1 }); out.push({ x: cx + 8 - step, y: cy + 6, w: 1, h: 2, col: C, a: 1 });   // legs
+      out.push({ x: cx - 3, y: cy + 2, w: 1, h: 1, col: hx('#ffe060'), a: 1 });        // an eye
+    }
+    return out;
+  }
+
+  root.STAGE = { W, H, VW, GROUND, FAR_W, paint, half, anim, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -157,7 +157,7 @@ export function createGL(o) {
       } else if (it.k === 'blob') {
         const m = blobPool.get(); place(m, it.x - it.w, it.y, it.w * 2, 5, order);
       } else if (it.k === 'rect') {
-        const m = rectPool.get(); m.material.color.copy(color(it.col)); m.material.opacity = 1; place(m, it.x, it.y, it.w, it.h, order);
+        const m = rectPool.get(); m.material.color.copy(color(it.col)); m.material.opacity = it.a === undefined ? 1 : it.a; place(m, it.x, it.y, it.w, it.h, order);
       } else if (it.k === 'ring') {
         const m = ringPool.get(); m.material.color.copy(color(it.col)); m.material.opacity = it.a; m.position.set(it.x, -it.y, 0); m.scale.set(it.r, it.r, 1); m.renderOrder = order;
       }

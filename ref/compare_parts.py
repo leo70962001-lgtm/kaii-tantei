@@ -26,9 +26,9 @@ def cell_image(c):
         im = Image.new('RGBA', (w, h)); im.putdata(px); return im
     return Image.frombytes('RGBA', (w, h), base64.b64decode(c['f']))
 
-new = {c['i']: c for c in load('../src/sprites-jk.js')['V']}
-old = {c['i']: c for c in load(os.path.join('art', 'sprites-jk-82flat.js'))['V']}
-sheet = Image.open(r2.SHEETS['V']).convert('RGB')
+TAGS = [t for t in sys.argv[1:] if t in ('A', 'B', 'C', 'V')] or ['V', 'A', 'C']
+newdata = load('../src/sprites-jk.js'); olddata = load(os.path.join('art', 'sprites-jk-82flat.js'))
+sheets = {t: Image.open(r2.SHEETS[t]).convert('RGB') for t in TAGS}
 def lum(p): return 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
 def edge_energy(im, box):
     px = im.load(); x0, y0, x1, y1 = box; e = 0
@@ -53,14 +53,16 @@ def stats(src, img, box):
     return {'err': round(err / max(1, n), 1), 'colours': len(cols), 'edges': round(ei / es, 2) if es else None, 'missing': round(miss / max(1, n), 3)}
 
 report = {}
-for idx in sorted(new):
+todo = [(tag, idx) for tag in TAGS for idx in sorted(c['i'] for c in newdata[tag])]
+for tag, idx in todo:
+    new = {c['i']: c for c in newdata[tag]}; old = {c['i']: c for c in olddata.get(tag, [])}; sheet = sheets[tag]
     c = new[idx]; g = c['g41']; s = c.get('scale', 1.0)
     newim = cell_image(c); w, h = newim.size
     # the sheet's drawing on the same canvas: source pixel per cell pixel via the same mapping as the refinement
     srcim = Image.new('RGBA', (w, h), (0, 0, 0, 0)); sp = srcim.load(); np_ = newim.load()
     for y in range(h):
         for x in range(w):
-            keep, nbg = r2.window(sheet, 'V', g, x, y, s)
+            keep, nbg = r2.window(sheet, tag, g, x, y, s)
             if keep and np_[x, y][3]: p = keep[0][2]; sp[x, y] = (p[0], p[1], p[2], 255)
             elif keep and not np_[x, y][3] and nbg == 0: p = keep[0][2]; sp[x, y] = (p[0], p[1], p[2], 255)
     # the old 82-px flat cell, drawn ×2 (as the game showed it), anchored at the same feet point
@@ -76,7 +78,7 @@ for idx in sorted(new):
     for name, a, b in PARTS:
         box = (0, top + int(H * a), w, top + int(H * b))
         rep[name] = {'old': stats(srcim, oldim, box), 'new': stats(srcim, newim, box), 'sheetColours': len(set(p[:3] for p in srcim.crop(box).getdata() if p[3]))}
-    report['V%d' % idx] = rep
+    report['%s%d' % (tag, idx)] = rep
     # the picture: sheet | old | new | error maps (old, new), ×3, with the part bands
     S = 3; W = w * S; Hh = h * S
     pic = Image.new('RGB', (W * 5 + 40, Hh + 30), (121, 139, 141)); d = ImageDraw.Draw(pic)
@@ -95,7 +97,7 @@ for idx in sorted(new):
         for name, a, b in PARTS:
             yy = 24 + (top + int(H * a)) * S; d.line([(x, yy), (x + W, yy)], fill=(255, 255, 255))
             if k == 0: d.text((x + 2, yy + 1), name, fill=(255, 255, 255))
-    pic.save(os.path.join(OUTD, 'V%d.png' % idx))
+    pic.save(os.path.join(OUTD, '%s%d.png' % (tag, idx)))
 # summary
 avg = {}
 for name, _, _ in PARTS:

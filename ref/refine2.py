@@ -159,6 +159,13 @@ def prle(im):
     if cur is not None: out += bytes((run, cur))
     return base64.b64encode(bytes(out)).decode('ascii')
 
+def unprle(b64, w, h):
+    """decode prle() (see above) back to an RGBA image"""
+    raw = base64.b64decode(b64); n = raw[0]; pal = [(raw[1 + k * 3], raw[2 + k * 3], raw[3 + k * 3], 255) for k in range(n)]
+    px = []; p = 1 + n * 3
+    while p + 1 < len(raw): run, idx = raw[p], raw[p + 1]; p += 2; px += [pal[idx - 1] if idx else (0, 0, 0, 0)] * run
+    im = Image.new('RGBA', (w, h)); im.putdata((px + [(0, 0, 0, 0)] * (w * h))[:w * h]); return im
+
 def load_cells():
     src = open('../src/sprites-jk.js', encoding='utf-8').read()
     h0 = 'root.SPRITES.jk = '; i = src.index(h0) + len(h0); j = src.rindex('; })')
@@ -195,6 +202,8 @@ def sheet_bg(tag, sheet):
 # shapes, but some cells carry new effects (lightning / fire on the kicks, blood on the hits, dust) that the cutter's
 # effect masks do not know; a cell uses the vector sheet unless it adds such pixels inside the figure's box.
 ALT = {'B': 'jk_actions3v.jpg'}
+FALLBACK = {'V': 'jk_actions3v_clean.png'}            # where the V source (the unnumbered re-render) lacks a cell
+ONLY = [a.split(':')[1] for a in sys.argv if a.startswith('tag:')]   # e.g. tag:V → refine only that sheet
 def blood(p):
     r, g, b = p[:3]; return r > 90 and g < 48 and b < 48 and r > 2.2 * max(g, b)
 def pick_sheet(tag, c, base, alt):
@@ -218,6 +227,10 @@ def window(sheet, tag, g, X, Y, s=1.0):
     half = GRID / f / UP / s / 2
     xs = range(max(0, int(cx - half + 0.5)), min(sheet.width, int(cx + half + 0.5)))
     ys = range(max(0, int(cy - half + 0.5)), min(sheet.height, int(cy + half + 0.5)))
+    # a scaled cell (s > 1) shrinks the window below one source pixel: never let it be empty (that punched a grid of
+    # transparent lines through the scaled cells — the 「分隔痕跡」), take the nearest source pixel instead
+    if not xs: xs = range(max(0, min(sheet.width - 1, int(cx))), max(0, min(sheet.width - 1, int(cx))) + 1)
+    if not ys: ys = range(max(0, min(sheet.height - 1, int(cy))), max(0, min(sheet.height - 1, int(cy))) + 1)
     bg = sheet_bg(tag, sheet); keep = []; nbg = 0
     for y in ys:
         for x in xs:
@@ -518,13 +531,19 @@ def main():
     src, i, j, data = load_cells()
     sheets = {t: Image.open(SHEETS[t]).convert('RGB') for t in SHEETS}
     alts = {t: Image.open(fn).convert('RGB') for t, fn in ALT.items() if os.path.exists(fn)}
-    used = Counter()
+    fallbacks = {}; used = Counter()
     before, after = [], []
-    for tag in TAGS:
+    for tag in (ONLY or TAGS):
         for c in data[tag]:
             g = geom(c)[0]
             chosen = pick_sheet(tag, c, sheets[tag], alts.get(tag)); used['vector' if chosen is alts.get(tag) else 'base'] += 1
             res = refine_cell(tag, c, chosen)
+            # a cell the chosen sheet does not carry (the unnumbered re-render lacks row 2's last cell): fall back
+            g0 = geom(c)[0]; want = sum(bin(b).count('1') for b in base64.b64decode(g0['m'])) * (UP * cell_scale(tag, c)) ** 2
+            if (not res or sum(1 for p in res[0].getdata() if p[3]) < want * 0.3) and tag in FALLBACK and os.path.exists(FALLBACK[tag]):
+                fb = fallbacks.setdefault(tag, Image.open(FALLBACK[tag]).convert('RGB'))
+                res2 = refine_cell(tag, c, fb)
+                if res2 and (not res or sum(1 for p in res2[0].getdata() if p[3]) > sum(1 for p in res[0].getdata() if p[3])): res = res2; used['fallback'] += 1
             if not res: continue
             out, eff, s = res
             a = ANALYSIS['cells'].get('%s%d' % (tag, c['i'])); eye = None
@@ -532,12 +551,26 @@ def main():
                 eye = to_cell(tag, g, s, a['srcBox'][0] + a['eye']['x'], a['srcBox'][1] + a['eye']['y'])
             if not RAW: features(out, eye)
             w, h = out.size
-            before.append(Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
+            before.append(unprle(c['f'], c['w'], c['h']) if c.get('enc') == 'prle' else Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
             after.append(out)
             if not review_only:
                 c['w'], c['h'] = w, h
                 c['ax'] = int(round((g['ax'] + 0.5) * UP * s - 0.5)); c['ay'] = int(round((g['ay'] + 1) * UP * s - 1))
                 c['sX'] = int(round(g['sX'] * UP * s)); c['sY'] = int(round(g['sY'] * UP * s)); c['scale'] = round(s, 4)
+                if RAW and 'keepanchor' not in sys.argv:
+                    # a steadier anchor (「定點的位移不太大」): x = the centre of the body's core columns in the torso band
+                    # (rows 28–55 % of the figure), not the legs' centre — a kicking leg or a lunge no longer shoves the
+                    # whole figure sideways between frames; y = the lowest figure pixel (feet) as before
+                    op = out.load(); rows = [y for y in range(h) if any(op[x, y][3] for x in range(w))]
+                    if rows:
+                        top, bot = rows[0], rows[-1]; H = bot - top + 1
+                        y0, y1 = top + int(H * 0.28), top + int(H * 0.55)
+                        cnt = [sum(1 for y in range(y0, y1 + 1) if op[x, y][3]) for x in range(w)]
+                        mx = max(cnt) if cnt else 0
+                        core = [x for x in range(w) if cnt[x] >= mx * 0.6] if mx else []
+                        if core:
+                            nax = int(round((core[0] + core[-1]) / 2)); nay = bot
+                            c['sX'] += nax - c['ax']; c['sY'] += nay - c['ay']; c['ax'], c['ay'] = nax, nay
                 if RAW:                                   # palette + run-length encoding (decoded by src/sprite.js decode())
                     c['f'] = prle(out); c['e'] = prle(eff) if eff else None; c['enc'] = 'prle'
                 else:
