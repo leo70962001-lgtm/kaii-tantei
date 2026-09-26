@@ -22,7 +22,7 @@ const GLOW = 1;
 
 export function createGL(o) {
   const { canvas, VW, VH, G, farRate, front, frontRate } = o;
-  let { far, near, mid, midRate } = o;
+  let { sky, clouds, city, near, mid, midRate } = o;
   const RS = o.RS || 1;   // render target scale: world units stay VW × VH, the target has RS× the pixels
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
@@ -85,10 +85,11 @@ export function createGL(o) {
     scene.add(m);
     return m;
   }
-  const nearMesh = layerMesh(near, false), farMesh = layerMesh(far, true);
+  // the far distance is three planes at one depth: the sky, the clouds (two copies, drifting and wrapping), the city
+  const nearMesh = layerMesh(near, false), skyMesh = layerMesh(sky, true), cloudA = layerMesh(clouds, true), cloudB = layerMesh(clouds, true), cityMesh = layerMesh(city, true);
   const s = 1 / farRate, d = D * (s - 1);
-  farMesh.renderOrder = -2; nearMesh.renderOrder = -1;
-  farMesh.scale.set(far.width * s, VH * s, 1); farMesh.position.z = -d;
+  skyMesh.renderOrder = -2.3; cloudA.renderOrder = -2.2; cloudB.renderOrder = -2.2; cityMesh.renderOrder = -2.1; nearMesh.renderOrder = -1;
+  for (const m of [skyMesh, cloudA, cloudB, cityMesh]) { m.scale.set(sky.width * s, VH * s, 1); m.position.z = -d; }
   nearMesh.scale.set(near.width, near.height, 1);
   // the mid layer: between the skyline and the street at its own depth (parallax midRate)
   const sm = 1 / (midRate || 0.6), dm = D * (sm - 1);
@@ -97,7 +98,9 @@ export function createGL(o) {
   // a stage change swaps the pictures on the planes (the textures of a mesh and of its glow child)
   function retex(m, cv, linear) { m.material.map = tex(cv, linear); m.material.needsUpdate = true; const g = m.children[0]; if (g) { g.material.map = tex(emissive(cv), linear); g.material.needsUpdate = true; } }
   function setLayers(L) {
-    if (L.far) { far = L.far; retex(farMesh, far, true); farMesh.scale.set(far.width * s, VH * s, 1); }
+    if (L.sky) { sky = L.sky; retex(skyMesh, sky, true); }
+    if (L.clouds) { clouds = L.clouds; retex(cloudA, clouds, true); retex(cloudB, clouds, true); }
+    if (L.city) { city = L.city; retex(cityMesh, city, true); }
     if (L.near) { near = L.near; retex(nearMesh, near, false); nearMesh.scale.set(near.width, near.height, 1); }
     if (L.mid && midMesh) { mid = L.mid; retex(midMesh, mid, false); midMesh.scale.set(mid.width * sm, VH * sm, 1); }
     if (L.front && frontMesh) { retex(frontMesh, L.front, false); }
@@ -164,7 +167,9 @@ export function createGL(o) {
     camera.position.set(cx, cy, D / (zoom || 1));
     camera.lookAt(cx, cy, 0);
     nearMesh.position.set(-camX + near.width / 2, -near.height / 2, 0);
-    farMesh.position.set(VW / 2 - camX - VW * s / 2 + far.width * s / 2, -VH / 2, -d);
+    const fx = VW / 2 - camX - VW * s / 2 + sky.width * s / 2, drift = (state.cloudDrift || 0) * s;
+    skyMesh.position.set(fx, -VH / 2, -d); cityMesh.position.set(fx, -VH / 2, -d);
+    cloudA.position.set(fx - drift, -VH / 2, -d); cloudB.position.set(fx - drift + clouds.width * s, -VH / 2, -d);
     if (midMesh) midMesh.position.set(VW / 2 - camX - VW * sm / 2 + mid.width * sm / 2, -VH / 2, -dm);
     if (frontMesh) frontMesh.position.set(VW / 2 - camX - VW * sf / 2 + front.width * sf / 2, -VH / 2, -df);
     for (const p of pools) p.reset();

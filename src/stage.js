@@ -38,7 +38,13 @@
       farTower: ['#0e2030', '#1a3244', '#ff5ad0', 0.3], nearTower: ['#0a1824', '#16283a', '#5ad0ff', 0.45, 0.9], midBuild: ['#0c1a28', '#1a2e40', '#ff8ad4', 0.4], dense: true,
       winLit: ['#ff8ad4', '#c050a0'], sakura: ['#8a2a70', '#c0409a', '#e864b8', '#ff8ad4', '#ffc4ea'], sheen: '#3a4a8a', mist: '#1a4a5a', rain: true },
   };
-  const THEME_IDS = ['night', 'dusk', 'cyber'];
+  THEMES.pastel = { id: 'pastel', name: '桜の午後', en: 'PASTEL NOON', day: true,
+    sky: ['#6a7ad0', '#7a8ad8', '#8c98e0', '#a0a8e4', '#b4b4e8', '#c4bce8', '#d4c4e8', '#e4cce8', '#f0d4e8'], stars: 0, moon: false, sun: null,
+    cloudA: { body: '#f0ecf8', shade: '#c4bce0', lit: '#ffffff', rim: '#ffffff' }, cloudB: { body: '#e4dcf4', shade: '#b8b0d8', lit: '#f8f4ff', rim: '#ffffff', warm: '#f8e0e8' },
+    cum: ['#ffffff', '#f6f2fc', '#e6def4', '#b8acd8', '#dcd4ee', '#d0c8ea'], haze: ['#c8c0e8', '#ead4ea'],
+    farTower: ['#9a90c8', '#b0a8d8', '#ffffff', 0.02], nearTower: ['#8a80c0', '#a098d0', '#ffffff', 0.03, 0], midBuild: ['#b0a8d8', '#c8c0e8', '#ffffff', 0.04], dense: false,
+    winLit: ['#fff4e0', '#f0e0c0'], sakura: ['#b040a0', '#d858b0', '#f078c8', '#ff9ad8', '#ffc0ea'], sheen: '#c0b0e0', mist: '#e0d8f0', rain: false };
+  const THEME_IDS = ['night', 'dusk', 'cyber', 'pastel'];
   let TH = THEMES.night;
   function setTheme(id) { TH = THEMES[id] || THEMES.night; return TH; }
   const hx = PX.hex;
@@ -50,6 +56,22 @@
   function layer(w, h) {
     const c = new Uint32Array(w * h);
     return { w, h, c, set(x, y, col) { x |= 0; y |= 0; if (x >= 0 && y >= 0 && x < w && y < h) c[y * w + x] = col; }, get(x, y) { x |= 0; y |= 0; return x >= 0 && y >= 0 && x < w && y < h ? c[y * w + x] : 0; } };
+  }
+  function wrapLayer(w, h) {   // x wraps: a layer that tiles horizontally (the drifting clouds)
+    const c = new Uint32Array(w * h);
+    const wx = (x) => (((x | 0) % w) + w) % w;
+    return { w, h, c, set(x, y, col) { y |= 0; if (y >= 0 && y < h) c[y * w + wx(x)] = col; }, get(x, y) { y |= 0; return y >= 0 && y < h ? c[y * w + wx(x)] : 0; } };
+  }
+  // daylight for a layer painted with the night's colours: shadows lifted, contrast softened, everything tinted lavender
+  // (the pastel afternoon of the reference)
+  function daylight(L) {
+    for (let i = 0; i < L.c.length; i++) {
+      const c = L.c[i]; if (!c) continue;
+      let r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255; const a = (c >>> 24) & 255;
+      r = 255 - (255 - r) * 0.5; g = 255 - (255 - g) * 0.52; b = 255 - (255 - b) * 0.42;
+      r = r * 0.86 + 200 * 0.14; g = g * 0.86 + 184 * 0.14; b = b * 0.86 + 232 * 0.14;
+      L.c[i] = ((a << 24) | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0;
+    }
   }
   // small painters shared by the layers and the props
   const rect = (L, x, y, w, h, col) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) L.set(x + i, y + j, col); };
@@ -96,7 +118,7 @@
 
   // ---------------------------------------------------------------- far layer: sky, stars, moon, cloud banks, hazy skyline
   function paintFar() {
-    const L = layer(FAR_W, H);
+    let L = layer(FAR_W, H);   // the sky; the clouds get a wrapping layer of their own, the city a third
     const sky = TH.sky.map(hx);
     for (let y = 0; y < H; y++) {
       const t = Math.pow(y / 226, 1.25) * (sky.length - 1);
@@ -127,6 +149,7 @@
     }
     // volumetric cloud banks (the reference's sky): unions of ellipses, the rim toward the moon lit, the underside
     // in shadow, a grainy dithered edge; the lowest bank catches the warm city glow from below
+    const CL = wrapLayer(FAR_W, H);
     const cloudBank = (blobs, cols, ldx, ldy) => {
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       for (const [cx, cy, rx, ry] of blobs) { x0 = Math.min(x0, cx - rx - 2); x1 = Math.max(x1, cx + rx + 2); y0 = Math.min(y0, cy - ry - 2); y1 = Math.max(y1, cy + ry + 2); }
@@ -143,7 +166,7 @@
         if (c === cols.body && fs < T * 1.8) c = dith(x, y, 0.7) ? cols.shade : cols.body;
         if (c === cols.body && f < T * 1.6 && dith(x, y, 0.5)) c = cols.shade;
         if (cols.warm && c === cols.shade && y > y1 - (y1 - y0) * 0.35 && dith(x, y, 0.5)) c = cols.warm;
-        L.set(x, y, c);
+        CL.set(x, y, c);
       }
     };
     const pal = (o) => { const r = {}; for (const k in o) r[k] = hx(o[k]); return r; };
@@ -164,10 +187,12 @@
         const nearEdge = !F(x + 2, y) || !F(x - 2, y) || !F(x, y - 2) || !F(x, y + 2);
         if (nearEdge && HS(x, y, seed + 3) < 0.3) continue;                 // a grainy edge, a solid body
         const lit = !F(x + ldx * 2, y - 2), mid = !F(x + ldx * 5, y - 5), shade = !F(x - ldx * 3, y + 3) || y > by - 4;
-        const CU = TH.cum; L.set(x, y, lit ? hx(CU[0]) : mid ? (dith(x, y, 0.55) ? hx(CU[1]) : hx(CU[2])) : shade ? hx(CU[3]) : dith(x, y, 0.5) ? hx(CU[4]) : hx(CU[5]));
+        const CU = TH.cum; CL.set(x, y, lit ? hx(CU[0]) : mid ? (dith(x, y, 0.55) ? hx(CU[1]) : hx(CU[2])) : shade ? hx(CU[3]) : dith(x, y, 0.5) ? hx(CU[4]) : hx(CU[5]));
       }
     };
     cumulus(486, 122, 92, 51, -1); cumulus(96, 88, 84, 53, 1); cumulus(300, 112, 54, 55, 1); cumulus(560, 96, 40, 57, -1);
+    if (TH.day) { cumulus(200, 70, 120, 59, 1); cumulus(400, 58, 70, 61, 1); }   // the afternoon's big white towers
+    const SKY = L; L = layer(FAR_W, H);   // from here on: the city, drawn over the drifting clouds
     // city haze: the light pollution over the skyline (a warm band low down), then the far towers, then a nearer row
     for (let y = 120; y < 200; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 120) / 80) * 0.55)) L.set(x, y, hx(TH.haze[0]));
     for (let y = 168; y < 198; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 168) / 30) * 0.35)) L.set(x, y, hx(TH.haze[1]));
@@ -207,7 +232,7 @@
       if (HS(k, 20, 4) > 0.6) { L.set(x0 + (w >> 1), top - 1, hx('#ff5a5a')); L.set(x0 + (w >> 1), top - 2, hx('#ff5a5a')); L.set(x0 + (w >> 1), top - 3, hx('#ff5a5a')); }
       if (HS(k, 21, 4) > 1 - TH.nearTower[4]) { const sx = x0 + 3 + Math.floor(HS(k, 22, 4) * (w - 10)), sc = HS(k, 23, 4) > 0.5 ? hx('#ff5ad0') : hx('#5ad0ff'); rect(L, sx, top + 8, 6, 2, sc); }   // a neon sign
     }
-    return L;
+    return { sky: SKY, clouds: CL, city: L };
   }
 
   // ---------------------------------------------------------------- near layer: the street at 52 px / m
@@ -460,7 +485,12 @@
   const PAINTED = {};
   function paint(id) {
     id = id || TH.id; const prev = TH; setTheme(id);
-    if (!PAINTED[id]) { PAINTED[id] = { theme: id, far: paintFar(), mid: paintMid(), near: paintNear(), front: paintFront(), frontRate: 1.25, midRate: MID_RATE }; if (!WINSPANS.length) windowSpans(); }
+    if (!PAINTED[id]) {
+      const F = paintFar();
+      PAINTED[id] = { theme: id, sky: F.sky, clouds: F.clouds, city: F.city, mid: paintMid(), near: paintNear(), front: paintFront(), frontRate: 1.25, midRate: MID_RATE, cloudSpeed: TH.day ? 4 : 2.5 };
+      if (TH.day) for (const k of ['mid', 'near', 'front']) daylight(PAINTED[id][k]);
+      if (!WINSPANS.length) windowSpans();
+    }
     TH = prev.id === id ? TH : THEMES[id];
     return PAINTED[id];
   }
@@ -486,13 +516,13 @@
     }
     // lamp flicker: the wide halos are painted (lamp props / near layer); this is only their wobble
     for (const [k, lx0, ly0, lw, lh, r, id] of [[0, 261, 106, 16, 16, 20, 'lampL'], [1, 495, 106, 16, 16, 20, 'lampR'], [2, 561, 59, 16, 6, 18, 'street']]) {
-      if (broken.has(id)) continue;                        // a smashed lamp gives no light
+      if (broken.has(id) || TH.day) continue;              // a smashed lamp gives no light; by day none is lit
       const f = 0.55 + 0.45 * Math.sin(s * 9 + k * 2) * Math.sin(s * 3.3 + k) + (H(Math.floor(s * 12) + k, 8, 21) > 0.9 ? -0.35 : 0);
       out.push({ x: lx0 - r, y: ly0 - r, w: lw + r * 2, h: lh + r * 2, col: hx('#ffd070'), a: 0.02 + 0.04 * f });
       out.push({ x: lx0 - (r >> 1), y: ly0 - (r >> 1), w: lw + r, h: lh + r, col: hx('#ffe4a0'), a: 0.04 + 0.06 * f });
     }
     // the vending machine's cold light wobbles too (its halo and reflection are in the prop picture), gone once smashed
-    if (!broken.has('vend')) {
+    if (!broken.has('vend') && !TH.day) {
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (H(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
       out.push({ x: 34, y: 148, w: 48, h: 92, col: hx('#c0e8ff'), a: 0.03 * f });
     }
@@ -617,7 +647,7 @@
       for (let y = 36; y < 52; y++) { S.set(41, y, OUT); S.set(42, y, hx('#22407f')); }
     }
     if (state < 2) {
-      if (!dim) { glow(L, OX + 22, OY + 30, 46, 52, '#9fd8ff', 34, 1.8); streak(L, OX + 4, OX + 40, OY + 95, OY + 107, '#c0e8ff', 50); streak(L, OX + 2, OX + 42, OY + 110, 145, '#c0e8ff', 70); }
+      if (!dim && !TH.day) { glow(L, OX + 22, OY + 30, 46, 52, '#9fd8ff', 34, 1.8); streak(L, OX + 4, OX + 40, OY + 95, OY + 107, '#c0e8ff', 50); streak(L, OX + 2, OX + 42, OY + 110, 145, '#c0e8ff', 70); }
       blit(L, S, OX, OY);
     } else {   // tipped over to the right, the glass dark, cans rolling out, a drink puddle
       const R = rot90cw(S); blit(L, R, OX, OY + 51);
@@ -630,7 +660,7 @@
   function paintLamp(state) {   // an 80×200 box: the halo around the 16×16 lamp at (32, 36), its light on the pillar, its streak on the ground
     const L = layer(80, 200);
     const ox = 32, oy = 36, P = (x, y, c) => L.set(ox + x, oy + y, c);
-    if (state < 2) {
+    if (state < 2 && !TH.day) {
       glow(L, ox + 8, oy + 8, 40, 34, '#ffd070', state ? 22 : 40, 1.7);
       streak(L, ox - 2, ox + 18, 170, 182, '#ffe0a0', state ? 26 : 48); streak(L, ox - 6, ox + 22, 185, 200, '#ffe0a0', state ? 40 : 70);
     }
@@ -736,7 +766,7 @@
   const PAINTERS = { vend: paintVend, lamp: paintLamp, bin: paintBin, sign: paintSign, cone: paintCone, bike: paintBike };
   const propCache = new Map();
   function propImage(kind, state) {   // { w, h, c } for the prop kind in that state, painted once
-    const key = kind + ':' + state;
+    const key = kind + ':' + state + (TH.day ? ':day' : '');
     if (!propCache.has(key)) propCache.set(key, PAINTERS[kind](state));
     return propCache.get(key);
   }

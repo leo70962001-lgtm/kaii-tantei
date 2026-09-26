@@ -781,7 +781,7 @@
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, mid: MID, midRate: MID_RATE, front: FRONT, frontRate: FRONT_RATE, RS }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, sky: SKY, clouds: CLOUDS, city: CITY, near: NEAR, farRate: 0.35, mid: MID, midRate: MID_RATE, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
@@ -797,22 +797,26 @@
   }
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
-  let FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h), MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null;
+  const cvs = (L) => toCanvas(L.c, L.w, L.h);
+  let SKY = cvs(BG.sky), CLOUDS = cvs(BG.clouds), CITY = cvs(BG.city), NEAR = cvs(BG.near), MID = BG.mid ? cvs(BG.mid) : null, CLOUD_SPEED = BG.cloudSpeed || 2.5;
   let FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;   // blossoms in front of the fighters
   const FRONT_RATE = BG.frontRate || 1.25, MID_RATE = BG.midRate || 0.6;
   const STAGES = STAGE.THEME_IDS || ['night'];
   const THUMBS = {};
   function setStage(id) {   // 「選擇場景」: paint (once) and show another theme of the same street
     BG = STAGE.paint(id);
-    FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h); NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h); MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null; FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;
-    sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ far: FAR, mid: MID, near: NEAR, front: FRONT });
+    SKY = cvs(BG.sky); CLOUDS = cvs(BG.clouds); CITY = cvs(BG.city); NEAR = cvs(BG.near); MID = BG.mid ? cvs(BG.mid) : null; FRONT = BG.front ? cvs(BG.front) : null; CLOUD_SPEED = BG.cloudSpeed || 2.5;
+    sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ sky: SKY, clouds: CLOUDS, city: CITY, mid: MID, near: NEAR, front: FRONT });
   }
+  // the clouds drift very slowly (「雲會很緩慢的飄動」): a few far-pixels a second, wrapping — the layer tiles
+  const cloudDrift = (w) => Math.round((performance.now() / 1000 * CLOUD_SPEED) % w);
+  function farStack(g, ox) { const cd = cloudDrift(CLOUDS.width); g.drawImage(SKY, ox, 0); g.drawImage(CLOUDS, ox - cd, 0); g.drawImage(CLOUDS, ox - cd + CLOUDS.width, 0); g.drawImage(CITY, ox, 0); }
   function stageThumb(id) {   // a 120×68 picture of a theme for the stage select
     if (THUMBS[id]) return THUMBS[id];
     const cur = sim.stage; const bg = STAGE.paint(id);
     const c = document.createElement('canvas'); c.width = 480; c.height = 270; const g = c.getContext('2d');
-    const far = toCanvas(bg.far.c, bg.far.w, bg.far.h), mid = bg.mid ? toCanvas(bg.mid.c, bg.mid.w, bg.mid.h) : null, near = toCanvas(bg.near.c, bg.near.w, bg.near.h);
-    g.drawImage(far, -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0);
+    const mid = bg.mid ? cvs(bg.mid) : null, near = cvs(bg.near);
+    g.drawImage(cvs(bg.sky), -42, 0); g.drawImage(cvs(bg.clouds), -42, 0); g.drawImage(cvs(bg.city), -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0);
     const t = document.createElement('canvas'); t.width = 120; t.height = 68; const tg = t.getContext('2d'); tg.imageSmoothingEnabled = true; tg.drawImage(c, 0, 0, 120, 68);
     if (cur) STAGE.paint(cur);   // painting a theme leaves it current; put the shown one back
     return (THUMBS[id] = t);
@@ -1017,11 +1021,11 @@
     initGL();
     lx.setTransform(RS, 0, 0, RS, 0, 0);
     if (gl) {
-      gl.render({ camX, list, farList, midList, shake, zoom: koZoom() });
+      gl.render({ camX, list, farList, midList, shake, zoom: koZoom(), cloudDrift: cloudDrift(CLOUDS.width) });
       lx.clearRect(0, 0, VW, VH);
     } else {
       lx.setTransform(RS, 0, 0, RS, shake[0] * RS, shake[1] * RS);
-      lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
+      farStack(lx, -Math.round(camX * 0.35));
       draw2D(farList);
       if (MID) lx.drawImage(MID, -Math.round(camX * MID_RATE), 0);
       draw2D(midList);
@@ -1068,7 +1072,7 @@
   }
   function drawTitle() {
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    lx.drawImage(FAR, -30, 0); lx.drawImage(NEAR, -120, 0);
+    farStack(lx, -30); if (MID) lx.drawImage(MID, -52, 0); lx.drawImage(NEAR, -120, 0);
     lx.fillStyle = 'rgba(5,6,15,0.45)'; lx.fillRect(0, 0, VW, VH);
     // three club members standing in a row
     if (!sim.titleCast) {
@@ -1087,53 +1091,54 @@
     text('Z / ENTER で開始', mx, 254, 10, '#b9c2ea');
     text('東京鬼高校・怪異探偵部', 140, 258, 10, '#8f97b8');
   }
-  function drawSelect() {
+  function drawSelect() {   // the reference (a mobile fighting game's roster screen): the CG large on the left with the
+                            // name plate, the club roster as round icons on the right, the cursor a gold ring
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    lx.drawImage(FAR, -60, 0); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
-    lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
-    if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); sim.selCast.forEach((f) => { if (f) play(f, 'idle'); }); }
-    const mode = MODES[modeI][0], slotX = (i) => (mode === '2p' ? 168 + i * 72 : 190 + i * 90);   // the CG panels take the sides
-    SLOTS.forEach((S, i) => {
-      const x = slotX(i), f = sim.selCast[i];
-      const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      if (f) {
-        f.x = x; f.face = 1;
-        if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, 'light');
-        animate(f);
-        if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
-        drawFighter(f, 0);
-      } else {   // a locked member: a dark silhouette with a question mark
-        lx.fillStyle = 'rgba(10,12,30,0.85)'; lx.fillRect(x - 22, G - 84, 44, 84);
-        lx.fillStyle = chosen ? S.color : '#2c3060'; lx.fillRect(x - 22, G - 84, 44, 2); lx.fillRect(x - 22, G - 2, 44, 2);
+    farStack(lx, -60); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
+    lx.fillStyle = 'rgba(5,6,15,0.62)'; lx.fillRect(0, 0, VW, VH);
+    if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); }
+    const mode = MODES[modeI][0], who = sim.selStep === 0 ? 0 : 1, curSel = sim.sel[who], S0 = SLOTS[curSel];
+    // the roster grid: 4 × 3 round icons, the club members first, the other seats still empty
+    const GX = 240, GY = 104, GS = 58, COLS = SLOTS.length, ROWS = 1, icons = [];
+    lx.fillStyle = 'rgba(8,10,28,0.75)'; lx.fillRect(GX - 14, GY - 30, COLS * GS + 28, ROWS * GS + 44);
+    lx.fillStyle = '#ffd24a'; lx.fillRect(GX - 14, GY - 30, COLS * GS + 28, 2);
+    lx.fillStyle = 'rgba(255,210,74,0.35)'; lx.fillRect(GX - 14, GY + ROWS * GS + 12, COLS * GS + 28, 1);
+    for (let i = 0; i < COLS * ROWS; i++) {
+      const cx = GX + (i % COLS) * GS + GS / 2, cy = GY + Math.floor(i / COLS) * GS + GS / 2, S = SLOTS[i], chosen = i === curSel, r = chosen ? 22 : 18;
+      icons.push([cx, cy, r, S]);
+      lx.beginPath(); lx.arc(cx, cy, r + 2, 0, Math.PI * 2); lx.fillStyle = chosen ? '#ffd24a' : S ? (S.C ? S.C.color : S.color) : '#2c3060'; lx.fill();
+      lx.beginPath(); lx.arc(cx, cy, r, 0, Math.PI * 2); lx.fillStyle = S && S.C ? '#1b2150' : '#0e1130'; lx.fill();
+      if (S && S.C) {
+        const pr = portrait(sim.selCast[i]); lx.save(); lx.beginPath(); lx.arc(cx, cy, r - 1, 0, Math.PI * 2); lx.clip();
+        const k = (r * 2) / 34; lx.imageSmoothingEnabled = false; lx.drawImage(pr, Math.round(cx - 19 * k), Math.round(cy - 17 * k + 3), Math.round(38 * k), Math.round(34 * k)); lx.restore();
       }
-      lx.fillStyle = chosen ? (S.C ? S.C.color : S.color) : 'rgba(255,255,255,0.15)'; lx.fillRect(x - 40, G + 6, 80, 3);
-    });
+      if (S && S.locked) { lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.beginPath(); lx.arc(cx, cy, r, 0, Math.PI * 2); lx.fill(); }
+      if (sim.selStep === 1 && sim.sel[0] === i) { lx.fillStyle = ROSTER[0].color; lx.fillRect(cx - r - 4, cy - r - 4, 16, 9); }
+    }
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
-    // the CG panels: P1's on the left, P2's mirrored on the right (2P mode); dimmed while the cursor is on a locked member
+    // the CG, nearly full height on the left, dimmed while the cursor is on a locked member
     const cg = CG.jk;
     if (cg.complete && cg.naturalWidth) {
-      const ch = cv.height, cw = Math.round(ch * cg.naturalWidth / cg.naturalHeight);
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = SLOTS[sim.sel[0]].C ? 1 : 0.35; ctx.drawImage(cg, 0, 0, cw, ch);
-      if (mode === '2p') { ctx.save(); ctx.translate(cv.width, 0); ctx.scale(-1, 1); ctx.globalAlpha = SLOTS[sim.sel[1]].C ? 1 : 0.35; ctx.drawImage(cg, 0, 0, cw, ch); ctx.restore(); }
-      ctx.globalAlpha = 1;
+      const ch = Math.round(cv.height * 0.7), cw = Math.round(ch * cg.naturalWidth / cg.naturalHeight);
+      ctx.globalAlpha = S0.C ? 1 : 0.3; ctx.drawImage(cg, Math.round(16 * scale), cv.height - ch - Math.round(8 * scale), cw, ch); ctx.globalAlpha = 1;
     }
-    text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), VW / 2, 24, 21, '#ffd24a');
-    SLOTS.forEach((S, i) => {
-      const x = slotX(i);
-      const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      const nf = mode === '2p' ? 10 : 13, sf = mode === '2p' ? 7 : 8;   // two CG panels leave less room for the names
-      if (S.C) { text(S.C.R.name, x, 252, nf, chosen ? S.C.color : '#b9c2ea'); text(S.C.R.height + ' · ' + S.C.R.PARTS.map((p) => p.label).join('/'), x, 264, sf, '#8f97b8'); }
-      else { text('?', x, G - 44, 34, chosen ? S.color : '#3a4270'); text(S.name, x, 252, nf, chosen ? S.color : '#b9c2ea'); text(S.sub, x, 264, sf, '#8f97b8'); }
-      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', x - 42, 150, 12, ROSTER[0].color);
-    });
-    text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
+    text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), 340, 22, 16, '#ffd24a');
+    text('◀ ▶ 選擇　Z 決定　ESC 返回', 340, 40, 9, '#b9c2ea');
+    // the name plate: big, in the member's colour, on a dark slab across the CG's legs (the reference's "CAMMY")
+    const nm = S0.C ? S0.C.R.name : S0.name, col = S0.C ? S0.C.color : S0.color;
+    ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(10 * scale, 206 * scale, 200 * scale, 40 * scale);
+    ctx.fillStyle = col; ctx.fillRect(10 * scale, 206 * scale, 4 * scale, 40 * scale);
+    text(nm, 116, 222, 24, col, 'center', true);
+    text(S0.C ? S0.C.R.height + ' · ' + S0.C.R.PARTS.map((p) => p.label).join('/') : S0.sub, 116, 240, 9, '#b9c2ea');
+    for (const [cx, cy, r, S] of icons) { if (!S || !S.C) text('?', cx, cy + 1, S ? 18 : 13, S ? S.color : '#3a4270'); }
+    for (const [cx, cy, r, S] of icons) if (S) text(S.C ? S.C.R.name : S.name, cx, cy + r + 10, 8, S.C ? '#e8ebf8' : '#8f97b8');
+    if (sim.selStep === 1) { const [cx, cy, r] = icons[sim.sel[0]]; text('1P', cx - r + 4, cy - r + 1, 7, '#05060f'); }
   }
   function drawStage() {   // 「選擇場景」: the chosen theme fills the screen, the three thumbnails sit over it
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    lx.drawImage(FAR, -42, 0); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
+    farStack(lx, -42); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
     lx.fillStyle = 'rgba(5,6,15,0.35)'; lx.fillRect(0, 0, VW, VH);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
