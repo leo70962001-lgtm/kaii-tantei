@@ -17,8 +17,11 @@
   // cell px → world px. A/B/C/V = the sheets' own pixels (ref/refine2.py raw: 164-px cells) drawn at 0.5, which is
   // 1:1 on the 2× (960×540) canvas; H = hand-drawn 41-px frames ×2. A scale < 1 keeps the canvases at cell size and
   // the drawers size them (frame.w/h in world px, frame.ds = the draw scale).
-  const SCALE = { A: 0.5, B: 0.5, C: 0.5, V: 0.5, H: 2 };
-  const RES = { A: 4, B: 4, C: 4, V: 4, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
+  // The loaded sheet file says its resolution: res 4 = 164-px cells (the sheet's own pixels) drawn at 0.5 world scale;
+  // res 2 = 82-px cells (src/sprites-jk-82.js, ref/pixelclean.py) drawn 1:1 on the stage's pixel grid.
+  const R = (SHEETS && SHEETS.res) || 4, SC = R === 2 ? 1 : 0.5;
+  const SCALE = { A: SC, B: SC, C: SC, V: SC, H: 2 };
+  const RES = { A: R, B: R, C: R, V: R, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
   const HEAD_H = 27;   // (picture-head overlay; inactive unless the sheet data carries 'heads')
   const hasDoc = typeof document !== 'undefined';
 

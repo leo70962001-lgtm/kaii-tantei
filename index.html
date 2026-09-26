@@ -92,7 +92,12 @@
 </div>
 <script src="src/px.js"></script>
 <script src="src/cast-data.js"></script>
-<script src="src/sprites-jk.js"></script>
+<script>
+  // the character cells: src/sprites-jk.js = the sheet's own pixels 1:1 (164 px), cleaned into 64-colour palettes with
+  // the speckle merged (ref/pixelclean.py full 64); add ?grid to the URL for src/sprites-jk-82.js = the same cells brought
+  // onto the stage's 1-px grid (82 px, ref/pixelclean.py crisp 40)
+  document.write('<script src="src/' + (/[?&]grid\b/.test(location.search) ? 'sprites-jk-82.js' : 'sprites-jk.js') + '"><\/script>');
+</script>
 <script src="src/sprite.js"></script>
 <script src="src/jk-moves.js"></script>
 <script src="src/stage.js"></script>
