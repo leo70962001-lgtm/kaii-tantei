@@ -21,7 +21,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const GLOW = 1;
 
 export function createGL(o) {
-  const { canvas, VW, VH, G, far, near, farRate, front, frontRate } = o;
+  const { canvas, VW, VH, G, farRate, front, frontRate } = o;
+  let { far, near, mid, midRate } = o;
   const RS = o.RS || 1;   // render target scale: world units stay VW × VH, the target has RS× the pixels
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
@@ -55,11 +56,13 @@ export function createGL(o) {
     const g = c.getContext('2d'); g.drawImage(cv, 0, 0);
     const id = g.getImageData(0, 0, c.width, c.height), p = id.data;
     // only the sky's lights: the moon, lamp bulbs and lit windows (nothing on the road, no blossoms)
+    // everything that does not glow stays in the bloom pass as BLACK with its own alpha: an occluder, so the glow of a
+    // lit window behind a wall (or behind a fighter) cannot bleed through what covers it
     for (let i = 0; i < p.length; i += 4) {
       const y = (i / 4 / c.width) | 0;
       const l = 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2];
       const lamp = p[i] > 235 && p[i + 1] > 200 && p[i + 2] < 160;
-      if (y > 205 || (l < 238 && !lamp) || (p[i] - p[i + 1] > 40 && p[i + 2] > 150)) p[i + 3] = 0;
+      if (y > 205 || (l < 238 && !lamp) || (p[i] - p[i + 1] > 40 && p[i + 2] > 150)) { p[i] = 0; p[i + 1] = 0; p[i + 2] = 0; }
     }
     g.putImageData(id, 0, 0);
     return c;
@@ -87,6 +90,18 @@ export function createGL(o) {
   farMesh.renderOrder = -2; nearMesh.renderOrder = -1;
   farMesh.scale.set(far.width * s, VH * s, 1); farMesh.position.z = -d;
   nearMesh.scale.set(near.width, near.height, 1);
+  // the mid layer: between the skyline and the street at its own depth (parallax midRate)
+  const sm = 1 / (midRate || 0.6), dm = D * (sm - 1);
+  const midMesh = mid ? layerMesh(mid, false) : null;
+  if (midMesh) { midMesh.renderOrder = -1.5; midMesh.scale.set(mid.width * sm, VH * sm, 1); midMesh.position.z = -dm; }
+  // a stage change swaps the pictures on the planes (the textures of a mesh and of its glow child)
+  function retex(m, cv, linear) { m.material.map = tex(cv, linear); m.material.needsUpdate = true; const g = m.children[0]; if (g) { g.material.map = tex(emissive(cv), linear); g.material.needsUpdate = true; } }
+  function setLayers(L) {
+    if (L.far) { far = L.far; retex(farMesh, far, true); farMesh.scale.set(far.width * s, VH * s, 1); }
+    if (L.near) { near = L.near; retex(nearMesh, near, false); nearMesh.scale.set(near.width, near.height, 1); }
+    if (L.mid && midMesh) { mid = L.mid; retex(midMesh, mid, false); midMesh.scale.set(mid.width * sm, VH * sm, 1); }
+    if (L.front && frontMesh) { retex(frontMesh, L.front, false); }
+  }
   // the front layer sits nearer than the fight plane (z > 0, scaled down to look the same size) so it scrolls faster and
   // draws over the fighters
   const sf = front ? 1 / (frontRate || 1.25) : 1, df = D * (sf - 1);
@@ -112,9 +127,17 @@ export function createGL(o) {
   });
   const blobPool = new Pool(() => { const m = new THREE.Mesh(quad, mat({ map: tex(blobCv, true), opacity: 0.8 })); scene.add(m); return m; });
   const rectPool = new Pool(() => { const m = new THREE.Mesh(quad, mat({ map: tex(white) })); scene.add(m); return m; });
+  // a sprite's black silhouette for the bloom pass: it hides the glow of whatever is behind the sprite
+  const occlOf = new WeakMap();
+  function occl(cv) {
+    let t = occlOf.get(cv);
+    if (!t) { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d'); g.drawImage(cv, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); t = tex(c); occlOf.set(cv, t); }
+    return t;
+  }
+  const occlPool = new Pool(() => { const m = new THREE.Mesh(quad, mat()); m.layers.set(GLOW); scene.add(m); return m; });
   const ring = new THREE.RingGeometry(0.86, 1, 28);
   const ringPool = new Pool(() => { const m = new THREE.Mesh(ring, mat()); scene.add(m); return m; });
-  const pools = [imgPool, fxPool, reflPool, skewPool, blobPool, rectPool, ringPool];
+  const pools = [imgPool, fxPool, reflPool, skewPool, blobPool, rectPool, ringPool, occlPool];
   const colOf = new Map();
   const color = (c) => { let k = colOf.get(c); if (!k) { k = new THREE.Color(c); colOf.set(c, k); } return k; };
 
@@ -142,15 +165,18 @@ export function createGL(o) {
     camera.lookAt(cx, cy, 0);
     nearMesh.position.set(-camX + near.width / 2, -near.height / 2, 0);
     farMesh.position.set(VW / 2 - camX - VW * s / 2 + far.width * s / 2, -VH / 2, -d);
+    if (midMesh) midMesh.position.set(VW / 2 - camX - VW * sm / 2 + mid.width * sm / 2, -VH / 2, -dm);
     if (frontMesh) frontMesh.position.set(VW / 2 - camX - VW * sf / 2 + front.width * sf / 2, -VH / 2, -df);
     for (const p of pools) p.reset();
-    let order = 0;
-    for (const it of list) {
-      order++;
+    let order = 0, depthN = 0, mainN = 0;
+    const farList = state.farList || [], midList = state.midList || [];
+    for (const it of farList.concat(midList, list)) {   // far items sit between the far and mid planes, mid items between mid and near
+      order = it.depth === 'far' ? -1.9 + 1e-4 * (++depthN) : it.depth === 'mid' ? -1.4 + 1e-4 * (++depthN) : ++mainN;
       if (it.k === 'img') {
         const t = tex(it.img), w = it.w || it.img.width, h = it.h || it.img.height;   // world size (164-px sheets draw at 0.5)
         const m = imgPool.get(); m.material.map = t; m.material.opacity = it.a; place(m, it.x, it.y, w, h, order);
         m.layers.set(0); if (it.glow) m.layers.enable(GLOW);
+        else { const o = occlPool.get(); o.material.map = occl(it.img); o.material.opacity = it.a; place(o, it.x, it.y, w, h, order - 0.5); }   // hides glow behind the sprite in the bloom pass
         if (it.fx) { const f = fxPool.get(); f.material.map = tex(it.fx); f.material.opacity = 1; place(f, it.x, it.y, w, h, order); }
         if (it.refl) { const r = reflPool.get(); r.material.map = t; r.position.set(it.x + w / 2, -(2 * G - it.y - h / 2), 0); r.scale.set(w, -h, 1); r.renderOrder = -0.5; }
       } else if (it.k === 'skew') {
@@ -171,5 +197,5 @@ export function createGL(o) {
     camera.layers.set(GLOW); bloomComposer.render();
     camera.layers.set(0); finalComposer.render();
   }
-  return { render, renderer, scene, camera, THREE };
+  return { render, renderer, scene, camera, THREE, setLayers };
 }

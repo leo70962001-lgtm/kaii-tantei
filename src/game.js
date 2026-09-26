@@ -719,6 +719,8 @@
 
   // ------------------------------------------------------------ screens
   const MODES = [['1p', '1P vs CPU'], ['practice', '練習（木人）'], ['2p', '1P vs 2P'], ['demo', 'CPU vs CPU（觀戰）']];
+  // the character select: the club so far (the JK) and the two members whose sheets are not cut yet
+  const SLOTS = [{ C: ROSTER[0] }, { locked: true, name: '吸血鬼ニート', sub: 'COMING SOON', color: '#c46bff' }, { locked: true, name: '狼人メイド', sub: 'COMING SOON', color: '#ff8a3a' }];
   let modeI = 0;
   const LEVELS = [['かんたん', 0.3], ['ふつう', 0.6], ['つよい', 0.95]];
   let levelI = 1;
@@ -732,8 +734,7 @@
       else if (p.key === 'right') { levelI = (levelI + 1) % LEVELS.length; sfx('sel'); }
       else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
         sfx('ok');
-        if (ROSTER.length === 1) { sim.level = LEVELS[levelI][1]; sim.sel = [0, 0]; startMatch(ROSTER[0].id, ROSTER[0].id, MODES[modeI][0]); }
-        else { sim.phase = 'select'; sim.sel = [0, 1]; sim.selStep = 0; }
+        sim.phase = 'select'; sim.sel = [0, 0]; sim.selStep = 0;   // 「加入選擇角色跟選擇場景」
       }
       return;
     }
@@ -743,15 +744,26 @@
       const slotOk = mode === '2p' ? p.slot === who : p.slot === 0;
       if (p.key === 'esc') { sim.phase = 'title'; return; }
       if (!slotOk && p.key !== 'start') return;
-      if (p.key === 'left') { sim.sel[who] = (sim.sel[who] + ROSTER.length - 1) % ROSTER.length; sfx('sel'); }
-      else if (p.key === 'right') { sim.sel[who] = (sim.sel[who] + 1) % ROSTER.length; sfx('sel'); }
+      if (p.key === 'left') { sim.sel[who] = (sim.sel[who] + SLOTS.length - 1) % SLOTS.length; sfx('sel'); }
+      else if (p.key === 'right') { sim.sel[who] = (sim.sel[who] + 1) % SLOTS.length; sfx('sel'); }
       else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
+        if (SLOTS[sim.sel[who]].locked) { sfx('sel'); return; }   // not in the club yet
         sfx('ok');
-        if (sim.selStep === 0) {
-          sim.selStep = 1;
-          if (mode !== '2p') { sim.sel[1] = Math.floor(rnd() * ROSTER.length); }
-          if (mode !== '2p') { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
-        } else { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
+        if (sim.selStep === 0) { sim.selStep = 1; if (mode !== '2p') { sim.sel[1] = 0; sim.phase = 'stage'; } }
+        else { sim.phase = 'stage'; }
+        sim.stageSel = Math.max(0, STAGES.indexOf(sim.stage || 'night'));
+      }
+      return;
+    }
+    if (sim.phase === 'stage') {   // 「選擇場景」
+      const mode = MODES[modeI][0];
+      if (p.key === 'esc') { sim.phase = 'select'; sim.selStep = 0; return; }
+      if (p.slot !== 0 && p.key !== 'start') return;
+      if (p.key === 'left') { sim.stageSel = (sim.stageSel + STAGES.length - 1) % STAGES.length; sfx('sel'); setStage(STAGES[sim.stageSel]); }
+      else if (p.key === 'right') { sim.stageSel = (sim.stageSel + 1) % STAGES.length; sfx('sel'); setStage(STAGES[sim.stageSel]); }
+      else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
+        sfx('ok'); setStage(STAGES[sim.stageSel]); sim.level = LEVELS[levelI][1];
+        startMatch(SLOTS[sim.sel[0]].C.id, SLOTS[sim.sel[1]].C.id, mode);
       }
       return;
     }
@@ -767,14 +779,14 @@
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, front: FRONT, frontRate: FRONT_RATE, RS }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, mid: MID, midRate: MID_RATE, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
   const RS = 2;  // render scale: the low canvas / WebGL target are 2× the world so the puppet's finer parts show
   const low = document.createElement('canvas'); low.width = VW * RS; low.height = VH * RS;
   const lx = low.getContext('2d'); lx.imageSmoothingEnabled = false;
-  const BG = STAGE.paint();
+  let BG = STAGE.paint('night');
   // the stage shares the sprites' pixel size (2 world px): painted at full size, sampled to half, blown back up ×2
   function chunky(L) {
     const h = STAGE.half(L), w = h.w * 2, hh = h.h * 2, c = new Uint32Array(w * hh);
@@ -783,8 +795,26 @@
   }
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
-  const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
-  const FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null, FRONT_RATE = BG.frontRate || 1.25;   // blossoms in front of the fighters
+  let FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h), MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null;
+  let FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;   // blossoms in front of the fighters
+  const FRONT_RATE = BG.frontRate || 1.25, MID_RATE = BG.midRate || 0.6;
+  const STAGES = STAGE.THEME_IDS || ['night'];
+  const THUMBS = {};
+  function setStage(id) {   // 「選擇場景」: paint (once) and show another theme of the same street
+    BG = STAGE.paint(id);
+    FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h); NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h); MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null; FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;
+    sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ far: FAR, mid: MID, near: NEAR, front: FRONT });
+  }
+  function stageThumb(id) {   // a 120×68 picture of a theme for the stage select
+    if (THUMBS[id]) return THUMBS[id];
+    const cur = sim.stage; const bg = STAGE.paint(id);
+    const c = document.createElement('canvas'); c.width = 480; c.height = 270; const g = c.getContext('2d');
+    const far = toCanvas(bg.far.c, bg.far.w, bg.far.h), mid = bg.mid ? toCanvas(bg.mid.c, bg.mid.w, bg.mid.h) : null, near = toCanvas(bg.near.c, bg.near.w, bg.near.h);
+    g.drawImage(far, -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0);
+    const t = document.createElement('canvas'); t.width = 120; t.height = 68; const tg = t.getContext('2d'); tg.imageSmoothingEnabled = true; tg.drawImage(c, 0, 0, 120, 68);
+    if (cur) STAGE.paint(cur);   // painting a theme leaves it current; put the shown one back
+    return (THUMBS[id] = t);
+  }
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -936,14 +966,15 @@
     }
     return propGlows.get(key);
   }
-  function stageAnim(list, camX, front) {
+  function stageAnim(list, camX, front, depth) {
     const props = sim.breakables || [];
     const broken = new Set(props.filter((b) => b.state >= 2).map((b) => b.id));
     for (const it of STAGE.anim(sim.t, broken)) {
       if (!!it.front !== front) continue;
-      const x = Math.round(it.x - (it.far ? camX * 0.35 : camX));
+      const rate = it.far ? 0.35 : it.mid ? MID_RATE : 1, x = Math.round(it.x - camX * rate);
       if (x + it.w < -4 || x > VW + 4) continue;
-      list.push({ k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a });
+      const item = { k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a, depth: it.far ? 'far' : it.mid ? 'mid' : undefined };
+      if (item.depth && depth) depth[item.depth].push(item); else list.push(item);   // far / mid items are drawn behind the near layer
     }
     if (!front) for (const b of props) {   // the breakable props, painted per state (src/stage.js PROPS)
       const [bx, by, bw, bh] = b.box, x = Math.round(bx - camX);
@@ -952,8 +983,8 @@
     }
   }
   function worldList(camX) {
-    const list = [];
-    stageAnim(list, camX, false);
+    const list = [], depth = { far: [], mid: [] };
+    stageAnim(list, camX, false, depth);
     const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
     for (const f of fs) fighterList(list, f, camX);
     for (const p of sim.projs) {
@@ -975,20 +1006,23 @@
       list.push({ k: 'rect', x: Math.round(p.x - camX), y: Math.round(p.y), w: p.size || 1, h: p.size || 1, col: p.col });
     }
     stageAnim(list, camX, true);
-    return list;
+    return { list, farList: depth.far, midList: depth.mid };
   }
   function drawWorld() {
     const camX = Math.round(sim.camX);
     const shake = sim.shake > 0.2 ? [Math.round((rnd() * 2 - 1) * sim.shake), Math.round((rnd() * 2 - 1) * sim.shake * 0.5)] : [0, 0];
-    const list = worldList(camX);
+    const { list, farList, midList } = worldList(camX);
     initGL();
     lx.setTransform(RS, 0, 0, RS, 0, 0);
     if (gl) {
-      gl.render({ camX, list, shake, zoom: koZoom() });
+      gl.render({ camX, list, farList, midList, shake, zoom: koZoom() });
       lx.clearRect(0, 0, VW, VH);
     } else {
       lx.setTransform(RS, 0, 0, RS, shake[0] * RS, shake[1] * RS);
       lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
+      draw2D(farList);
+      if (MID) lx.drawImage(MID, -Math.round(camX * MID_RATE), 0);
+      draw2D(midList);
       lx.drawImage(NEAR, -camX, 0);
       draw2D(list);
       if (FRONT) lx.drawImage(FRONT, -Math.round(camX * FRONT_RATE), 0);
@@ -1053,30 +1087,55 @@
   }
   function drawSelect() {
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    lx.drawImage(FAR, -60, 0); lx.drawImage(NEAR, -180, 0);
+    lx.drawImage(FAR, -60, 0); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
     lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
-    if (!sim.selCast) { sim.selCast = ROSTER.map((C) => makeFighter(C, 0)); sim.selCast.forEach((f) => play(f, 'idle')); }
+    if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); sim.selCast.forEach((f) => { if (f) play(f, 'idle'); }); }
     const mode = MODES[modeI][0];
-    sim.selCast.forEach((f, i) => {
-      f.x = ROSTER.length === 1 ? VW / 2 : 96 + i * 144; f.face = 1;
+    SLOTS.forEach((S, i) => {
+      const x = 96 + i * 144, f = sim.selCast[i];
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, i === 0 ? 'light' : i === 1 ? 'light' : 'heavy');
-      animate(f);
-      if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
-      drawFighter(f, 0);
-      lx.fillStyle = chosen ? f.C.color : 'rgba(255,255,255,0.15)'; lx.fillRect(f.x - 40, G + 6, 80, 3);
+      if (f) {
+        f.x = x; f.face = 1;
+        if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, 'light');
+        animate(f);
+        if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
+        drawFighter(f, 0);
+      } else {   // a locked member: a dark silhouette with a question mark
+        lx.fillStyle = 'rgba(10,12,30,0.85)'; lx.fillRect(x - 22, G - 84, 44, 84);
+        lx.fillStyle = chosen ? S.color : '#2c3060'; lx.fillRect(x - 22, G - 84, 44, 2); lx.fillRect(x - 22, G - 2, 44, 2);
+      }
+      lx.fillStyle = chosen ? (S.C ? S.C.color : S.color) : 'rgba(255,255,255,0.15)'; lx.fillRect(x - 40, G + 6, 80, 3);
     });
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
     text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), VW / 2, 24, 21, '#ffd24a');
-    sim.selCast.forEach((f, i) => {
+    SLOTS.forEach((S, i) => {
+      const x = 96 + i * 144;
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      text(f.C.R.name, f.x, 252, 13, chosen ? f.C.color : '#b9c2ea');
-      text(f.C.R.height + ' · ' + f.C.R.PARTS.map((p) => p.label).join('/'), f.x, 264, 8, '#8f97b8');
-      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', f.x - 42, 150, 12, ROSTER[sim.sel[0]].color);
+      if (S.C) { text(S.C.R.name, x, 252, 13, chosen ? S.C.color : '#b9c2ea'); text(S.C.R.height + ' · ' + S.C.R.PARTS.map((p) => p.label).join('/'), x, 264, 8, '#8f97b8'); }
+      else { text('?', x, G - 44, 34, chosen ? S.color : '#3a4270'); text(S.name, x, 252, 13, chosen ? S.color : '#b9c2ea'); text(S.sub, x, 264, 8, '#8f97b8'); }
+      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', x - 42, 150, 12, ROSTER[0].color);
     });
     text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
+  }
+  function drawStage() {   // 「選擇場景」: the chosen theme fills the screen, the three thumbnails sit over it
+    lx.setTransform(RS, 0, 0, RS, 0, 0);
+    lx.drawImage(FAR, -42, 0); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
+    lx.fillStyle = 'rgba(5,6,15,0.35)'; lx.fillRect(0, 0, VW, VH);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    text('STAGE SELECT', VW / 2, 24, 21, '#ffd24a');
+    STAGES.forEach((id, i) => {
+      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 140, y = 120, chosen = i === sim.stageSel;
+      const tb = stageThumb(id);
+      ctx.fillStyle = chosen ? '#ffd24a' : '#2c3060'; ctx.fillRect((x - 62) * scale, (y - 36) * scale, 124 * scale, 72 * scale);
+      ctx.drawImage(tb, (x - 60) * scale, (y - 34) * scale, 120 * scale, 68 * scale);
+      text(th.name, x, y + 50, 12, chosen ? '#ffd24a' : '#b9c2ea'); text(th.en, x, y + 63, 8, '#8f97b8');
+    });
+    text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
+    text(STAGE.name, VW / 2, 250, 10, '#8f97b8');
   }
 
   let last = performance.now(), acc = 0;
@@ -1085,6 +1144,7 @@
     uiStep();
     if (sim.phase === 'title') { drawTitle(); requestAnimationFrame(frame); return; }
     if (sim.phase === 'select') { drawSelect(); requestAnimationFrame(frame); return; }
+    if (sim.phase === 'stage') { drawStage(); requestAnimationFrame(frame); return; }
     if (!sim.paused) {
       acc += dt * sim.slow;
       let n = 0;
@@ -1102,6 +1162,6 @@
   // warm the cache for the idle frames so the first fight does not stutter
   requestAnimationFrame((t) => { last = t; frame(t); });
 
-  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas,
+  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas, setStage, STAGES,
     renderOnce: () => { drawWorld(); ctx.imageSmoothingEnabled = false; if (gl) ctx.clearRect(0, 0, cv.width, cv.height); else { ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height); } ctx.drawImage(low, 0, 0, cv.width, cv.height); drawHudText(); } };   // one frame on demand (tests while the tab is hidden)
 })();

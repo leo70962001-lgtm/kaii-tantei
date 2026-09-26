@@ -1031,6 +1031,33 @@
   const PX = root.PX;
   const W = 720, H = 270, VW = 480, GROUND = 240, FAR_W = 600, FRONT_W = 800, PXM = 52;   // world px per metre on the fight plane
   let TREES = null;   // which near-layer pixels the sakura canopies cover (so lights behind them stay behind them)
+  // ---------------------------------------------------------------- themes (「選擇場景」): the same street at three hours
+  // Every colour a painter needs comes from TH so one drawing gives three stages: the night (the moon, blue), dusk (a warm
+  // sky over the skyline, no lamps yet glowing strongly), and the neon rain (the cyberpunk pins: a dense skyline of
+  // magenta / cyan windows, teal haze, rain in front of and behind the fighters).
+  const THEMES = {
+    night: { id: 'night', name: '夜の校門前', en: 'NIGHT GATE',
+      sky: ['#07091c', '#0a0d26', '#10132f', '#161a3c', '#1d2048', '#262856', '#312f62', '#3d366c', '#4a3f74'], stars: 260, moon: true, sun: null,
+      cloudA: { body: '#3a3872', shade: '#262458', lit: '#7a74b8', rim: '#c8c2f0' }, cloudB: { body: '#2e2c64', shade: '#1e1e4c', lit: '#5a56a0', rim: '#9a94d8', warm: '#5a3a5c' },
+      cum: ['#dcd6f6', '#9690cc', '#6e68ae', '#2a2860', '#4c4894', '#3e3a80'], haze: ['#4c4180', '#6a4a78'],
+      farTower: ['#3b3670', '#4a4684', '#8a86c0', 0.12], nearTower: ['#232650', '#343a6a', '#b8c4ff', 0.3, 0.5], midBuild: ['#1a1e48', '#2a2e5c', '#ffd98a', 0.22], dense: false,
+      winLit: ['#ffd98a', '#e0b850'], sakura: ['#b04070', '#d8608c', '#f088ac', '#f8b4cc', '#ffe0ec'], sheen: '#5a4a8a', mist: '#3a3a70', rain: false },
+    dusk: { id: 'dusk', name: '夕暮れの校門前', en: 'DUSK GATE',
+      sky: ['#1a1440', '#2c1c58', '#48286a', '#6a3a72', '#8c4a6e', '#b06062', '#d08262', '#eaa472', '#f8c484'], stars: 30, moon: false, sun: [470, 158],
+      cloudA: { body: '#5a3a70', shade: '#3a2450', lit: '#c07890', rim: '#ffd0b0' }, cloudB: { body: '#4a2e60', shade: '#2e1c44', lit: '#9a6080', rim: '#f0b0a0', warm: '#c06a60' },
+      cum: ['#ffd8c0', '#e09aa0', '#a06080', '#4a2e60', '#7c4a7c', '#603a68'], haze: ['#8a5a78', '#c07a70'],
+      farTower: ['#4a3468', '#5c4478', '#ffc890', 0.06], nearTower: ['#2e2050', '#443060', '#ffd0a0', 0.1, 0.2], midBuild: ['#2c1e4e', '#3e2c62', '#ffd0a0', 0.1], dense: false,
+      winLit: ['#ffd8a0', '#e8b070'], sakura: ['#b04a78', '#d8709c', '#f094b8', '#ffb8d0', '#ffe0ea'], sheen: '#8a5a7a', mist: '#7a4a6a', rain: false },
+    cyber: { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN',
+      sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'], stars: 60, moon: false, sun: null,
+      cloudA: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0' }, cloudB: { body: '#0e2838', shade: '#081622', lit: '#1e4a58', rim: '#3a8090', warm: '#4a2a5a' },
+      cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
+      farTower: ['#0e2030', '#1a3244', '#ff5ad0', 0.3], nearTower: ['#0a1824', '#16283a', '#5ad0ff', 0.45, 0.9], midBuild: ['#0c1a28', '#1a2e40', '#ff8ad4', 0.4], dense: true,
+      winLit: ['#ff8ad4', '#c050a0'], sakura: ['#8a2a70', '#c0409a', '#e864b8', '#ff8ad4', '#ffc4ea'], sheen: '#3a4a8a', mist: '#1a4a5a', rain: true },
+  };
+  const THEME_IDS = ['night', 'dusk', 'cyber'];
+  let TH = THEMES.night;
+  function setTheme(id) { TH = THEMES[id] || THEMES.night; return TH; }
   const hx = PX.hex;
   const rgba = (hex, a) => ((hx(hex) & 0x00ffffff) | ((a & 255) << 24)) >>> 0;   // a translucent pixel (both renderers blend it)
   const bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
@@ -1057,12 +1084,21 @@
     return R;
   }
   // a soft radial glow of translucent pixels (dithered so it stays pixel art), strongest at the centre
+  // a translucent colour over whatever is there: mixed into an opaque pixel, kept translucent over nothing (a layer is
+  // drawn as one texture, so a see-through pixel would show the layer behind, not the road it was painted on)
+  function mixPx(L, x, y, col, a) {
+    const d = L.get(x, y);
+    if (!d || ((d >>> 24) & 255) < 255) { L.set(x, y, ((col & 0x00ffffff) | (Math.max(a, d ? (d >>> 24) & 255 : 0) << 24)) >>> 0); return; }
+    const t = a / 255, r = ((d & 255) * (1 - t) + (col & 255) * t) | 0, g = (((d >> 8) & 255) * (1 - t) + ((col >> 8) & 255) * t) | 0, b = (((d >> 16) & 255) * (1 - t) + ((col >> 16) & 255) * t) | 0;
+    L.set(x, y, (0xff000000 | (b << 16) | (g << 8) | r) >>> 0);
+  }
   function glow(L, cx, cy, rx, ry, hex, aMax, pow) {
+    const col = hx(hex);
     for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
       const d = Math.hypot((x - cx) / rx, (y - cy) / ry); if (d >= 1) continue;
       const a = aMax * Math.pow(1 - d, pow || 1.6);
-      if (a < 6) { if (dith(x, y, a / 6)) L.set(x, y, rgba(hex, 6)); continue; }
-      L.set(x, y, rgba(hex, Math.round(a)));
+      if (a < 6) { if (dith(x, y, a / 6)) mixPx(L, x, y, col, 6); continue; }
+      mixPx(L, x, y, col, Math.round(a));
     }
   }
   // the reflection of a light on the wet ground: a vertical streak that breaks up with distance (the reference's rain-wet road)
@@ -1070,7 +1106,7 @@
     for (let y = yTop; y < yBot; y++) for (let x = x0; x < x1; x++) {
       const t = (y - yTop) / Math.max(1, yBot - yTop), edge = Math.min(x - x0, x1 - 1 - x) / Math.max(1, (x1 - x0) / 2);
       const a = aMax * (1 - t * 0.7) * Math.min(1, edge * 1.6) * (HS(x, y >> 1, 43) < 0.75 ? 1 : 0.35);
-      if (a >= 5) L.set(x, y, rgba(hex, Math.round(a)));
+      if (a >= 5) mixPx(L, x, y, hx(hex), Math.round(a));
     }
   }
   const OUT = hx('#0a0f2a');
@@ -1078,21 +1114,22 @@
   // ---------------------------------------------------------------- far layer: sky, stars, moon, cloud banks, hazy skyline
   function paintFar() {
     const L = layer(FAR_W, H);
-    const sky = ['#07091c', '#0a0d26', '#10132f', '#161a3c', '#1d2048', '#262856', '#312f62', '#3d366c', '#4a3f74'].map(hx);
+    const sky = TH.sky.map(hx);
     for (let y = 0; y < H; y++) {
       const t = Math.pow(y / 226, 1.25) * (sky.length - 1);
       const i = Math.min(sky.length - 2, Math.floor(t)), f = t - i;
       for (let x = 0; x < FAR_W; x++) L.set(x, y, dith(x, y, Math.min(1, f)) ? sky[i + 1] : sky[i]);
     }
-    for (let k = 0; k < 260; k++) {
+    for (let k = 0; k < TH.stars; k++) {
       const x = Math.floor(HS(k, 1, 11) * FAR_W), y = Math.floor(Math.pow(HS(k, 2, 11), 1.5) * 150);
       const b = HS(k, 3, 11);
       L.set(x, y, b > 0.86 ? hx('#ffffff') : b > 0.5 ? hx('#b3bcf0') : hx('#6f78bc'));
       if (b > 0.95) { L.set(x + 1, y, hx('#6f78bc')); L.set(x - 1, y, hx('#6f78bc')); L.set(x, y + 1, hx('#6f78bc')); L.set(x, y - 1, hx('#6f78bc')); }
     }
-    // a big low moon with a wide soft halo
+    // a big low moon with a wide soft halo (the night); at dusk the sun has just gone behind the skyline
     const mx = 450, my = 70, mr = 30;
-    for (let y = my - 70; y <= my + 70; y++) for (let x = mx - 70; x <= mx + 70; x++) {
+    if (TH.sun) { glow(L, TH.sun[0], TH.sun[1], 150, 70, '#ffb070', 120, 1.3); glow(L, TH.sun[0], TH.sun[1], 70, 30, '#ffe0a0', 110, 1.2); }
+    if (TH.moon) for (let y = my - 70; y <= my + 70; y++) for (let x = mx - 70; x <= mx + 70; x++) {
       const d = Math.hypot(x + 0.5 - mx, y + 0.5 - my);
       if (d <= mr) {
         const lx = (x - mx) / mr, ly = (y - my) / mr;
@@ -1101,7 +1138,7 @@
       else if (d <= mr + 24 && dith(x, y, (mr + 24 - d) / 60)) L.set(x, y, hx('#3a3468'));
       else if (d <= mr + 40 && dith(x, y, (mr + 40 - d) / 120)) L.set(x, y, hx('#332e60'));
     }
-    for (const [dx, dy, r] of [[-10, -6, 5], [9, 6, 4], [-3, 13, 3], [12, -12, 3], [-13, 9, 3]]) for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+    if (TH.moon) for (const [dx, dy, r] of [[-10, -6, 5], [9, 6, 4], [-3, 13, 3], [12, -12, 3], [-13, 9, 3]]) for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
       if (x * x + y * y > r * r) continue;
       L.set(mx + dx + x, my + dy + y, (x + y < 0) ? hx('#dcbb98') : hx('#e9cfae'));
     }
@@ -1126,22 +1163,50 @@
         L.set(x, y, c);
       }
     };
-    const C1 = { body: hx('#3a3872'), shade: hx('#262458'), lit: hx('#7a74b8'), rim: hx('#c8c2f0') };
-    const C2 = { body: hx('#2e2c64'), shade: hx('#1e1e4c'), lit: hx('#5a56a0'), rim: hx('#9a94d8'), warm: hx('#5a3a5c') };
+    const pal = (o) => { const r = {}; for (const k in o) r[k] = hx(o[k]); return r; };
+    const C1 = pal(TH.cloudA), C2 = pal(TH.cloudB);
     cloudBank([[60, 28, 60, 14], [120, 38, 70, 18], [190, 52, 60, 16], [250, 66, 55, 14], [300, 80, 48, 12], [340, 92, 40, 10], [150, 60, 40, 10], [220, 74, 30, 8]], C1, 5, -4);
     cloudBank([[400, 96, 46, 10], [440, 102, 52, 12], [490, 98, 40, 9], [530, 106, 44, 10], [470, 110, 30, 6]], C1, 4, -4);
     cloudBank([[20, 150, 70, 14], [90, 158, 90, 18], [180, 164, 70, 14], [250, 170, 50, 10], [560, 150, 60, 12], [600, 158, 40, 10]], C2, 4, -3);
     cloudBank([[330, 40, 40, 6], [370, 46, 34, 5]], C1, 5, -4);
+    // cauliflower cumulus (the reference's clouds): lobes on a flat base, the side toward the moon bright, the underside
+    // dark, a grainy edge — one beside the moon, one over the apartment, a small one above the gate
+    const cumulus = (bx, by, w, seed, ldx) => {
+      const lobes = [], n = 4 + Math.floor(w / 20);
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n; lobes.push([bx + t * w, by - (0.3 + 0.7 * Math.sin(t * Math.PI)) * w * 0.3 - HS(k, 1, seed) * 6, 7 + HS(k, 2, seed) * 6 + Math.sin(t * Math.PI) * w * 0.07]); }
+      for (let k = 0; k < n - 1; k++) { const t = (k + 1) / n; lobes.push([bx + t * w, by - 6 - HS(k, 4, seed) * 6, 8 + Math.sin(t * Math.PI) * w * 0.06]); }
+      const F = (x, y) => y <= by && lobes.some(([cx, cy, r]) => (x - cx) ** 2 + (y - cy) ** 2 < r * r);
+      for (let y = by - w * 0.6; y <= by; y++) for (let x = bx - 14; x <= bx + w + 14; x++) {
+        if (!F(x, y)) continue;
+        const nearEdge = !F(x + 2, y) || !F(x - 2, y) || !F(x, y - 2) || !F(x, y + 2);
+        if (nearEdge && HS(x, y, seed + 3) < 0.3) continue;                 // a grainy edge, a solid body
+        const lit = !F(x + ldx * 2, y - 2), mid = !F(x + ldx * 5, y - 5), shade = !F(x - ldx * 3, y + 3) || y > by - 4;
+        const CU = TH.cum; L.set(x, y, lit ? hx(CU[0]) : mid ? (dith(x, y, 0.55) ? hx(CU[1]) : hx(CU[2])) : shade ? hx(CU[3]) : dith(x, y, 0.5) ? hx(CU[4]) : hx(CU[5]));
+      }
+    };
+    cumulus(486, 122, 92, 51, -1); cumulus(96, 88, 84, 53, 1); cumulus(300, 112, 54, 55, 1); cumulus(560, 96, 40, 57, -1);
     // city haze: the light pollution over the skyline (a warm band low down), then the far towers, then a nearer row
-    for (let y = 120; y < 200; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 120) / 80) * 0.55)) L.set(x, y, hx('#4c4180'));
-    for (let y = 168; y < 198; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 168) / 30) * 0.35)) L.set(x, y, hx('#6a4a78'));
-    const tower = (x0, w, top, col, win, lit, wcol) => {
-      for (let y = top; y < GROUND; y++) for (let x = x0; x < x0 + w; x++) L.set(x, y, col);
-      if (win) for (let y = top + 4; y < GROUND - 6; y += 6) for (let x = x0 + 3; x < x0 + w - 3; x += 5) if (HS(x, y, 5) < lit) { const c = HS(x, y, 6) > 0.7 ? hx('#ffd98a') : wcol; L.set(x, y, c); L.set(x + 1, y, c); }
+    for (let y = 120; y < 200; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 120) / 80) * 0.55)) L.set(x, y, hx(TH.haze[0]));
+    for (let y = 168; y < 198; y++) for (let x = 0; x < FAR_W; x++) if (dith(x, y, ((y - 168) / 30) * 0.35)) L.set(x, y, hx(TH.haze[1]));
+    const tower = (x0, w, top, col, win, lit, wcol, edge) => {
+      for (let y = top; y < GROUND; y++) for (let x = x0; x < x0 + w; x++) L.set(x, y, x === x0 ? edge : col);
+      for (let x = x0; x < x0 + w; x++) L.set(x, top, edge);                                     // the roof edge
+      if (win) for (let y = top + 3; y < GROUND - 6; y += 5) for (let x = x0 + 2; x < x0 + w - 3; x += 4) {   // a grid of 2×3 windows
+        const on = HS(x, y, 5) < lit; const c = on ? (HS(x, y, 6) > 0.7 ? hx('#ffd98a') : wcol) : 0;
+        if (c) { L.set(x, y, c); L.set(x + 1, y, c); L.set(x, y + 1, c); L.set(x + 1, y + 1, c); L.set(x, y + 2, c); L.set(x + 1, y + 2, c); }
+        else { L.set(x, y + 2, edge); L.set(x + 1, y + 2, edge); }
+      }
+      const r = HS(x0, top, 8);
+      if (r > 0.7) { rect(L, x0 + (w >> 1) - 1, top - 6, 2, 6, edge); L.set(x0 + (w >> 1) - 1, top - 7, hx('#ff5a5a')); }        // an antenna with a warning light
+      else if (r > 0.45) { rect(L, x0 + 3, top - 3, 6, 3, edge); rect(L, x0 + w - 8, top - 2, 5, 2, edge); }                   // rooftop boxes
     };
     for (let k = 0; k < 26; k++) {
       const x0 = Math.floor(HS(k, 7, 3) * FAR_W), w = 15 + Math.floor(HS(k, 8, 3) * 40), top = 130 + Math.floor(HS(k, 9, 3) * 45);
-      tower(x0, w, top, hx('#3b3670'), true, 0.12, hx('#8a86c0'));
+      tower(x0, w, top, hx(TH.farTower[0]), true, TH.farTower[3], hx(TH.farTower[2]), hx(TH.farTower[1]));
+    }
+    if (TH.dense) for (let k = 0; k < 34; k++) {   // the neon city: a second, taller rank of towers with neon-lit windows
+      const x0 = Math.floor(HS(k, 27, 3) * FAR_W), w = 12 + Math.floor(HS(k, 28, 3) * 26), top = 40 + Math.floor(HS(k, 29, 3) * 90);
+      tower(x0, w, top, hx(TH.farTower[0]), true, 0.35, hx(HS(k, 30, 3) > 0.5 ? '#ff5ad0' : '#5ad0ff'), hx(TH.farTower[1]));
     }
     // 東京タワー beside the moon (its top shows above the school building seen through the gate): a tapered lattice
     // with the red / white bands and warning lights
@@ -1154,9 +1219,10 @@
     L.set(tx, tt - 1, hx('#ff4040')); L.set(tx, tt - 2, hx('#ff4040')); L.set(tx - 6, 117, hx('#ff4040')); L.set(tx + 6, 117, hx('#ff4040'));
     for (let k = 0; k < 18; k++) {
       const x0 = Math.floor(HS(k, 17, 4) * FAR_W), w = 18 + Math.floor(HS(k, 18, 4) * 33), top = 160 + Math.floor(HS(k, 19, 4) * 39);
-      tower(x0, w, top, hx('#232650'), true, 0.3, hx('#b8c4ff'));
+      tower(x0, w, top, hx(TH.nearTower[0]), true, TH.nearTower[3], hx(TH.nearTower[2]), hx(TH.nearTower[1]));
+      if (HS(k, 24, 4) > 1 - TH.nearTower[4] * 0.5) for (let y = top + 2; y < GROUND; y += 2) { L.set(x0 + 2, y, hx('#5ad0ff')); L.set(x0 + w - 3, y, hx('#5ad0ff')); }   // a glass tower's light strips
       if (HS(k, 20, 4) > 0.6) { L.set(x0 + (w >> 1), top - 1, hx('#ff5a5a')); L.set(x0 + (w >> 1), top - 2, hx('#ff5a5a')); L.set(x0 + (w >> 1), top - 3, hx('#ff5a5a')); }
-      if (HS(k, 21, 4) > 0.5) { const sx = x0 + 3 + Math.floor(HS(k, 22, 4) * (w - 10)), sc = HS(k, 23, 4) > 0.5 ? hx('#ff5ad0') : hx('#5ad0ff'); rect(L, sx, top + 8, 6, 2, sc); }   // a neon sign
+      if (HS(k, 21, 4) > 1 - TH.nearTower[4]) { const sx = x0 + 3 + Math.floor(HS(k, 22, 4) * (w - 10)), sc = HS(k, 23, 4) > 0.5 ? hx('#ff5ad0') : hx('#5ad0ff'); rect(L, sx, top + 8, 6, 2, sc); }   // a neon sign
     }
     return L;
   }
@@ -1170,7 +1236,7 @@
     rect(L, 282, 96, 208, 92, hx('#151a3a')); rect(L, 282, 96, 208, 3, hx('#20264a')); rect(L, 282, 99, 208, 1, hx('#0f1330'));
     for (let row = 0; row < 3; row++) for (let x = 292; x < 484; x += 12) {
       const y = 106 + row * 26, lit = HS(x, row, 23) < 0.14;
-      rect(L, x, y, 7, 9, lit ? hx('#ffd98a') : hx('#0f1330')); if (lit) rect(L, x, y + 5, 7, 4, hx('#e0b850')); else L.set(x + 1, y + 1, hx('#2a3060'));
+      rect(L, x, y, 7, 9, lit ? hx(TH.winLit[0]) : hx('#0f1330')); if (lit) rect(L, x, y + 5, 7, 4, hx(TH.winLit[1])); else L.set(x + 1, y + 1, hx('#2a3060'));
     }
     rect(L, 374, 160, 24, 28, hx('#0f1330')); rect(L, 370, 156, 32, 4, hx('#2a3060')); rect(L, 384, 168, 4, 20, hx('#3a4a8a'));   // entrance + canopy + glass door
     for (let y = 60; y < 188; y++) L.set(302, y, hx('#5a5f8a')); rect(L, 303, 62, 7, 4, hx('#e8e8f0')); L.set(306, 64, hx('#e84a5f'));   // flagpole
@@ -1180,8 +1246,8 @@
     for (let y = 68; y < 188; y++) for (let x = AX0; x < AX1; x++) if (HS(x, y, 45) < 0.06) L.set(x, y, hx('#1e2250'));   // wall texture
     const win = (x, y, lit, curtain) => {
       rect(L, x - 1, y - 1, 23, 27, hx('#2c3060'));                                     // frame
-      rect(L, x, y, 21, 25, lit ? hx('#ffd98a') : hx('#0f1130'));
-      if (lit) { rect(L, x, y + 13, 21, 12, hx('#e0b850')); if (curtain) { rect(L, x, y, 6, 25, hx('#f0c890')); rect(L, x + 15, y, 6, 25, hx('#f0c890')); } }
+      rect(L, x, y, 21, 25, lit ? hx(TH.winLit[0]) : hx('#0f1130'));
+      if (lit) { rect(L, x, y + 13, 21, 12, hx(TH.winLit[1])); if (curtain) { rect(L, x, y, 6, 25, hx('#f0c890')); rect(L, x + 15, y, 6, 25, hx('#f0c890')); } }
       else { L.set(x + 2, y + 2, hx('#2a3060')); L.set(x + 3, y + 2, hx('#2a3060')); }
       rect(L, x + 10, y, 1, 25, hx('#2c3060')); rect(L, x, y + 12, 21, 1, hx('#2c3060'));   // sash
     };
@@ -1192,37 +1258,89 @@
       win(x, 142, HS(k, 3, 41) < 0.4, HS(k, 4, 41) < 0.5);
     }
     rect(L, 186, 44, 22, 20, hx('#2a2e5c')); rect(L, 188, 42, 18, 2, hx('#3a3e70')); rect(L, 196, 32, 2, 12, hx('#5a5f8a')); rect(L, 190, 34, 14, 1, hx('#5a5f8a'));   // water tank + antenna
+    for (let x = AX0; x < AX1; x += 5) rect(L, x, 58, 1, 6, hx('#3a3e70')); rect(L, AX0, 58, AX1 - AX0, 1, hx('#4a4f80'));   // the roof railing
+    for (const [x, y] of [[52, 96], [164, 96], [108, 158]]) { rect(L, x, y, 10, 7, hx('#3a3e70')); rect(L, x, y, 10, 1, hx('#5a5f8a')); for (let i = 1; i < 6; i += 2) rect(L, x + 1, y + i, 8, 1, hx('#262a50')); }   // AC units
+    rect(L, 18, 100, 32, 1, hx('#8a90b0')); rect(L, 22, 101, 6, 8, hx('#e8e8f0')); rect(L, 24, 101, 2, 3, hx('#c8c8d8')); rect(L, 32, 101, 5, 9, hx('#7ad4ff')); rect(L, 41, 101, 4, 6, hx('#ffd6e0'));   // laundry on a pole
+    rect(L, 226, 68, 20, 120, hx('#161a3e')); for (const y of [76, 108, 140]) { rect(L, 230, y, 12, 9, hx('#2c3060')); rect(L, 231, y + 1, 10, 7, hx('#6a5a30')); rect(L, 232, y + 2, 8, 5, hx('#a89050')); }   // the stairwell's dim landing windows
+    rect(L, 12, 68, 2, 120, hx('#2a2e5c')); rect(L, 12, 68, 1, 120, hx('#3a3e70'));                                       // a drain pipe
+    glow(L, 237, 100, 30, 44, '#ff5ad0', 60, 1.5);
+    rect(L, 230, 72, 14, 56, hx('#3a1040')); rect(L, 231, 73, 12, 54, hx('#ff5ad0')); rect(L, 232, 74, 10, 52, hx('#c0187a'));   // the vertical neon sign
+    for (let k = 0; k < 4; k++) { const y = 77 + k * 13; rect(L, 234, y, 6, 1, hx('#ffd0f0')); rect(L, 236, y + 1, 1, 8, hx('#ffd0f0')); rect(L, 233, y + 4, 8, 1, hx('#ffd0f0')); rect(L, 234, y + 8, 6, 1, hx('#ffd0f0')); }   // its glyphs
+    rect(L, 232, 128, 10, 2, hx('#3a1040')); rect(L, 236, 130, 2, 6, hx('#3a1040'));
     for (let y = -9; y <= 9; y++) for (let x = -9; x <= 9; x++) if (x * x + y * y <= 85) L.set(214 + x, 122 + y, x * x + y * y <= 55 ? hx('#f4ecd0') : hx('#5a4a30'));
     for (const [dx, dy] of [[0, -1], [0, -2], [0, -3], [0, -4], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]]) L.set(214 + dx, 122 + dy, hx('#302010'));   // the shop clock
+    // a convenience store behind the wall at the right (×0.5): the striped sign and the top of its lit glass front show
+    // above the wall (the reference's storefront), its light spilling over the coping
+    rect(L, 626, 150, 94, 38, hx('#1e2250')); rect(L, 626, 150, 94, 2, hx('#2c3060'));
+    rect(L, 630, 154, 86, 12, hx('#f0f0f8')); rect(L, 630, 154, 86, 3, hx('#3ab54a')); rect(L, 630, 163, 86, 3, hx('#1f6fe0'));
+    for (const [x, w] of [[636, 5], [643, 5], [651, 7], [661, 5], [668, 6], [677, 5], [685, 6], [694, 5], [702, 7]]) rect(L, x, 158, w, 4, hx('#1a1a2a'));   // the sign's lettering
+    rect(L, 630, 167, 86, 21, hx('#ffe9b0')); rect(L, 630, 167, 86, 1, hx('#8a90b0'));
+    for (let y = 172; y < 188; y += 5) { rect(L, 634, y, 26, 1, hx('#8a7a50')); rect(L, 678, y, 34, 1, hx('#8a7a50')); for (let x = 635; x < 659; x += 3) rect(L, x, y - 3, 2, 3, [hx('#e84a5f'), hx('#5ad0ff'), hx('#7ae06a'), hx('#ffd24a')][(x + y) % 4]); for (let x = 679; x < 711; x += 3) rect(L, x, y - 3, 2, 3, [hx('#ff8a3a'), hx('#c9cce6'), hx('#ff5ad0'), hx('#7ad4ff')][(x + y) % 4]); }   // shelves of goods
+    rect(L, 662, 167, 2, 21, hx('#8a90b0')); rect(L, 674, 167, 2, 21, hx('#8a90b0')); rect(L, 664, 178, 10, 10, hx('#fff4d0'));   // the sliding door
+    glow(L, 673, 190, 70, 26, '#ffe0a0', 34, 1.4);
+    glow(L, 700, 143, 22, 12, '#5ad0ff', 50, 1.5); rect(L, 690, 138, 20, 10, hx('#083048')); rect(L, 691, 139, 18, 8, hx('#5ad0ff')); rect(L, 693, 141, 3, 4, hx('#083048')); rect(L, 698, 141, 3, 4, hx('#083048')); rect(L, 703, 141, 3, 4, hx('#083048'));   // a cyan "24h" neon
     // sakura trees behind the wall (×0.6), in the reference's way: clumps of blossom shaded from the upper right,
     // a darker rim on each clump, dark branches showing in the gaps, the odd brighter petal
     TREES = layer(W, H);
-    const sakura = (cx, cy, rx, ry, seed, T) => {
-      T = T || L;
-      if (T === L) for (let y = cy + ry * 0.5; y < 190; y++) for (let i = -3; i <= 3; i++) { T.set(cx + i, y, i < -1 ? hx('#3a2a38') : i > 1 ? hx('#1a1020') : hx('#2a1c30')); TREES.set(cx + i, y, 1); }   // the trunk (the front-layer canopies hang in from above)
-      const GAP = hx('#2a1c30');
-      ellipse(T, cx, cy, rx * 0.86, ry * 0.86, hx('#3a2240')); if (T === L) ellipse(TREES, cx, cy, rx * 0.86, ry * 0.86, 1);
-      for (const [bx, by] of [[-rx * 0.6, -ry * 0.3], [rx * 0.55, -ry * 0.45], [-rx * 0.25, -ry * 0.8], [rx * 0.2, -ry * 0.9], [rx * 0.75, ry * 0.05], [-rx * 0.8, ry * 0.1]]) { line(T, cx, cy + ry * 0.4, cx + bx, cy + by, GAP); line(T, cx + 1, cy + ry * 0.4, cx + bx + 1, cy + by, hx('#1a1020')); if (T === L) { line(TREES, cx, cy + ry * 0.4, cx + bx, cy + by, 1); line(TREES, cx + 1, cy + ry * 0.4, cx + bx + 1, cy + by, 1); } }
-      const SH = hx('#6a3454'), MID = hx('#a85a7c'), LIT = hx('#d88aa4'), HI = hx('#f4bcd0'), RIM = hx('#4a2440');
-      const n = Math.round(rx * ry / 48), clumps = [];
-      for (let k = 0; k < n; k++) {
-        const a = HS(k, 1, seed) * Math.PI * 2, r = Math.sqrt(HS(k, 2, seed)) * 0.9;
-        clumps.push([Math.round(cx + Math.cos(a) * r * rx), Math.round(cy + Math.sin(a) * r * ry), 5 + Math.round(HS(k, 3, seed) * 7)]);
-      }
-      clumps.sort((p, q) => p[1] - q[1]);   // top first: the lower clumps overlap the ones behind them
-      for (const [px, py, pr] of clumps) {
-        for (let y = py - pr - 1; y <= py + pr + 1; y++) for (let x = px - pr - 1; x <= px + pr + 1; x++) {
-          const d = Math.hypot(x - px, y - py) / pr + HS(x, y, seed + 5) * 0.14;
-          if (d > 1.04) continue;
-          const lx = (x - px) / pr, ly = (y - py) / pr, l = lx * 0.6 - ly * 0.8;   // light from the upper right (moon / lamps)
-          if (T === L) TREES.set(x, y, 1);
-          if (d > 0.9) { T.set(x, y, l < 0.2 || dith(x, y, 0.5) ? RIM : SH); continue; }
-          const c = l > 0.5 ? HI : l > 0.05 ? LIT : l > -0.45 ? MID : SH;
-          T.set(x, y, HS(x, y, seed + 6) < 0.04 ? hx('#fff0f4') : c);
+    // a cherry tree the way the references draw it: a dark trunk and twisting limbs (recursive, three levels) that stay
+    // visible inside the crown, and the crown as many small clusters of flowers hung along the twigs — sky shows in the
+    // gaps; tones are the night's neon-lit pinks (deep magenta in shadow, pale pink toward the light). opts: ang/len of
+    // the first limbs, trunk (draw one down to the wall top), light (x direction of the light: +1 from the right)
+    const sakura = (cx, cy, rx, ry, seed, T, opts) => {
+      T = T || L; opts = opts || {}; const near = T === L, light = opts.light === undefined ? 1 : opts.light;
+      const BARK = hx('#241832'), BARK2 = hx('#463050'), BARK3 = hx('#140c1c');
+      const mark = (x, y) => { if (near) TREES.set(x, y, 1); };
+      const limbLine = (x0, y0, x1, y1, w) => {
+        for (let o = -w / 2; o < w / 2; o++) { const c = o < -w / 4 - 0.5 ? BARK2 : o > w / 4 ? BARK3 : BARK; line(T, x0 + o, y0, x1 + o, y1, c); if (near) line(TREES, x0 + o, y0, x1 + o, y1, 1); }
+      };
+      const limbs = [];
+      const grow = (x, y, ang, len, w, depth, k) => {
+        const x1 = x + Math.cos(ang) * len, y1 = y + Math.sin(ang) * len;
+        limbs.push([x, y, x1, y1, w, depth]);
+        if (depth <= 0) return;
+        const n = 2 + (HS(k, depth, seed) > 0.45 ? 1 : 0);
+        for (let i = 0; i < n; i++) {
+          const spread = 0.45 + HS(k * 7 + i, depth, seed) * 0.5, a = ang + (i - (n - 1) / 2) * spread + (HS(k * 3 + i, depth + 9, seed) - 0.5) * 0.5;
+          grow(x1, y1, a, len * (0.6 + HS(k + i, depth + 3, seed) * 0.25), Math.max(1, w * 0.62), depth - 1, k * 4 + i + 1);
         }
+      };
+      if (opts.trunk !== false) {
+        const base = cy + ry * 0.38;
+        for (let y = base; y < 190; y++) { const w = 6 + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { T.set(cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2), y, i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2), y); } }
+        grow(cx, base, -Math.PI / 2 + (HS(1, 1, seed) - 0.5) * 0.5, ry * 0.42, 5, 3, 1);
+        grow(cx, base + 6, -Math.PI / 2 - 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.32, 3, 2, 9);
+      } else grow(cx, cy, opts.ang || Math.PI / 2, opts.len || ry * 0.45, 5, 3, 1);
+      limbs.sort((p, q) => q[4] - p[4]);   // thick first, twigs on top
+      for (const [x0, y0, x1, y1, w] of limbs) limbLine(x0, y0, x1, y1, w);
+      // flowers: small clusters along the twigs (the thinner the limb the more it carries), kept inside the crown ellipse
+      const TONES = TH.sakura.map(hx), WHITE = hx('#fff2f8'), GAP = hx('#3a2240');   // the theme's pinks (night: neon-lit, dusk: warm)
+      const cluster = (fx, fy, r, k) => {
+        for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
+          const d = Math.hypot(x - fx, y - fy) / r + HS(x, y, seed + 5) * 0.25; if (d > 1) continue;
+          const n = HS(x, y, seed + 6 + k);
+          if (n < 0.13) continue;                                        // gaps between the flowers
+          const l = ((x - fx) / r) * 0.55 * light - ((y - fy) / r) * 0.75 + (HS(x, y, seed + 7) - 0.5) * 0.5;
+          const c = n > 0.96 ? WHITE : l > 0.55 ? TONES[4] : l > 0.15 ? TONES[3] : l > -0.25 ? TONES[2] : l > -0.6 ? TONES[1] : TONES[0];
+          T.set(x, y, c); mark(x, y);
+        }
+      };
+      let k = 0;
+      for (const [x0, y0, x1, y1, w, depth] of limbs) {
+        const len = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(2, Math.round(len / 3.5)), per = depth === 0 ? 3 : depth === 1 ? 2 : 1;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t;
+          for (let c = 0; c < per; c++) {
+            const ox = (HS(i * 13 + c, 21, seed + k) - 0.5) * (10 + w * 2), oy = (HS(i * 13 + c, 22, seed + k) - 0.5) * 12, fx = bx + ox, fy = by + oy;
+            if (((fx - cx) / rx) ** 2 + ((fy - cy) / ry) ** 2 > 1.05) continue;
+            cluster(fx, fy, 2.5 + HS(i + c, 23, seed + k) * 3.0, k);
+          }
+        }
+        k++;
       }
+      // a few dark gaps so the crown reads as clusters, not a blob
+      for (let g = 0; g < 8; g++) { const gx = cx + (HS(g, 31, seed) - 0.5) * rx * 1.4, gy = cy + (HS(g, 32, seed) - 0.5) * ry * 1.2; for (let y = gy - 2; y <= gy + 2; y++) for (let x = gx - 3; x <= gx + 3; x++) if (T.get(x, y) && HS(x, y, seed + 33) < 0.5) T.set(x, y, GAP); }
     };
-    sakura(118, 96, 70, 52, 13); sakura(586, 90, 78, 58, 17); sakura(704, 112, 54, 42, 19);
+    sakura(118, 96, 70, 52, 13); sakura(586, 90, 78, 58, 17, L, { light: -1 }); sakura(704, 112, 54, 42, 19);
     SAKURA = sakura;
     // ---- the wall (1.0 m): a block wall with a coping, mortar joints, grime, a poster; open between the gate pillars
     const wall = (x0, x1) => {
@@ -1277,13 +1395,27 @@
     for (let y = -3; y <= 3; y++) for (let x = -7; x <= 7; x++) if ((x * x) / 49 + (y * y) / 9 <= 1) L.set(180 + x, 263 + y, (x + y) % 2 ? hx('#2a2e58') : hx('#3a3e6a'));   // a manhole
     rect(L, 396, 250, 10, 2, hx('#1a1d38')); for (let i = 0; i < 5; i++) L.set(397 + i * 2, 250, hx('#3a3e66'));   // a storm drain
     // ---- after the rain: the wet road carries a faint violet sheen and every light becomes a streak (the reference)
-    for (let y = 255; y < H; y++) for (let x = 0; x < W; x++) if (HS(x, y, 47) < 0.08 + (y - 255) / 60) L.set(x, y, rgba('#5a4a8a', 22 + Math.round((y - 255) * 1.5)));
-    for (let y = 255; y < H; y++) for (let x = 555; x < 705; x++) { const d = Math.hypot((x - 630) / 72, (y - 262) / 9); if (d < 1 && dith(x, y, (1 - d) * 0.7)) L.set(x, y, rgba('#8a7ab8', 70)); }   // a puddle
+    // the street mirrored in the wet asphalt: the wall, gate and pillars flipped, dim, broken by ripples
+    for (let y = 255; y < H; y++) {
+      const t = (y - 255) / (H - 255), sy = GROUND - 1 - Math.round((y - 255) * 1.15), off = Math.round(Math.sin(y * 1.9) * 1.5 + Math.sin(y * 0.7) * 1.2);
+      for (let x = 0; x < W; x++) { const c = L.get(x + off, sy); if (c && dith(x, y, 0.62 - t * 0.4)) mixPx(L, x, y, c, Math.round(82 - t * 46)); }
+    }
+    for (let y = 255; y < H; y++) for (let x = 0; x < W; x++) if (HS(x, y, 47) < 0.08 + (y - 255) / 60) mixPx(L, x, y, hx(TH.sheen), 22 + Math.round((y - 255) * 1.5 * (TH.rain ? 1.6 : 1)));
+    for (let y = 255; y < H; y++) for (let x = 555; x < 705; x++) { const d = Math.hypot((x - 630) / 72, (y - 262) / 9); if (d < 1 && dith(x, y, (1 - d) * 0.7)) mixPx(L, x, y, hx('#8a7ab8'), 70); }   // a puddle
     // the street lamp: its cone of light down to the sidewalk, and its reflection on the tiles and the road
-    for (let y = 66; y < GROUND; y++) { const t = (y - 66) / (GROUND - 66), hw = 4 + t * 34; for (let x = Math.round(569 - hw); x <= Math.round(569 + hw); x++) { const e = 1 - Math.abs(x - 569) / hw, a = 30 * (1 - t * 0.85) * e; if (a >= 4 && dith(x, y, Math.min(1, a / 10))) L.set(x, y, rgba('#ffd890', Math.max(8, Math.round(a)))); } }
+    for (let y = 66; y < GROUND; y++) { const t = (y - 66) / (GROUND - 66), hw = 4 + t * 34; for (let x = Math.round(569 - hw); x <= Math.round(569 + hw); x++) { const e = 1 - Math.abs(x - 569) / hw, a = 30 * (1 - t * 0.85) * e; if (a >= 4 && dith(x, y, Math.min(1, a / 10))) mixPx(L, x, y, hx('#ffd890'), Math.max(8, Math.round(a))); } }
     streak(L, 560, 580, GROUND, 252, '#ffe0a0', 60); streak(L, 556, 584, 255, H, '#ffe0a0', 85);
     for (let k = 0; k < 4; k++) if (HS(k, 1, 41) < 0.5 || HS(k, 3, 41) < 0.4) streak(L, 26 + k * 56, 44 + k * 56, 255, H, '#ffd98a', 26);   // lit windows, faintly
     streak(L, 300, 470, 262, H, '#8a7ab8', 14);
+    streak(L, 228, 246, 255, H, '#ff5ad0', 70); streak(L, 224, 250, GROUND, 252, '#ff5ad0', 30);   // the neon's reflection
+    streak(L, 688, 712, 255, H, '#5ad0ff', 50);
+    // fallen petals on the sidewalk and the road, thickest under the trees (the references' carpets of petals)
+    const PET = [hx('#ff9cd6'), hx('#f070bc'), hx('#ffd0ea'), hx('#d04a98')];
+    for (let y = GROUND + 1; y < H; y++) for (let x = 0; x < W; x++) {
+      let dens = 0.012; for (const tx of [118, 586, 704]) dens += 0.08 * Math.max(0, 1 - Math.abs(x - tx) / 110);
+      if (y > 252) dens *= 0.45;
+      if (HS(x, y, 61) < dens) { const c = PET[Math.floor(HS(x, y, 62) * 4)]; L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); }
+    }
     return L;
   }
 
@@ -1298,12 +1430,8 @@
   // city with blossoms); 800 px wide because it scrolls faster (×1.25) than the street
   function paintFront() {
     const L = layer(FRONT_W, H);
-    SAKURA(30, -52, 150, 96, 23, L); SAKURA(790, -46, 140, 88, 29, L);
-    // a few dark branches hanging into the frame from those canopies
-    for (const [x0, y0, x1, y1] of [[120, 40, 210, 96], [150, 30, 250, 60], [700, 36, 600, 90], [690, 24, 560, 48]]) { line(L, x0, y0, x1, y1, hx('#1a1020')); line(L, x0 + 1, y0, x1 + 1, y1, hx('#2a1c30')); }
-    for (const [x, y, r] of [[196, 88, 7], [232, 56, 6], [180, 70, 6], [612, 84, 7], [575, 46, 6], [640, 62, 6]]) {
-      for (let yy = y - r; yy <= y + r; yy++) for (let xx = x - r; xx <= x + r; xx++) { const d = Math.hypot(xx - x, yy - y) / r + HS(xx, yy, 31) * 0.15; if (d > 1) continue; const l = (xx - x) / r * 0.6 - (yy - y) / r * 0.8; L.set(xx, yy, d > 0.9 ? hx('#4a2440') : l > 0.5 ? hx('#f4bcd0') : l > 0 ? hx('#d88aa4') : hx('#a85a7c')); }
-    }
+    SAKURA(10, -24, 230, 120, 23, L, { trunk: false, ang: Math.PI * 0.36, len: 52, light: 1 });
+    SAKURA(790, -20, 220, 112, 29, L, { trunk: false, ang: Math.PI * 0.64, len: 50, light: -1 });
     return L;
   }
   // the lit panes of the apartment windows, minus whatever a canopy covers: row spans in stage coordinates
@@ -1323,8 +1451,36 @@
       WINSPANS.push(spans);
     }
   }
-  let FAR = null, NEAR = null, FRONT = null;
-  function paint() { if (!FAR) { FAR = paintFar(); NEAR = paintNear(); FRONT = paintFront(); windowSpans(); } return { far: FAR, near: NEAR, front: FRONT, frontRate: 1.25 }; }
+  // the MID layer (parallax 0.6, between the skyline and the street): a rank of mid-distance blocks (×0.25) with window
+  // grids, the elevated railway the train runs on, and a band of mist — what gives the picture its depth between the
+  // hazy far city and the wall (「雲跟場景的深度」)
+  const MID_W = 660, MID_RATE = 0.6;
+  function paintMid() {
+    const L = layer(MID_W, H); const [body, edge, win, lit] = TH.midBuild.map((v, i) => (i < 3 ? hx(v) : v));
+    for (let k = 0; k < 22; k++) {   // mid-rise blocks whose tops show above the school and the wall (the street hides the rest)
+      const x0 = Math.floor(HS(k, 41, 5) * MID_W), w = 34 + Math.floor(HS(k, 42, 5) * 50), top = (TH.dense ? 8 : 26) + Math.floor(HS(k, 43, 5) * 56);
+      for (let y = top; y < 200; y++) for (let x = x0; x < x0 + w; x++) L.set(x, y, x === x0 || y === top ? edge : dith(x, y, (y - top) / 200 + HS(x, y, 44) * 0.1) ? body : hx(TH.midBuild[0]));
+      for (let y = top + 6; y < 190; y += 12) for (let x = x0 + 4; x < x0 + w - 6; x += 9) {
+        const on = HS(x, y, 45) < lit; if (on) { rect(L, x, y, 5, 6, win); rect(L, x, y + 3, 5, 3, hx(TH.winLit[1])); } else { rect(L, x, y, 5, 6, hx('#0a0e24')); L.set(x + 1, y + 1, edge); }
+      }
+      if (HS(k, 46, 5) > 0.6) { rect(L, x0 + 6, top - 5, 8, 5, edge); rect(L, x0 + w - 12, top - 3, 6, 3, edge); }
+      if (TH.dense && HS(k, 47, 5) > 0.5) { const sx = x0 + 4, sc = HS(k, 48, 5) > 0.5 ? hx('#ff5ad0') : hx('#5ad0ff'); rect(L, sx, top + 2, w - 8, 3, sc); glow(L, sx + (w - 8) / 2, top + 3, w / 2 + 8, 8, HS(k, 48, 5) > 0.5 ? '#ff5ad0' : '#5ad0ff', 50, 1.4); }
+    }
+    // the elevated railway: a viaduct with pillars, a fence, catenary posts
+    rect(L, 0, 72, MID_W, 3, hx('#4a4f80')); rect(L, 0, 75, MID_W, 9, hx('#2e3358')); rect(L, 0, 84, MID_W, 2, hx('#1e2244'));
+    for (let x = 0; x < MID_W; x += 7) rect(L, x, 68, 1, 4, hx('#5a5f8a')); rect(L, 0, 68, MID_W, 1, hx('#5a5f8a'));
+    for (let x = 20; x < MID_W; x += 64) { rect(L, x, 86, 8, 114, hx('#262a50')); rect(L, x, 86, 2, 114, hx('#3a3e70')); rect(L, x + 3, 58, 1, 14, hx('#5a5f8a')); rect(L, x + 1, 58, 6, 1, hx('#5a5f8a')); }
+    // the mist band in front of the blocks
+    for (let y = 96; y < 150; y++) for (let x = 0; x < MID_W; x++) { const t = Math.sin((y - 96) / 54 * Math.PI); if (HS(x >> 1, y, 49) < t * 0.5) mixPx(L, x, y, hx(TH.mist), Math.round(30 + t * 60)); }
+    return L;
+  }
+  const PAINTED = {};
+  function paint(id) {
+    id = id || TH.id; const prev = TH; setTheme(id);
+    if (!PAINTED[id]) { PAINTED[id] = { theme: id, far: paintFar(), mid: paintMid(), near: paintNear(), front: paintFront(), frontRate: 1.25, midRate: MID_RATE }; if (!WINSPANS.length) windowSpans(); }
+    TH = prev.id === id ? TH : THEMES[id];
+    return PAINTED[id];
+  }
 
   // ---------------------------------------------------------------- living background (「背景加入會動的物體」)
   // Everything is a pure function of the sim time t (ms), so nothing needs state: falling cherry petals swaying in
@@ -1361,7 +1517,7 @@
     // light stays behind the trees (「窗子的燈光在櫻花樹後」)
     for (let k = 0; k < 4; k++) {
       const slot = Math.floor(s / 1.1) + k * 7, on = H(slot, 9, 21) > 0.5, wi = Math.floor(H(slot, 10, 21) * WINDOWS.length) % WINDOWS.length;
-      for (const [x, y, w, top] of WINSPANS[wi] || []) out.push({ x, y, w, h: 1, col: on ? (top ? hx('#ffd98a') : hx('#e0b850')) : hx('#0f1130'), a: 1 });
+      for (const [x, y, w, top] of WINSPANS[wi] || []) out.push({ x, y, w, h: 1, col: on ? (top ? TH.winLit[0] : TH.winLit[1]) : '#0f1130', a: 1 });
     }
     // wisps drifting over the moon (far layer)
     for (const [k, y0, len, col, spd] of [[0, 62, 70, '#2c2b66', 3.2], [1, 74, 48, '#272560', 2.4], [2, 92, 90, '#232258', 1.8]]) {
@@ -1386,6 +1542,22 @@
       out.push({ far: true, x: bx, y: by, w: 2, h: 1, col: hx('#0a0b1c'), a: 1 });
       out.push({ far: true, x: bx - 3, y: by - flap, w: 3, h: 1, col: hx('#0a0b1c'), a: 1 });
       out.push({ far: true, x: bx + 2, y: by - flap, w: 3, h: 1, col: hx('#0a0b1c'), a: 1 });
+    }
+    // the train on the elevated railway every 22 s (mid layer): six cars, lit windows, a headlight — right to left
+    const tp = (s % 22) / 22;
+    if (tp < 0.32) {
+      const u = tp / 0.32, tx0 = MID_W + 40 - u * (MID_W + 260);
+      for (let c = 0; c < 6; c++) {
+        const cx = tx0 + c * 34;
+        out.push({ mid: true, x: cx, y: 60, w: 32, h: 12, col: '#c9cce6', a: 1 }); out.push({ mid: true, x: cx, y: 60, w: 32, h: 2, col: '#e8e8f0', a: 1 }); out.push({ mid: true, x: cx, y: 69, w: 32, h: 3, col: '#3a3e66', a: 1 });
+        for (let i = 0; i < 5; i++) out.push({ mid: true, x: cx + 3 + i * 6, y: 62, w: 4, h: 5, col: TH.rain ? '#ffb0e0' : '#ffe6a0', a: 1 });
+        if (c === 0) out.push({ mid: true, x: cx - 2, y: 64, w: 2, h: 3, col: '#ffffff', a: 1 });
+      }
+    }
+    // rain (the neon theme): streaks behind the wall and a few in front of the fighters, each on its own timing
+    if (TH.rain) for (let k = 0; k < 110; k++) {
+      const spd = 160 + H(k, 51, 21) * 120, x = ((H(k, 52, 21) * (W + 60) + s * 14) % (W + 60)) - 30, y = ((H(k, 53, 21) * 320 + s * spd) % (H + 40)) - 20, front = k % 4 === 0;
+      out.push(front ? { x: Math.round(x), y: Math.round(y), w: 1, h: 9, col: '#bfe0ff', a: 0.5, front: true } : { mid: true, x: Math.round(x * 1.2), y: Math.round(y), w: 1, h: 7, col: '#9ad0e0', a: 0.35 });
     }
     // a cat walking the wall top (right of the gate) every 26 s, behind the fighters
     const cp = (s % 26) / 26;
@@ -1586,7 +1758,7 @@
     return propCache.get(key);
   }
 
-  root.STAGE = { W, H, VW, GROUND, FAR_W, FRONT_W, PXM, paint, half, anim, breakables, propImage, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
+  root.STAGE = { W, H, VW, GROUND, FAR_W, FRONT_W, MID_W, MID_RATE, PXM, paint, setTheme, THEMES, THEME_IDS, theme: () => TH, half, anim, breakables, propImage, name: '東京鬼高校・夜の校門前', en: 'TOKYO ONI HIGH — NIGHT GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -2313,6 +2485,8 @@
 
   // ------------------------------------------------------------ screens
   const MODES = [['1p', '1P vs CPU'], ['practice', '練習（木人）'], ['2p', '1P vs 2P'], ['demo', 'CPU vs CPU（觀戰）']];
+  // the character select: the club so far (the JK) and the two members whose sheets are not cut yet
+  const SLOTS = [{ C: ROSTER[0] }, { locked: true, name: '吸血鬼ニート', sub: 'COMING SOON', color: '#c46bff' }, { locked: true, name: '狼人メイド', sub: 'COMING SOON', color: '#ff8a3a' }];
   let modeI = 0;
   const LEVELS = [['かんたん', 0.3], ['ふつう', 0.6], ['つよい', 0.95]];
   let levelI = 1;
@@ -2326,8 +2500,7 @@
       else if (p.key === 'right') { levelI = (levelI + 1) % LEVELS.length; sfx('sel'); }
       else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
         sfx('ok');
-        if (ROSTER.length === 1) { sim.level = LEVELS[levelI][1]; sim.sel = [0, 0]; startMatch(ROSTER[0].id, ROSTER[0].id, MODES[modeI][0]); }
-        else { sim.phase = 'select'; sim.sel = [0, 1]; sim.selStep = 0; }
+        sim.phase = 'select'; sim.sel = [0, 0]; sim.selStep = 0;   // 「加入選擇角色跟選擇場景」
       }
       return;
     }
@@ -2337,15 +2510,26 @@
       const slotOk = mode === '2p' ? p.slot === who : p.slot === 0;
       if (p.key === 'esc') { sim.phase = 'title'; return; }
       if (!slotOk && p.key !== 'start') return;
-      if (p.key === 'left') { sim.sel[who] = (sim.sel[who] + ROSTER.length - 1) % ROSTER.length; sfx('sel'); }
-      else if (p.key === 'right') { sim.sel[who] = (sim.sel[who] + 1) % ROSTER.length; sfx('sel'); }
+      if (p.key === 'left') { sim.sel[who] = (sim.sel[who] + SLOTS.length - 1) % SLOTS.length; sfx('sel'); }
+      else if (p.key === 'right') { sim.sel[who] = (sim.sel[who] + 1) % SLOTS.length; sfx('sel'); }
       else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
+        if (SLOTS[sim.sel[who]].locked) { sfx('sel'); return; }   // not in the club yet
         sfx('ok');
-        if (sim.selStep === 0) {
-          sim.selStep = 1;
-          if (mode !== '2p') { sim.sel[1] = Math.floor(rnd() * ROSTER.length); }
-          if (mode !== '2p') { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
-        } else { sim.level = LEVELS[levelI][1]; startMatch(ROSTER[sim.sel[0]].id, ROSTER[sim.sel[1]].id, mode); }
+        if (sim.selStep === 0) { sim.selStep = 1; if (mode !== '2p') { sim.sel[1] = 0; sim.phase = 'stage'; } }
+        else { sim.phase = 'stage'; }
+        sim.stageSel = Math.max(0, STAGES.indexOf(sim.stage || 'night'));
+      }
+      return;
+    }
+    if (sim.phase === 'stage') {   // 「選擇場景」
+      const mode = MODES[modeI][0];
+      if (p.key === 'esc') { sim.phase = 'select'; sim.selStep = 0; return; }
+      if (p.slot !== 0 && p.key !== 'start') return;
+      if (p.key === 'left') { sim.stageSel = (sim.stageSel + STAGES.length - 1) % STAGES.length; sfx('sel'); setStage(STAGES[sim.stageSel]); }
+      else if (p.key === 'right') { sim.stageSel = (sim.stageSel + 1) % STAGES.length; sfx('sel'); setStage(STAGES[sim.stageSel]); }
+      else if (['start', 'light', 'heavy', 'special'].includes(p.key)) {
+        sfx('ok'); setStage(STAGES[sim.stageSel]); sim.level = LEVELS[levelI][1];
+        startMatch(SLOTS[sim.sel[0]].C.id, SLOTS[sim.sel[1]].C.id, mode);
       }
       return;
     }
@@ -2361,14 +2545,14 @@
   let gl = null, wantGL = !!glc && !/\bgl=0\b/.test(location.search);
   function initGL() {
     if (gl || !wantGL || !window.createGL) return;
-    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, front: FRONT, frontRate: FRONT_RATE, RS }); }
+    try { gl = window.createGL({ canvas: glc, VW, VH, G, far: FAR, near: NEAR, farRate: 0.35, mid: MID, midRate: MID_RATE, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
   const RS = 2;  // render scale: the low canvas / WebGL target are 2× the world so the puppet's finer parts show
   const low = document.createElement('canvas'); low.width = VW * RS; low.height = VH * RS;
   const lx = low.getContext('2d'); lx.imageSmoothingEnabled = false;
-  const BG = STAGE.paint();
+  let BG = STAGE.paint('night');
   // the stage shares the sprites' pixel size (2 world px): painted at full size, sampled to half, blown back up ×2
   function chunky(L) {
     const h = STAGE.half(L), w = h.w * 2, hh = h.h * 2, c = new Uint32Array(w * hh);
@@ -2377,8 +2561,26 @@
   }
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
-  const FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h);
-  const FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null, FRONT_RATE = BG.frontRate || 1.25;   // blossoms in front of the fighters
+  let FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h), NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h), MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null;
+  let FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;   // blossoms in front of the fighters
+  const FRONT_RATE = BG.frontRate || 1.25, MID_RATE = BG.midRate || 0.6;
+  const STAGES = STAGE.THEME_IDS || ['night'];
+  const THUMBS = {};
+  function setStage(id) {   // 「選擇場景」: paint (once) and show another theme of the same street
+    BG = STAGE.paint(id);
+    FAR = toCanvas(BG.far.c, BG.far.w, BG.far.h); NEAR = toCanvas(BG.near.c, BG.near.w, BG.near.h); MID = BG.mid ? toCanvas(BG.mid.c, BG.mid.w, BG.mid.h) : null; FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;
+    sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ far: FAR, mid: MID, near: NEAR, front: FRONT });
+  }
+  function stageThumb(id) {   // a 120×68 picture of a theme for the stage select
+    if (THUMBS[id]) return THUMBS[id];
+    const cur = sim.stage; const bg = STAGE.paint(id);
+    const c = document.createElement('canvas'); c.width = 480; c.height = 270; const g = c.getContext('2d');
+    const far = toCanvas(bg.far.c, bg.far.w, bg.far.h), mid = bg.mid ? toCanvas(bg.mid.c, bg.mid.w, bg.mid.h) : null, near = toCanvas(bg.near.c, bg.near.w, bg.near.h);
+    g.drawImage(far, -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0);
+    const t = document.createElement('canvas'); t.width = 120; t.height = 68; const tg = t.getContext('2d'); tg.imageSmoothingEnabled = true; tg.drawImage(c, 0, 0, 120, 68);
+    if (cur) STAGE.paint(cur);   // painting a theme leaves it current; put the shown one back
+    return (THUMBS[id] = t);
+  }
   let scale = 3;
   const holder = document.getElementById('stage');
   function fit() {
@@ -2530,14 +2732,15 @@
     }
     return propGlows.get(key);
   }
-  function stageAnim(list, camX, front) {
+  function stageAnim(list, camX, front, depth) {
     const props = sim.breakables || [];
     const broken = new Set(props.filter((b) => b.state >= 2).map((b) => b.id));
     for (const it of STAGE.anim(sim.t, broken)) {
       if (!!it.front !== front) continue;
-      const x = Math.round(it.x - (it.far ? camX * 0.35 : camX));
+      const rate = it.far ? 0.35 : it.mid ? MID_RATE : 1, x = Math.round(it.x - camX * rate);
       if (x + it.w < -4 || x > VW + 4) continue;
-      list.push({ k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a });
+      const item = { k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a, depth: it.far ? 'far' : it.mid ? 'mid' : undefined };
+      if (item.depth && depth) depth[item.depth].push(item); else list.push(item);   // far / mid items are drawn behind the near layer
     }
     if (!front) for (const b of props) {   // the breakable props, painted per state (src/stage.js PROPS)
       const [bx, by, bw, bh] = b.box, x = Math.round(bx - camX);
@@ -2546,8 +2749,8 @@
     }
   }
   function worldList(camX) {
-    const list = [];
-    stageAnim(list, camX, false);
+    const list = [], depth = { far: [], mid: [] };
+    stageAnim(list, camX, false, depth);
     const fs = sim.fighters.slice().sort((p, q) => (p.anim === 'down' ? -1 : 0) - (q.anim === 'down' ? -1 : 0));
     for (const f of fs) fighterList(list, f, camX);
     for (const p of sim.projs) {
@@ -2569,20 +2772,23 @@
       list.push({ k: 'rect', x: Math.round(p.x - camX), y: Math.round(p.y), w: p.size || 1, h: p.size || 1, col: p.col });
     }
     stageAnim(list, camX, true);
-    return list;
+    return { list, farList: depth.far, midList: depth.mid };
   }
   function drawWorld() {
     const camX = Math.round(sim.camX);
     const shake = sim.shake > 0.2 ? [Math.round((rnd() * 2 - 1) * sim.shake), Math.round((rnd() * 2 - 1) * sim.shake * 0.5)] : [0, 0];
-    const list = worldList(camX);
+    const { list, farList, midList } = worldList(camX);
     initGL();
     lx.setTransform(RS, 0, 0, RS, 0, 0);
     if (gl) {
-      gl.render({ camX, list, shake, zoom: koZoom() });
+      gl.render({ camX, list, farList, midList, shake, zoom: koZoom() });
       lx.clearRect(0, 0, VW, VH);
     } else {
       lx.setTransform(RS, 0, 0, RS, shake[0] * RS, shake[1] * RS);
       lx.drawImage(FAR, -Math.round(camX * 0.35), 0);
+      draw2D(farList);
+      if (MID) lx.drawImage(MID, -Math.round(camX * MID_RATE), 0);
+      draw2D(midList);
       lx.drawImage(NEAR, -camX, 0);
       draw2D(list);
       if (FRONT) lx.drawImage(FRONT, -Math.round(camX * FRONT_RATE), 0);
@@ -2647,30 +2853,55 @@
   }
   function drawSelect() {
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    lx.drawImage(FAR, -60, 0); lx.drawImage(NEAR, -180, 0);
+    lx.drawImage(FAR, -60, 0); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
     lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
-    if (!sim.selCast) { sim.selCast = ROSTER.map((C) => makeFighter(C, 0)); sim.selCast.forEach((f) => play(f, 'idle')); }
+    if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); sim.selCast.forEach((f) => { if (f) play(f, 'idle'); }); }
     const mode = MODES[modeI][0];
-    sim.selCast.forEach((f, i) => {
-      f.x = ROSTER.length === 1 ? VW / 2 : 96 + i * 144; f.face = 1;
+    SLOTS.forEach((S, i) => {
+      const x = 96 + i * 144, f = sim.selCast[i];
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, i === 0 ? 'light' : i === 1 ? 'light' : 'heavy');
-      animate(f);
-      if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
-      drawFighter(f, 0);
-      lx.fillStyle = chosen ? f.C.color : 'rgba(255,255,255,0.15)'; lx.fillRect(f.x - 40, G + 6, 80, 3);
+      if (f) {
+        f.x = x; f.face = 1;
+        if (chosen && f.anim === 'idle' && rnd() < 0.01) play(f, 'light');
+        animate(f);
+        if (isAttack(f) && f.fi === A(f)[f.anim].frames.length - 1 && f.ft > cur(f).dur - 20) play(f, 'idle');
+        drawFighter(f, 0);
+      } else {   // a locked member: a dark silhouette with a question mark
+        lx.fillStyle = 'rgba(10,12,30,0.85)'; lx.fillRect(x - 22, G - 84, 44, 84);
+        lx.fillStyle = chosen ? S.color : '#2c3060'; lx.fillRect(x - 22, G - 84, 44, 2); lx.fillRect(x - 22, G - 2, 44, 2);
+      }
+      lx.fillStyle = chosen ? (S.C ? S.C.color : S.color) : 'rgba(255,255,255,0.15)'; lx.fillRect(x - 40, G + 6, 80, 3);
     });
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
     text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), VW / 2, 24, 21, '#ffd24a');
-    sim.selCast.forEach((f, i) => {
+    SLOTS.forEach((S, i) => {
+      const x = 96 + i * 144;
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      text(f.C.R.name, f.x, 252, 13, chosen ? f.C.color : '#b9c2ea');
-      text(f.C.R.height + ' · ' + f.C.R.PARTS.map((p) => p.label).join('/'), f.x, 264, 8, '#8f97b8');
-      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', f.x - 42, 150, 12, ROSTER[sim.sel[0]].color);
+      if (S.C) { text(S.C.R.name, x, 252, 13, chosen ? S.C.color : '#b9c2ea'); text(S.C.R.height + ' · ' + S.C.R.PARTS.map((p) => p.label).join('/'), x, 264, 8, '#8f97b8'); }
+      else { text('?', x, G - 44, 34, chosen ? S.color : '#3a4270'); text(S.name, x, 252, 13, chosen ? S.color : '#b9c2ea'); text(S.sub, x, 264, 8, '#8f97b8'); }
+      if (sim.selStep === 1 && sim.sel[0] === i) text('1P', x - 42, 150, 12, ROSTER[0].color);
     });
     text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
+  }
+  function drawStage() {   // 「選擇場景」: the chosen theme fills the screen, the three thumbnails sit over it
+    lx.setTransform(RS, 0, 0, RS, 0, 0);
+    lx.drawImage(FAR, -42, 0); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
+    lx.fillStyle = 'rgba(5,6,15,0.35)'; lx.fillRect(0, 0, VW, VH);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    text('STAGE SELECT', VW / 2, 24, 21, '#ffd24a');
+    STAGES.forEach((id, i) => {
+      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 140, y = 120, chosen = i === sim.stageSel;
+      const tb = stageThumb(id);
+      ctx.fillStyle = chosen ? '#ffd24a' : '#2c3060'; ctx.fillRect((x - 62) * scale, (y - 36) * scale, 124 * scale, 72 * scale);
+      ctx.drawImage(tb, (x - 60) * scale, (y - 34) * scale, 120 * scale, 68 * scale);
+      text(th.name, x, y + 50, 12, chosen ? '#ffd24a' : '#b9c2ea'); text(th.en, x, y + 63, 8, '#8f97b8');
+    });
+    text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
+    text(STAGE.name, VW / 2, 250, 10, '#8f97b8');
   }
 
   let last = performance.now(), acc = 0;
@@ -2679,6 +2910,7 @@
     uiStep();
     if (sim.phase === 'title') { drawTitle(); requestAnimationFrame(frame); return; }
     if (sim.phase === 'select') { drawSelect(); requestAnimationFrame(frame); return; }
+    if (sim.phase === 'stage') { drawStage(); requestAnimationFrame(frame); return; }
     if (!sim.paused) {
       acc += dt * sim.slow;
       let n = 0;
@@ -2696,7 +2928,7 @@
   // warm the cache for the idle frames so the first fight does not stutter
   requestAnimationFrame((t) => { last = t; frame(t); });
 
-  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas,
+  window.__game = { sim, ROSTER, ROSTER_ALL, startMatch, step, play, makeFighter, cache, breakPart, hitFighter, cur, A, MODES, setMode: (i) => { modeI = i; }, sfx, toCanvas, setStage, STAGES,
     renderOnce: () => { drawWorld(); ctx.imageSmoothingEnabled = false; if (gl) ctx.clearRect(0, 0, cv.width, cv.height); else { ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height); } ctx.drawImage(low, 0, 0, cv.width, cv.height); drawHudText(); } };   // one frame on demand (tests while the tab is hidden)
 })();
 
