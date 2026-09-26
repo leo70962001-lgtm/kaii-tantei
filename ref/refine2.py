@@ -24,7 +24,7 @@ from collections import Counter
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 
-SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg', 'V': 'jk_actions3v_clean.png'}
+SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg', 'V': 'jk_actions3w.jpg'}   # V's source: the unnumbered, more detailed re-render (「依照這圖在精細畫」); the cut geometry came from the cleaned numbered sheet (same layout, shift 0)
 TAGS = ('A', 'B', 'C', 'V')
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
