@@ -40,30 +40,32 @@
     // ---------------------------------------------------------------- stance, movement
     A.idle = { label: '構え', loop: true, frames: seq([{ c: 'H0', d: 460 }, { c: 'H1', d: 460 }]) };
     A.idle2 = { label: '構え直し', frames: seq([{ c: 'B1', d: 220 }, { c: 'B2', d: 320 }, { c: 'B3', d: 320 }, { c: 'B4', d: 280 }, { c: 'B0', d: 180 }]) };
-    A.walk = { label: '前進', loop: true, frames: seq([5, 6, 7, 8].map((i) => ({ c: 'B' + i, d: 110 }))) };
-    A.back = { label: '後退', loop: true, frames: seq([8, 7, 6, 5].map((i) => ({ c: 'B' + i, d: 120 }))) };
+    // hand-drawn walk cycle (H25–H30: contact → recoil → pass, twice)
+    A.walk = { label: '前進', loop: true, frames: seq([25, 26, 27, 28, 29, 30].map((i) => ({ c: 'H' + i, d: 80 }))) };
+    A.back = { label: '後退', loop: true, frames: seq([30, 29, 28, 27, 26, 25].map((i) => ({ c: 'H' + i, d: 90 }))) };
     A.dash = { label: '衝刺', loop: true, frames: seq([{ c: 'A26', d: 70, ghost: true }, { c: 'A27', d: 70, ghost: true }]) };
     A.backdash = { label: '後跳', frames: seq([{ c: 'B18', d: 60, ghost: true, inv: true }, { c: 'B19', d: 90, ghost: true, inv: true }, { c: 'B17', d: 80 }]) };
     A.jump = { label: '跳躍', frames: seq([
       { c: 'B17', d: 70, air: 'squat' }, { c: 'B18', d: 100, air: 'rise', ghost: true }, { c: 'B20', d: 100, air: 'apex' },
       { c: 'B21', d: 100, air: 'fall' }, { c: 'B17', d: 90, air: 'land', sfx: 'land' },
     ]) };
-    A.crouch = { label: '蹲下', loop: true, frames: seq([{ c: 'A14', d: 300 }, { c: 'A14', d: 300, lift: 1 }]) };
-    A.block = { label: '防禦', loop: true, frames: seq([{ c: 'B33', d: 200 }]) };
-    A.blockLow = { label: '蹲防', loop: true, frames: seq([{ c: 'B34', d: 200 }]) };
-    A.blockHit = { label: '防禦', frames: seq([{ c: 'B33', d: 70, dx: -2 }, { c: 'B33', d: 90, dx: -1 }]) };
+    A.crouch = { label: '蹲下', loop: true, frames: seq([{ c: 'H35', d: 300 }, { c: 'H35', d: 300, lift: 1 }]) };
+    A.block = { label: '防禦', loop: true, frames: seq([{ c: 'H40', d: 200 }]) };
+    A.blockLow = { label: '蹲防', loop: true, frames: seq([{ c: 'H41', d: 200 }]) };
+    A.blockHit = { label: '防禦', frames: seq([{ c: 'H40', d: 70, dx: -2 }, { c: 'H40', d: 90, dx: -1 }]) };
     // ---------------------------------------------------------------- hit reactions
-    A.hurt = { label: '受傷', frames: seq([{ c: 'B38', d: 60, dx: -2, flash: true }, { c: 'B38', d: 110, dx: -2 }, { c: 'B37', d: 110, dx: -1 }]) };
-    A.hurtHead = { label: '受傷（頭）', frames: seq([{ c: 'B35', d: 60, dx: -2, flash: true }, { c: 'B35', d: 110, dx: -2 }, { c: 'B37', d: 110, dx: -1 }]) };
-    A.hurtLow = { label: '受傷（下段）', frames: seq([{ c: 'B36', d: 60, dx: -1, flash: true }, { c: 'B36', d: 110, dx: -2 }, { c: 'B36', d: 110, dx: -1 }]) };
-    A.stagger = { label: '暈眩', loop: true, frames: seq([{ c: 'B37', d: 160 }, { c: 'B38', d: 160 }]) };
+    // hand-drawn reactions: H31/H32 body hit, H33/H34 head snapped back, H36 crouch hit, H37 fly, H38 lying, H39 kneel
+    A.hurt = { label: '受傷', frames: seq([{ c: 'H31', d: 60, dx: -2, flash: true }, { c: 'H31', d: 110, dx: -2 }, { c: 'H32', d: 110, dx: -1 }]) };
+    A.hurtHead = { label: '受傷（頭）', frames: seq([{ c: 'H33', d: 60, dx: -2, flash: true }, { c: 'H33', d: 110, dx: -2 }, { c: 'H34', d: 110, dx: -1 }]) };
+    A.hurtLow = { label: '受傷（下段）', frames: seq([{ c: 'H36', d: 60, dx: -1, flash: true }, { c: 'H36', d: 110, dx: -2 }, { c: 'H36', d: 110, dx: -1 }]) };
+    A.stagger = { label: '暈眩', loop: true, frames: seq([{ c: 'H32', d: 160 }, { c: 'H31', d: 160 }]) };
     A.down = { label: '倒地', frames: seq([
-      { c: 'B39', d: 70, air: 'fly', ghost: true, flash: true }, { c: 'B39', d: 70, air: 'fly', ghost: true }, { c: 'B39', d: 80, air: 'fly', ghost: true },
-      { c: 'B40', d: 90, air: 'land', sfx: 'slam', shake: 2 }, { c: 'B40', d: 90, air: 'land' },
-      { c: 'B40', d: 400, air: 'lying', inv: true },
+      { c: 'H37', d: 70, air: 'fly', ghost: true, flash: true }, { c: 'H37', d: 70, air: 'fly', ghost: true }, { c: 'H37', d: 80, air: 'fly', ghost: true },
+      { c: 'H38', d: 90, air: 'land', sfx: 'slam', shake: 2 }, { c: 'H38', d: 90, air: 'land' },
+      { c: 'H38', d: 400, air: 'lying', inv: true },
     ]) };
-    A.getup = { label: '起身', frames: seq([{ c: 'B36', d: 120, inv: true }, { c: 'B34', d: 110, inv: true }, { c: 'B0', d: 110, inv: true }]) };
-    A.lose = { label: '敗北', loop: true, frames: seq([{ c: 'B46', d: 400 }, { c: 'B46', d: 400 }]) };
+    A.getup = { label: '起身', frames: seq([{ c: 'H39', d: 120, inv: true }, { c: 'H35', d: 110, inv: true }, { c: 'H0', d: 110, inv: true }]) };
+    A.lose = { label: '敗北', loop: true, frames: seq([{ c: 'H39', d: 400 }, { c: 'H39', d: 400 }]) };
     A.win = { label: '勝利', loopFrom: 5, frames: seq([
       { c: 'B41', d: 140 }, { c: 'B42', d: 160, sfx: 'click' }, { c: 'B43', d: 220 }, { c: 'B44', d: 160 }, { c: 'B45', d: 220 },
       { c: 'B44', d: 300 }, { c: 'B45', d: 300 },
@@ -142,23 +144,24 @@
       { c: 'A0', d: 100, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- crouching
+    // hand-drawn: H42 cocked / H43 arm out (fist 11..12 / -20..-19); H46 drawn back / H44 sweep (foot 17..19 at -2..0) / H45 fire sweep
     A.crouchLight = { label: '屈み義手', frames: seq([
-      { c: 'A14', d: 50, ph: 'ANTICIPATION' },
-      { c: 'A15', d: 60, ph: 'HIT', sfx: 'swish', hb: [2, -22, 17, -10], dmg: 5, stun: 280, kb: 2.5 },
-      { c: 'A16', d: 70, ph: 'HOLD', hb: [2, -22, 14, -10], dmg: 5, stun: 280, kb: 2.5, chain: true, cancel: true },
-      { c: 'A14', d: 100, ph: 'RECOVER' },
+      { c: 'H42', d: 50, ph: 'ANTICIPATION' },
+      { c: 'H43', d: 60, ph: 'HIT', sfx: 'swish', hb: [6, -23, 15, -15], dmg: 5, stun: 280, kb: 2.5 },
+      { c: 'H43', d: 70, ph: 'HOLD', hb: [6, -23, 15, -15], dmg: 5, stun: 280, kb: 2.5, chain: true, cancel: true },
+      { c: 'H42', d: 100, ph: 'RECOVER' },
     ]), nextLight: 'crouchKick', altWhenBroken: { arm: 'crouchHeavy' } };
     A.crouchHeavy = { label: '足払い', frames: seq([
-      { c: 'A17', d: 70, ph: 'ANTICIPATION' },
-      { c: 'A18', d: 50, ph: 'HIT', sfx: 'swish', hb: [-6, -14, 16, 0], dmg: 7, stun: 340, kb: 3, kd: true },
-      { c: 'A18', d: 80, ph: 'HOLD', hb: [-6, -14, 16, 0], dmg: 7, stun: 340, kb: 3, kd: true },
-      { c: 'A19', d: 120, ph: 'RECOVER' },
+      { c: 'H46', d: 70, ph: 'ANTICIPATION' },
+      { c: 'H44', d: 50, ph: 'HIT', sfx: 'swish', hb: [2, -8, 21, 0], dmg: 7, stun: 340, kb: 3, kd: true },
+      { c: 'H44', d: 80, ph: 'HOLD', hb: [2, -8, 21, 0], dmg: 7, stun: 340, kb: 3, kd: true },
+      { c: 'H35', d: 120, ph: 'RECOVER' },
     ]) };
     A.crouchKick = { label: '炎の足払い', frames: seq([
-      { c: 'A14', d: 60, ph: 'ANTICIPATION' },
-      { c: 'C11', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
-      { c: 'C11', d: 90, ph: 'HOLD', hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
-      { c: 'A14', d: 130, ph: 'RECOVER' },
+      { c: 'H46', d: 60, ph: 'ANTICIPATION' },
+      { c: 'H45', d: 50, ph: 'HIT', sfx: 'swish', shake: 1, hb: [2, -9, 22, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
+      { c: 'H45', d: 90, ph: 'HOLD', hb: [2, -9, 22, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
+      { c: 'H35', d: 130, ph: 'RECOVER' },
     ]), altWhenBroken: { leg: 'crouchHeavy' } };
     // ---------------------------------------------------------------- air
     A.air = { label: '空中義手', frames: seq([

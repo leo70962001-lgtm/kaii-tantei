@@ -542,6 +542,199 @@ def high_follow(c):           # the leg dropping
     near_sword_up_arm(c, ox, ty, dx=-1)
 frame('high_follow', 'high kick retract 80 ms', (14, 41), high_follow, size=(36, 42))
 
+# ---------------------------------------------------------------- walk, hit reactions, knockdown, block, crouch set
+# B row 1 (walk), B/C row 5 (guard / hits / fly / lying), A row 3 (crouch attacks), C row 2 (fire sweep).
+def mirror(part): return [r[::-1] for r in part]
+def rot_ccw(rows):
+    """rotate an ASCII bitmap 90° counter-clockwise (a standing figure → lying face-up, head to the left)"""
+    W = len(rows[0]); H = len(rows)
+    return [''.join(rows[y][W - 1 - x] for y in range(H)) for x in range(W)]
+HAIR_UP = [r for r in reversed(HAIR_BACK)]     # the back hair streaming upward (used before the fly rotation)
+
+def walk_frame(n):
+    """6-frame cycle: contact (chrome forward) → recoil → pass → contact (stocking forward) → recoil → pass"""
+    def build(c):
+        ty = [11, 12, 10, 11, 12, 10][n]; ox = 9
+        c.blit(HAIR_BACK, ox - 6 - (1 if n in (1, 4) else 0), ty - 7)
+        if n == 0: lower(c, ox, ty, far=slant(LEG_STOCK, 5, -1), far_x=0, near=slant(LEG_CHROME, 4), near_x=6)
+        elif n == 1: lower(c, ox, ty, far=slant(LEG_STOCK, 6, -1), far_x=1, near=slant(LEG_CHROME, 6), near_x=5)
+        elif n == 2:
+            c.blit(LEG_CHROME, ox + 4, ty + 16); c.blit(SHOE, ox + 3, ty + 27)
+            leg(c, [(ox + 4, ty + 16), (ox + 7, ty + 21), (ox + 6, ty + 26)], 'stock', foot='down')
+            c.blit(SKIRT, ox - 2, ty + 8)
+        elif n == 3: lower(c, ox, ty, far=slant(LEG_STOCK, 4), far_x=6, near=slant(LEG_CHROME, 4, -1), near_x=-1)
+        elif n == 4: lower(c, ox, ty, far=slant(LEG_STOCK, 6), far_x=5, near=slant(LEG_CHROME, 6, -1), near_x=1)
+        else:
+            c.blit(LEG_STOCK, ox + 4, ty + 16); c.blit(SHOE, ox + 3, ty + 27)
+            c.blit(SKIRT, ox - 2, ty + 8)
+            leg(c, [(ox + 5, ty + 16), (ox + 8, ty + 21), (ox + 7, ty + 26)], 'chrome', foot='down')
+        far_arm_rest(c, ox, ty, dx=[0, 1, 0, -1, -1, 0][n], kat_ang=105 + [0, 4, 2, -3, -4, 0][n])
+        upper(c, ox, ty)
+        near_arm_rest(c, ox, ty, dx=[1, 1, 0, -1, -1, 0][n])
+    return build
+for n in range(6): frame('walk%d' % n, 'walk cycle %d/6' % (n + 1), (14, 41), walk_frame(n), size=(28, 42))
+
+def hurt1(c):                 # body hit: torso back, head back, near arm flung forward
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 5), near_x=7)
+    far_arm_rest(c, ox - 1, ty, dx=-1, kat_ang=118)
+    upper(c, ox - 1, ty, head=HEAD_HURT, lean=-2)
+    sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 13, ty + 3)]); hand(c, ox + 14, ty + 2)
+frame('hurt1', 'body hit 1', (14, 41), hurt1, size=(28, 42))
+
+def hurt2(c):                 # further back, slumped 1
+    ox, ty = 9, 12
+    c.blit(HAIR_BACK, ox - 8, ty - 7); lower(c, ox, ty - 1, far_x=-1, near=slant(LEG_CHROME, 5), near_x=7)
+    far_arm_rest(c, ox - 2, ty, dx=-1, kat_ang=124)
+    upper(c, ox - 2, ty, head=HEAD_HURT, lean=-3)
+    sleeve(c, ox + 6, ty + 1); arm(c, [(ox + 8, ty + 5), (ox + 12, ty + 4)]); hand(c, ox + 13, ty + 3)
+frame('hurt2', 'body hit 2 / stagger', (14, 41), hurt2, size=(28, 42))
+
+def hurt_head1(c):            # head hit: head snapped back and up, hair whipped forward over the face
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 8, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 5), near_x=7)
+    far_arm_rest(c, ox - 1, ty, dx=-1, kat_ang=118)
+    c.blit(TORSO, ox - 1, ty); c.blit(HEAD_HURT, ox - 8, ty - 11)
+    c.blit(mirror(HAIR_FLY)[3:], ox - 6, ty - 17)          # bangs whipped up and forward over the top of the head
+    sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 12, ty + 8)]); hand(c, ox + 12, ty + 9)
+frame('hurt_head1', 'head hit 1', (14, 41), hurt_head1, size=(30, 42))
+
+def hurt_head2(c):            # head coming back, hair settling
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 8, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 5), near_x=7)
+    far_arm_rest(c, ox - 1, ty, dx=-1, kat_ang=115)
+    c.blit(TORSO, ox - 1, ty); c.blit(HEAD_HURT, ox - 7, ty - 10)
+    c.blit(mirror(HAIR_FLY)[5:], ox - 5, ty - 14)
+    sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 12, ty + 8)]); hand(c, ox + 12, ty + 9)
+frame('hurt_head2', 'head hit 2', (14, 41), hurt_head2, size=(30, 42))
+
+def crouch_legs(c, ox, ty, near_pts=None):
+    """the squat: both knees bent, shins down; the skirt over the thighs (ty = 19 → head top at row 9)"""
+    leg(c, [(ox + 3, ty + 14), (ox + 9, ty + 13), (ox + 9, ty + 21)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, near_pts or [(ox + 6, ty + 14), (ox + 13, ty + 13), (ox + 13, ty + 21)], 'chrome', foot='down')
+def crouch(c):
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    far_arm_rest(c, ox, ty, kat_ang=120, kat_len=11)
+    crouch_legs(c, ox, ty)
+    upper(c, ox, ty)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 8)]); hand(c, ox + 13, ty + 9)
+frame('crouch', 'crouch (loop)', (14, 41), crouch, size=(28, 42))
+
+def hurt_low(c):              # hit while crouching: the body jolted back
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 8, ty - 7)
+    far_arm_rest(c, ox - 1, ty, dx=-1, kat_ang=125, kat_len=11)
+    crouch_legs(c, ox, ty)
+    upper(c, ox - 1, ty, head=HEAD_HURT, lean=-3)
+    sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 13, ty + 4)]); hand(c, ox + 14, ty + 3)
+frame('hurt_low', 'crouch hit', (14, 41), hurt_low, size=(30, 42))
+
+def fly_body(arms='out'):
+    """the standing figure drawn for rotation: hair streaming up, legs straight together, arms up-out or along the body"""
+    t = Canvas(30, 44); ox, ty = 10, 12
+    t.blit(HAIR_UP, ox - 4, ty - 26)
+    t.blit(LEG_STOCK, ox + 2, ty + 16); t.blit(SHOE, ox + 1, ty + 27)
+    t.blit(LEG_CHROME, ox + 5, ty + 16); t.blit(SHOE, ox + 4, ty + 27)
+    t.blit(SKIRT, ox - 2, ty + 8)
+    if arms == 'out':
+        sleeve(t, ox - 3, ty + 1); steel_arm(t, [(ox - 2, ty + 5), (ox - 5, ty + 1), (ox - 6, ty - 4)]); hand(t, ox - 7, ty - 6, 'm')
+    else:
+        sleeve(t, ox - 3, ty + 1); steel_arm(t, [(ox - 2, ty + 5), (ox - 3, ty + 12)]); hand(t, ox - 4, ty + 13, 'm')
+    t.blit(TORSO, ox, ty); t.blit(HEAD_HURT, ox - 4, ty - 10)
+    if arms == 'out':
+        sleeve(t, ox + 8, ty + 1); arm(t, [(ox + 10, ty + 5), (ox + 14, ty + 2), (ox + 15, ty - 3)]); hand(t, ox + 15, ty - 5)
+    else:
+        sleeve(t, ox + 8, ty + 1); arm(t, [(ox + 10, ty + 5), (ox + 12, ty + 12)]); hand(t, ox + 12, ty + 13)
+    return rot_ccw(t.rows())
+def fly(c):                   # knocked flying: horizontal, face up, head leading (to the left), limbs and hair trailing
+    c.blit(fly_body('out'), 0, 6)
+frame('fly', 'knockdown fly (air)', (22, 36), fly, size=(44, 37))
+def lying(c):                 # on the ground, arms along the body
+    c.blit(fly_body('down'), 0, 6)
+frame('lying', 'landed / lying', (22, 36), lying, size=(44, 37))
+
+def kneel(c):                 # getting up: near knee on the ground, far foot planted, hand on the knee
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    far_arm_rest(c, ox, ty, kat_ang=110, kat_len=10)
+    leg(c, [(ox + 3, ty + 14), (ox + 10, ty + 12), (ox + 10, ty + 21)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 6, ty + 14), (ox + 6, ty + 21), (ox + 1, ty + 22)], 'chrome', foot='fwd')
+    upper(c, ox, ty, head=HEAD_HURT)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 9)]); hand(c, ox + 11, ty + 10)
+frame('kneel', 'getup 1 (kneel)', (14, 41), kneel, size=(28, 42))
+
+def block(c):                 # guard: the katana held upright in front of the face, steel arm across
+    ox, ty = 9, 15
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 6), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 6, ty + 7), (ox + 11, ty + 6)]); hand(c, ox + 11, ty + 5, 'm')
+    katana(c, ox + 13, ty + 2, -90, blade=14)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 6)]); hand(c, ox + 12, ty + 3)
+frame('block', 'block (loop)', (14, 45), block, size=(28, 46))
+
+def block_low(c):             # crouch guard: the katana slanted in front
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    crouch_legs(c, ox, ty)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 6, ty + 8), (ox + 10, ty + 8)]); hand(c, ox + 10, ty + 7, 'm')
+    katana(c, ox + 13, ty + 5, -60, blade=12)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 7)]); hand(c, ox + 12, ty + 5)
+frame('block_low', 'crouch block (loop)', (14, 41), block_low, size=(30, 42))
+
+def cl_antic(c):              # 屈み義手: the steel fist cocked in the crouch
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    crouch_legs(c, ox, ty)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty)
+    steel_arm(c, [(ox - 1, ty + 5), (ox - 1, ty + 8), (ox + 3, ty + 6)]); hand(c, ox + 3, ty + 5, 'm')
+    near_sword_low(c, ox, ty, ang=100, blade=9)
+frame('cl_antic', 'crouch jab anticipation', (14, 41), cl_antic, size=(30, 42))
+def cl_hit(c):                # the steel arm straight out at chest height from the crouch
+    ox, ty = 19 - 10, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    crouch_legs(c, ox, ty)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    for x in range(ox + 8, ox + 12): c.put(x, ty + 1, 'A'); c.put(x, ty + 6, 'A')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 9, ty + 3), (ox + 16, ty + 3)]); hand(c, ox + 16, ty + 2, 'm')
+    c.blit(["f.f", ".F.", "f.f"], ox + 19, ty + 1)
+    near_sword_low(c, ox, ty, ang=100, blade=9)
+frame('cl_hit', 'crouch jab hit; fist (11..12, -20..-19)', (14, 41), cl_hit, size=(34, 42))
+
+def sweep_hit(c, fire=False):  # 足払い: the chrome leg flat along the ground, hand planted, low smear (fire variant)
+    ox, ty = 9, 19
+    c.wedge(ox + 6, ty + 14, 8, 15, 20, 75)
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    leg(c, [(ox + 3, ty + 14), (ox + 8, ty + 13), (ox + 8, ty + 21)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    leg(c, [(ox + 6, ty + 15), (ox + 14, ty + 18), (ox + 22, ty + 20)], 'chrome', foot='fwd')
+    if fire:
+        for i, x in enumerate(range(ox + 9, ox + 24)): c.put(x, ty + 15 + (i // 4) - (1 if i % 3 == 0 else 0), 'F' if i % 2 else 'f')
+        c.blit(["f", "F"], ox + 12, ty + 14); c.blit(["f", "F"], ox + 18, ty + 15)
+    steel_arm(c, [(ox + 1, ty + 4), (ox - 1, ty + 10), (ox, ty + 19)]); hand(c, ox - 1, ty + 20, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 8)]); hand(c, ox + 13, ty + 9)
+frame('sweep_hit', 'sweep hit; foot 17..19 at -2..0', (14, 41), lambda c: sweep_hit(c), size=(36, 42))
+frame('sweep_fire', 'fire sweep hit', (14, 41), lambda c: sweep_hit(c, True), size=(36, 42))
+def sweep_antic(c):           # weight back on the far leg, the chrome leg drawn back
+    ox, ty = 9, 19
+    c.blit(HAIR_BACK, ox - 5, ty - 7)
+    leg(c, [(ox + 3, ty + 14), (ox + 9, ty + 13), (ox + 9, ty + 21)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 6, ty + 14), (ox + 4, ty + 18), (ox + 3, ty + 22)], 'chrome', foot='fwd')
+    far_arm_rest(c, ox, ty, kat_ang=125, kat_len=10)
+    upper(c, ox, ty, lean=-1)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 9)]); hand(c, ox + 12, ty + 10)
+frame('sweep_antic', 'sweep anticipation', (14, 41), sweep_antic, size=(30, 42))
+
 if __name__ == '__main__':
     os.makedirs('art', exist_ok=True)
     meta = {}

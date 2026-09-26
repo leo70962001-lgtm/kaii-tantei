@@ -223,5 +223,203 @@
   "w": 36,
   "h": 42,
   "fx": false
+ },
+ "H25": {
+  "name": "walk0",
+  "note": "walk cycle 1/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H26": {
+  "name": "walk1",
+  "note": "walk cycle 2/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H27": {
+  "name": "walk2",
+  "note": "walk cycle 3/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H28": {
+  "name": "walk3",
+  "note": "walk cycle 4/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H29": {
+  "name": "walk4",
+  "note": "walk cycle 5/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H30": {
+  "name": "walk5",
+  "note": "walk cycle 6/6",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H31": {
+  "name": "hurt1",
+  "note": "body hit 1",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H32": {
+  "name": "hurt2",
+  "note": "body hit 2 / stagger",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H33": {
+  "name": "hurt_head1",
+  "note": "head hit 1",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H34": {
+  "name": "hurt_head2",
+  "note": "head hit 2",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H35": {
+  "name": "crouch",
+  "note": "crouch (loop)",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H36": {
+  "name": "hurt_low",
+  "note": "crouch hit",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H37": {
+  "name": "fly",
+  "note": "knockdown fly (air)",
+  "ax": 22,
+  "ay": 36,
+  "w": 44,
+  "h": 37,
+  "fx": false
+ },
+ "H38": {
+  "name": "lying",
+  "note": "landed / lying",
+  "ax": 22,
+  "ay": 36,
+  "w": 44,
+  "h": 37,
+  "fx": false
+ },
+ "H39": {
+  "name": "kneel",
+  "note": "getup 1 (kneel)",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H40": {
+  "name": "block",
+  "note": "block (loop)",
+  "ax": 14,
+  "ay": 45,
+  "w": 28,
+  "h": 46,
+  "fx": false
+ },
+ "H41": {
+  "name": "block_low",
+  "note": "crouch block (loop)",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H42": {
+  "name": "cl_antic",
+  "note": "crouch jab anticipation",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H43": {
+  "name": "cl_hit",
+  "note": "crouch jab hit; fist (11..12, -20..-19)",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": true
+ },
+ "H44": {
+  "name": "sweep_hit",
+  "note": "sweep hit; foot 17..19 at -2..0",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": true
+ },
+ "H45": {
+  "name": "sweep_fire",
+  "note": "fire sweep hit",
+  "ax": 14,
+  "ay": 41,
+  "w": 36,
+  "h": 42,
+  "fx": true
+ },
+ "H46": {
+  "name": "sweep_antic",
+  "note": "sweep anticipation",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
  }
 }
