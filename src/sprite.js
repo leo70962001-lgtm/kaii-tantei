@@ -25,11 +25,12 @@
   function decode(b64, w, h, enc) {
     const bin = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('binary');
     const out = new Uint32Array(w * h);
-    if (enc === 'prle') {
-      // palette + run-length (ref/refine2.py prle()): [npal][r g b × npal][count index]... ; index 0 = transparent
-      const n = bin.charCodeAt(0), pal = new Uint32Array(n + 1);
-      for (let k = 0; k < n; k++) pal[k + 1] = (255 << 24 | bin.charCodeAt(1 + k * 3 + 2) << 16 | bin.charCodeAt(1 + k * 3 + 1) << 8 | bin.charCodeAt(1 + k * 3)) >>> 0;
-      let p = 1 + n * 3, o = 0;
+    if (enc === 'prle' || enc === 'prla') {
+      // palette + run-length (ref/refine2.py prle()): [npal][r g b (a) × npal][count index]... ; index 0 = transparent;
+      // 'prla' palette entries carry alpha (the un-blended anti-aliased rims)
+      const e = enc === 'prla' ? 4 : 3, n = bin.charCodeAt(0), pal = new Uint32Array(n + 1);
+      for (let k = 0; k < n; k++) pal[k + 1] = ((e === 4 ? bin.charCodeAt(1 + k * e + 3) : 255) << 24 | bin.charCodeAt(1 + k * e + 2) << 16 | bin.charCodeAt(1 + k * e + 1) << 8 | bin.charCodeAt(1 + k * e)) >>> 0;
+      let p = 1 + n * e, o = 0;
       while (p + 1 < bin.length && o < out.length) { const run = bin.charCodeAt(p), idx = bin.charCodeAt(p + 1); p += 2; const v = pal[idx]; for (let r = 0; r < run && o < out.length; r++) out[o++] = v; }
       return out;
     }

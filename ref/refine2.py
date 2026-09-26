@@ -132,26 +132,34 @@ def classify(p, hy):
 def is_fx(cls): return cls in FX_RAMPS
 
 def prle(im):
-    """palette + run-length encoding of an RGBA cell (index 0 = transparent, ≤ 255 colours; runs of ≤ 255):
-    bytes = [npal] [r g b × npal] [count index] ...  → base64. Decoded by src/sprite.js decode()."""
+    """palette + run-length encoding of an RGBA cell ('prla': index 0 = transparent, ≤ 255 RGBA colours; runs of
+    ≤ 255): bytes = [npal] [r g b a × npal] [count index] ...  → base64. Decoded by src/sprite.js decode()."""
     im = im.convert('RGBA'); w, h = im.size; px = list(im.getdata())
-    opaque = [p[:3] for p in px if p[3]]
-    cols = sorted(set(opaque), key=lambda c: opaque.count(c) if len(opaque) < 4000 else 0)
-    if len(set(opaque)) > 255:
-        q = Image.new('RGB', (len(opaque), 1)); q.putdata(opaque); q = q.quantize(255, method=Image.Quantize.MEDIANCUT)
-        pal = q.getpalette()[:255 * 3]; palette = [tuple(pal[k:k + 3]) for k in range(0, len(pal), 3)]
-        idx_of = {}
-        def index(c):
-            if c not in idx_of: idx_of[c] = 1 + min(range(len(palette)), key=lambda k: sum((palette[k][j] - c[j]) ** 2 for j in range(3)))
-            return idx_of[c]
+    opaque = [p for p in px if p[3]]
+    uniq = set(opaque)
+    if len(uniq) > 255:
+        # quantise the colours per alpha level (median cut on RGB), so the rims keep their alpha steps
+        palette = []; idx_of = {}
+        levels = sorted(set(p[3] for p in opaque), reverse=True)
+        budget = 255
+        for li, a in enumerate(levels):
+            sub = [p[:3] for p in opaque if p[3] == a]; n = max(1, min(budget - (len(levels) - li - 1), round(255 * len(sub) / len(opaque))))
+            if len(set(sub)) <= n: pal = sorted(set(sub))
+            else:
+                q = Image.new('RGB', (len(sub), 1)); q.putdata(sub); q = q.quantize(n, method=Image.Quantize.MEDIANCUT)
+                pl = q.getpalette()[:n * 3]; pal = [tuple(pl[k:k + 3]) for k in range(0, len(pl), 3)]
+            base = len(palette); palette += [c + (a,) for c in pal]; budget -= len(pal)
+            for c in set(sub):
+                idx_of[c + (a,)] = 1 + base + min(range(len(pal)), key=lambda k: sum((pal[k][j] - c[j]) ** 2 for j in range(3)))
+        def index(p): return idx_of[p]
     else:
-        palette = sorted(set(opaque)); idx_of = {c: k + 1 for k, c in enumerate(palette)}
-        def index(c): return idx_of[c]
+        palette = sorted(uniq); idx_of = {c: k + 1 for k, c in enumerate(palette)}
+        def index(p): return idx_of[p]
     out = bytearray([len(palette)])
     for c in palette: out += bytes(c)
     run = 0; cur = None
     for p in px:
-        k = index(p[:3]) if p[3] else 0
+        k = index(p) if p[3] else 0
         if k == cur and run < 255: run += 1
         else:
             if cur is not None: out += bytes((run, cur))
@@ -159,10 +167,11 @@ def prle(im):
     if cur is not None: out += bytes((run, cur))
     return base64.b64encode(bytes(out)).decode('ascii')
 
-def unprle(b64, w, h):
-    """decode prle() (see above) back to an RGBA image"""
-    raw = base64.b64decode(b64); n = raw[0]; pal = [(raw[1 + k * 3], raw[2 + k * 3], raw[3 + k * 3], 255) for k in range(n)]
-    px = []; p = 1 + n * 3
+def unprle(b64, w, h, alpha=True):
+    """decode prle() (see above) back to an RGBA image ('prla' = 4-byte palette entries; 'prle' = 3-byte, opaque)"""
+    raw = base64.b64decode(b64); n = raw[0]; e = 4 if alpha else 3
+    pal = [(raw[1 + k * e], raw[2 + k * e], raw[3 + k * e], raw[4 + k * e] if alpha else 255) for k in range(n)]
+    px = []; p = 1 + n * e
     while p + 1 < len(raw): run, idx = raw[p], raw[p + 1]; p += 2; px += [pal[idx - 1] if idx else (0, 0, 0, 0)] * run
     im = Image.new('RGBA', (w, h)); im.putdata((px + [(0, 0, 0, 0)] * (w * h))[:w * h]); return im
 
@@ -360,16 +369,45 @@ def refine_cell(tag, c, sheet):
     if not ys: return None
     top, bot = min(ys), max(ys)
     if RAW:
-        # the sheet's own pixels: one source pixel per sprite pixel (UP 4), colours untouched, no synthetic outline
+        # the sheet's own pixels: one source pixel per sprite pixel (UP 4), colours untouched, no synthetic outline.
+        # Rim pixels (the sheet's anti-aliased edge, blended with its grey background) are un-blended into
+        # partial alpha so the silhouette stays smooth on any stage instead of being dropped or haloed.
         out = Image.new('RGBA', (w, h), (0, 0, 0, 0)); op = out.load(); eff = None; ep = None
         if any(any(r) for r in emask): eff = Image.new('RGBA', (w, h), (0, 0, 0, 0)); ep = eff.load()
+        bg = sheet_bg(tag, sheet)
+        def src_px(X, Y):
+            f = CSCALE if tag == 'C' else 1.0
+            nx0 = (g['sX'] - g['ax']) / f; ny0 = (g['sY'] - g['ay']) / f
+            cx = (nx0 + (X + 0.5) / (f * UP * s)) * GRID; cy = (ny0 + (Y + 0.5) / (f * UP * s)) * GRID
+            return sheet.getpixel((max(0, min(sheet.width - 1, int(cx))), max(0, min(sheet.height - 1, int(cy)))))
+        def unblend(p):
+            """alpha from the distance to the sheet background, colour un-mixed from it"""
+            dist = abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2])
+            a = max(0.0, min(1.0, (dist - 14) / 72))
+            if a <= 0: return None
+            a4 = max(1, min(4, round(a * 4))) / 4          # 4 alpha levels keep the palette small
+            c = tuple(max(0, min(255, int(round((p[k] - (1 - a4) * bg[k]) / a4)))) for k in range(3))
+            return c + (int(a4 * 255),)
+        def rim_of(m):
+            r = [[False] * w for _ in range(h)]
+            for y in range(h):
+                for x in range(w):
+                    if m[y][x]: continue
+                    if any(0 <= x + dx < w and 0 <= y + dy < h and m[y + dy][x + dx] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))): r[y][x] = True
+            return r
+        edge = rim_of(mask)                                   # outside pixels touching the figure
         for y in range(h):
             for x in range(w):
-                qs = win.get((x, y))
-                if not qs: continue
-                p = qs[0][2]
-                if mask[y][x]: op[x, y] = (p[0], p[1], p[2], 255)
-                elif emask[y][x] and ep is not None: ep[x, y] = (p[0], p[1], p[2], 255)
+                if mask[y][x]:
+                    p = src_px(x, y); border = any(not (0 <= x + dx < w and 0 <= y + dy < h and mask[y + dy][x + dx]) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                    if border:
+                        u = unblend(p); op[x, y] = u if u and u[3] >= 128 else (p[0], p[1], p[2], 255)
+                    else: op[x, y] = (p[0], p[1], p[2], 255)
+                elif edge[y][x] and cand[y][x] and not emask[y][x]:
+                    u = unblend(src_px(x, y))
+                    if u: op[x, y] = u
+                elif emask[y][x] and ep is not None:
+                    p = src_px(x, y); u = unblend(p); ep[x, y] = u if u else (p[0], p[1], p[2], 255)
         return out, eff, s
     # affinity regions of the source under the figure; each region → one material (mean colour + centroid height)
     coords = set(q[:2] for (x, y) in win if mask[y][x] for q in win[(x, y)])
@@ -551,7 +589,7 @@ def main():
                 eye = to_cell(tag, g, s, a['srcBox'][0] + a['eye']['x'], a['srcBox'][1] + a['eye']['y'])
             if not RAW: features(out, eye)
             w, h = out.size
-            before.append(unprle(c['f'], c['w'], c['h']) if c.get('enc') == 'prle' else Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
+            before.append(unprle(c['f'], c['w'], c['h'], c.get('enc') == 'prla') if c.get('enc') in ('prle', 'prla') else Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
             after.append(out)
             if not review_only:
                 c['w'], c['h'] = w, h
@@ -572,7 +610,7 @@ def main():
                             nax = int(round((core[0] + core[-1]) / 2)); nay = bot
                             c['sX'] += nax - c['ax']; c['sY'] += nay - c['ay']; c['ax'], c['ay'] = nax, nay
                 if RAW:                                   # palette + run-length encoding (decoded by src/sprite.js decode())
-                    c['f'] = prle(out); c['e'] = prle(eff) if eff else None; c['enc'] = 'prle'
+                    c['f'] = prle(out); c['e'] = prle(eff) if eff else None; c['enc'] = 'prla'
                 else:
                     c['f'] = base64.b64encode(out.tobytes()).decode('ascii')
                     c['e'] = base64.b64encode(eff.tobytes()).decode('ascii') if eff else None; c.pop('enc', None)

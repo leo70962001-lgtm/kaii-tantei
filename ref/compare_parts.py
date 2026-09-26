@@ -18,9 +18,10 @@ def load(path):
     return json.loads(src[i:j])
 def cell_image(c):
     w, h = c['w'], c['h']
-    if c.get('enc') == 'prle':
-        raw = base64.b64decode(c['f']); n = raw[0]; pal = [(raw[1 + k * 3], raw[2 + k * 3], raw[3 + k * 3], 255) for k in range(n)]
-        px = []; p = 1 + n * 3
+    if c.get('enc') in ('prle', 'prla'):
+        e = 4 if c.get('enc') == 'prla' else 3
+        raw = base64.b64decode(c['f']); n = raw[0]; pal = [(raw[1 + k * e], raw[2 + k * e], raw[3 + k * e], raw[4 + k * e] if e == 4 else 255) for k in range(n)]
+        px = []; p = 1 + n * e
         while p + 1 < len(raw): run, idx = raw[p], raw[p + 1]; p += 2; px += [pal[idx - 1] if idx else (0, 0, 0, 0)] * run
         px = (px + [(0, 0, 0, 0)] * (w * h))[:w * h]
         im = Image.new('RGBA', (w, h)); im.putdata(px); return im

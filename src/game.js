@@ -299,6 +299,29 @@
     if (I.down) return level !== 'high';
     return level !== 'low';
   }
+  // breakable stage props (src/stage.js BREAKABLES): an attack's hit box, a thrown / knocked-flying body or the shot
+  // hitting a prop damages it (once per attack), then breaks it: debris, a shake, the lamp's light goes out
+  function tickBreakables() {
+    if (!sim.breakables) return;
+    const debris = { vend: ['#e84a5f', '#c9cce6', '#5ad0ff', '#22407f', '#bfe4ff'], bin: ['#e8e8f0', '#8a90b0', '#c9cce6', '#ffd24a'], lamp: ['#fff2c0', '#ffd870', '#9fd8ff', '#ffffff'], sign: ['#f4ecd0', '#b8202c', '#302a40'], cone: ['#ff7a2a', '#f4f4f8', '#1a1a2a'], bike: ['#e84a5f', '#8a90b0', '#c9cce6', '#302a40'] };
+    for (const b of sim.breakables) {
+      if (b.state >= 2) continue;
+      const box = [b.x, b.y, b.x + b.w, b.y + b.h];
+      let hitBy = null;
+      for (const f of sim.fighters) {
+        const fr = cur(f);
+        if (fr.hb && !f.freeze) { const key = 'prop:' + b.id + ':' + fr.hitId; if (!f.hitIds.has(key) && overlap(worldBox(f, fr.hb, fr.lift), box)) { f.hitIds.add(key); hitBy = { x: f.x + 20 * f.face, y: b.y + b.h / 2, kind: 'attack' }; } }
+        else if (fr.air === 'fly' && !f.freeze) { const key = 'fly:' + f.slot + ':' + Math.floor(sim.t / 600); const hz = hurtboxes(f); if (!b.hits.has(key) && Object.values(hz).some((z) => overlap(z, box))) { b.hits.add(key); hitBy = { x: f.x, y: b.y + b.h / 2, kind: 'body' }; } }
+      }
+      for (const p of sim.projs) if (!p.dead && p.kind === 'shot' && !b.hits.has('shot:' + p.t) && overlap([p.x - 20, G - p.y - 12, p.x + 20, G - p.y + 12], box)) { b.hits.add('shot:' + p.t); hitBy = { x: p.x, y: G - p.y, kind: 'shot' }; }
+      if (!hitBy) continue;
+      b.hp -= hitBy.kind === 'body' ? 2 : 1; sim.shake = Math.max(sim.shake, 3);
+      const pal = debris[b.kind], n = b.hp <= 0 ? 22 : 8;
+      for (let i = 0; i < n; i++) { const a = -Math.PI * (0.1 + rnd() * 0.8), s = 1.5 + rnd() * 3.5; sim.particles.push({ x: b.x + rnd() * b.w, y: b.y + rnd() * b.h, vx: Math.cos(a) * s * (rnd() < 0.5 ? 1 : -1), vy: Math.sin(a) * s, life: 26 + rnd() * 30, col: pal[Math.floor(rnd() * pal.length)], g: 0.26, size: rnd() < 0.4 ? 3 : 2, bounce: true }); }
+      if (b.hp <= 0) { b.state = 2; sfx('break'); sim.particles.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, ring: 1, life: 10, col: '#ffffff', r: 14 }); }
+      else { b.state = Math.max(b.state, b.hp <= b.hp0 / 2 ? 1 : 0); sfx('heavy'); }
+    }
+  }
   function resolveHits() {
     const [a, b] = sim.fighters;
     for (const [att, def] of [[a, b], [b, a]]) {
@@ -484,7 +507,7 @@
 
   // ------------------------------------------------------------ simulation state
   const sim = {
-    t: 0, phase: 'title', fighters: [], projs: [], props: [], particles: [], texts: [], camX: 80, camTarget: 80, shake: 0, timer: 60000, round: 1, mode: '1p', sel: [0, 0], selStep: 0, koT: 0, slow: 1, level: 0.6,
+    t: 0, phase: 'title', fighters: [], projs: [], props: [], breakables: [], particles: [], texts: [], camX: 80, camTarget: 80, shake: 0, timer: 60000, round: 1, mode: '1p', sel: [0, 0], selStep: 0, koT: 0, slow: 1, level: 0.6,
     introT: 0, resultT: 0, winner: null, demoT: 0,
     callout(text, color, ms, f) { this.texts.push({ text, color, t: ms, life: ms, f, kind: 'big' }); },
     comboText(f, n) { this.texts = this.texts.filter((t) => !(t.kind === 'combo' && t.f === f)); this.texts.push({ text: n + ' HITS', color: f.C.color, t: 800, life: 800, f, kind: 'combo' }); },
@@ -523,7 +546,7 @@
       if (f.ai) f.ai.wait = 0;
       play(f, 'idle');
     }
-    sim.projs = []; sim.props = []; sim.particles = []; sim.texts = [];
+    sim.projs = []; sim.props = []; sim.particles = []; sim.texts = []; sim.breakables = STAGE.breakables();
     for (const f of sim.fighters) { f.swordLost = false; f.held = null; }
     if (sim.round === 1) for (const f of sim.fighters) f.meter = 0;
     sim.timer = 60000; sim.phase = 'intro'; sim.introT = 0; sim.slow = 1; sim.camX = W / 2 - VW / 2; sim.camTarget = sim.camX;
@@ -563,7 +586,7 @@
         animate(f);
       }
       for (const f of sim.fighters) holdTick(f);
-      if (active) resolveHits();
+      if (active) { resolveHits(); tickBreakables(); }
       // projectiles
       for (const p of sim.projs) {
         if (p.dead) continue;
@@ -850,12 +873,38 @@
 
   // the living background (src/stage.js anim): stage-coordinate rects → screen rects (far items with the far layer's
   // parallax); `front` items go over the fighters, the rest behind them (still in front of the painted layers)
+  const propCanvases = new Map();
+  function propCanvas(b) {
+    const key = b.kind + ':' + b.state;
+    if (!propCanvases.has(key)) { const im = STAGE.propImage(b.kind, b.state); propCanvases.set(key, toCanvas(im.c, im.w, im.h)); }
+    return propCanvases.get(key);
+  }
+  const propGlows = new Map();
+  function propGlow(b) {   // the bright pixels of a lit prop (lamp glass, the vending machine's window) for the GL bloom pass
+    if (b.kind !== 'lamp' && b.kind !== 'vend') return null;
+    const key = b.kind + ':' + b.state;
+    if (!propGlows.has(key)) {
+      const src = propCanvas(b), c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+      const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+      const id = g.getImageData(0, 0, c.width, c.height), p = id.data;
+      for (let i = 0; i < p.length; i += 4) { const l = 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2]; p[i + 3] = l < 200 ? 0 : Math.round(p[i + 3] * Math.min(1, (l - 200) / 55)); }
+      g.putImageData(id, 0, 0); propGlows.set(key, c);
+    }
+    return propGlows.get(key);
+  }
   function stageAnim(list, camX, front) {
-    for (const it of STAGE.anim(sim.t)) {
+    const props = sim.breakables || [];
+    const broken = new Set(props.filter((b) => b.state >= 2).map((b) => b.id));
+    for (const it of STAGE.anim(sim.t, broken)) {
       if (!!it.front !== front) continue;
       const x = Math.round(it.x - (it.far ? camX * 0.35 : camX));
       if (x + it.w < -4 || x > VW + 4) continue;
       list.push({ k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a });
+    }
+    if (!front) for (const b of props) {   // the breakable props, painted per state (src/stage.js PROPS)
+      const [bx, by, bw, bh] = b.box, x = Math.round(bx - camX);
+      if (x + bw < -4 || x > VW + 4) continue;
+      list.push({ k: 'img', img: propCanvas(b), x, y: by, w: bw, h: bh, a: 1, fx: propGlow(b) || undefined });
     }
   }
   function worldList(camX) {
