@@ -735,6 +735,166 @@ def sweep_antic(c):           # weight back on the far leg, the chrome leg drawn
     sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 9)]); hand(c, ox + 12, ty + 10)
 frame('sweep_antic', 'sweep anticipation', (14, 41), sweep_antic, size=(30, 42))
 
+# ---------------------------------------------------------------- jump, air attacks, 刺突, dash / backdash
+# B row 3 / C row 3 (jump + air attacks), A row 1 (突き), A row 5 (dash).
+def jump_rise(c):             # going up: legs trailing, arms down-back, hair hanging
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    leg(c, [(ox + 3, ty + 16), (ox + 1, ty + 21), (ox + 2, ty + 27)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 11, ty + 20), (ox + 10, ty + 25)], 'chrome', foot='down')
+    far_arm_rest(c, ox, ty, dx=-1, kat_ang=115, kat_len=12)
+    upper(c, ox, ty)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 9)]); hand(c, ox + 12, ty + 10)
+frame('jump_rise', 'jump rise', (14, 41), jump_rise, size=(28, 42))
+
+def jump_apex(c):             # at the top: both legs tucked, arms out, hair spread back
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 10, ty - 6)
+    leg(c, [(ox + 3, ty + 16), (ox + 6, ty + 19), (ox + 3, ty + 23)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 18), (ox + 10, ty + 23)], 'chrome', foot='down')
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox - 5, ty + 8)]); hand(c, ox - 7, ty + 8, 'm')
+    katana(c, ox - 6, ty + 10, 120, blade=11)
+    upper(c, ox, ty)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 7)]); hand(c, ox + 15, ty + 7)
+frame('jump_apex', 'jump apex', (14, 41), jump_apex, size=(30, 42))
+
+def jump_fall(c):             # coming down: legs reaching for the ground, arms out, hair streaming up
+    ox, ty = 9, 19
+    c.blit(HAIR_UP[10:], ox - 7, ty - 15)
+    lower(c, ox, ty, far=slant(LEG_STOCK, 5, -1), far_x=0, near=slant(LEG_CHROME, 5), near_x=7)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox - 5, ty + 7)]); hand(c, ox - 7, ty + 7, 'm')
+    katana(c, ox - 6, ty + 9, 125, blade=11)
+    upper(c, ox, ty)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 6)]); hand(c, ox + 15, ty + 6)
+frame('jump_fall', 'jump fall', (14, 49), jump_fall, size=(30, 50))
+
+def air_punch(c):             # 空中義手: the apex body, steel arm straight forward
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 10, ty - 6)
+    leg(c, [(ox + 3, ty + 16), (ox + 6, ty + 19), (ox + 3, ty + 23)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 18), (ox + 10, ty + 23)], 'chrome', foot='down')
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=1)
+    for x in range(ox + 8, ox + 13): c.put(x, ty + 1, 'A'); c.put(x, ty + 6, 'A')
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 9, ty + 3), (ox + 17, ty + 3)]); hand(c, ox + 17, ty + 2, 'm')
+    c.blit(["f.f", ".F.", "f.f"], ox + 20, ty + 1)
+    near_sword_low(c, ox, ty, ang=110, blade=10)
+frame('air_punch', 'air punch hit; fist 12..13 / -28..-27', (14, 41), air_punch, size=(34, 42))
+
+def air_slash_antic(c):       # 空中斬: sword raised behind the shoulder, legs tucked
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 10, ty - 6)
+    leg(c, [(ox + 3, ty + 16), (ox + 6, ty + 19), (ox + 3, ty + 23)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 18), (ox + 10, ty + 23)], 'chrome', foot='down')
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox - 4, ty + 9)]); hand(c, ox - 5, ty + 10, 'm')
+    upper(c, ox, ty, lean=-1)
+    katana(c, ox + 11, ty, -140, blade=13)                 # over the hair: the raised blade must read
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 3), (ox + 12, ty + 1)]); hand(c, ox + 11, ty)
+frame('air_slash_antic', 'air slash anticipation', (14, 41), air_slash_antic, size=(30, 42))
+
+def air_slash_hit(c):         # the blade swung forward-down with an arc smear
+    ox, ty = 9, 11
+    c.wedge(ox + 10, ty + 4, 8, 21, -70, 20)
+    c.blit(HAIR_FLY, ox - 10, ty - 6)
+    leg(c, [(ox + 3, ty + 16), (ox + 6, ty + 19), (ox + 3, ty + 23)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 18), (ox + 10, ty + 23)], 'chrome', foot='down')
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox - 4, ty + 9)]); hand(c, ox - 5, ty + 10, 'm')
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=1)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 7)]); hand(c, ox + 15, ty + 7)
+    katana(c, ox + 17, ty + 8, 30, blade=15)
+    c.blit(STAR, ox + 30, ty + 14)
+frame('air_slash_hit', 'air slash hit; blade from (12,-33) to (26,-25)', (14, 41), air_slash_hit, size=(44, 42))
+
+def air_kick_hit(c):          # 空中義足: the chrome leg driven down-forward
+    ox, ty = 9, 11
+    c.wedge(ox + 7, ty + 16, 8, 15, 10, 70)
+    c.blit(HAIR_FLY, ox - 10, ty - 6)
+    leg(c, [(ox + 3, ty + 16), (ox + 5, ty + 20), (ox + 2, ty + 24)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    near_sword_up_blade(c, ox, ty, dx=-1)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=-1)
+    leg(c, [(ox + 7, ty + 16), (ox + 13, ty + 19), (ox + 20, ty + 24)], 'chrome', foot='fwd')
+    c.blit(STAR, ox + 20, ty + 24)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 4, ty + 8), (ox + 8, ty + 9)]); hand(c, ox + 8, ty + 8, 'm')
+    near_sword_up_arm(c, ox, ty, dx=-1)
+frame('air_kick_hit', 'air kick hit; foot (15..17, -8..-6)', (14, 41), air_kick_hit, size=(34, 42))
+
+def thrust_antic(c):          # 刺突: both hands at the hip, blade level pointing forward, weight back
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 3, ty + 8), (ox + 7, ty + 9)]); hand(c, ox + 7, ty + 8, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 10, ty + 8)]); hand(c, ox + 9, ty + 9)
+    katana(c, ox + 11, ty + 9, 0, blade=13)
+frame('thrust_antic', 'thrust anticipation', (14, 41), thrust_antic, size=(38, 42))
+
+def thrust_chamber(c):        # the step in, blade still chambered
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower(c, ox, ty, far=slant(LEG_STOCK, 5, -1), far_x=0, near=slant(LEG_CHROME, 4), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 4, ty + 8), (ox + 8, ty + 8)]); hand(c, ox + 8, ty + 7, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 11, ty + 8)]); hand(c, ox + 10, ty + 8)
+    katana(c, ox + 12, ty + 8, 0, blade=13)
+frame('thrust_chamber', 'thrust step', (14, 41), thrust_chamber, size=(38, 42))
+
+def thrust_hit(c):            # the long thrust: deep lunge, arms and blade fully extended at chest height
+    ox, ty = 9, 11
+    for x in range(ox + 12, ox + 22): c.put(x, ty + 3, 'A'); c.put(x, ty + 7, 'A')
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 10, ty + 6), (ox + 19, ty + 6)]); hand(c, ox + 19, ty + 5, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 21, ty + 5)]); hand(c, ox + 21, ty + 4)
+    katana(c, ox + 23, ty + 5, 0, blade=19)
+    c.blit(STAR, ox + 43, ty + 3)
+frame('thrust_hit', 'thrust hit; blade x 19..38 at -28..-27', (14, 41), thrust_hit, size=(58, 42))
+
+def thrust_follow(c):         # the arms coming back, blade still forward
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 10, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 6, ty + 7), (ox + 12, ty + 7)]); hand(c, ox + 12, ty + 6, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 6)]); hand(c, ox + 14, ty + 5)
+    katana(c, ox + 16, ty + 6, 4, blade=16)
+frame('thrust_follow', 'thrust follow through', (14, 41), thrust_follow, size=(46, 42))
+
+def dash_frame(n):
+    def build(c):             # a low forward run: body leaning, long stride, hair streaming
+        ox, ty = 9, 12
+        c.blit(HAIR_FLY, ox - 11, ty - 6)
+        if n == 0:
+            lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+        else:
+            c.blit(slant(LEG_STOCK, 5), ox + 3, ty + 16); c.blit(SHOE, ox + 4, ty + 27)
+            c.blit(SKIRT, ox - 2, ty + 8)
+            leg(c, [(ox + 7, ty + 16), (ox + 11, ty + 19), (ox + 8, ty + 24)], 'chrome', foot='down')
+        far_arm_rest(c, ox, ty, dx=-2, kat_ang=135, kat_len=13)
+        upper(c, ox + 1, ty, lean=2)
+        sleeve(c, ox + 9, ty + 1); arm(c, [(ox + 11, ty + 5), (ox + 15, ty + 6)]); hand(c, ox + 16, ty + 5)
+    return build
+frame('dash0', 'dash 1', (14, 41), dash_frame(0), size=(32, 42))
+frame('dash1', 'dash 2', (14, 41), dash_frame(1), size=(32, 42))
+
+def backdash(c):              # a hop backward: leaning back, legs tucked forward, hair thrown forward
+    ox, ty = 11, 11
+    c.blit(mirror(HAIR_FLY)[3:], ox - 5, ty - 16)
+    leg(c, [(ox + 3, ty + 16), (ox + 7, ty + 18), (ox + 6, ty + 23)], 'stock', foot='down')
+    c.blit(SKIRT, ox - 2, ty + 8)
+    leg(c, [(ox + 7, ty + 16), (ox + 12, ty + 17), (ox + 11, ty + 22)], 'chrome', foot='down')
+    far_arm_rest(c, ox - 1, ty, dx=-1, kat_ang=130, kat_len=12)
+    upper(c, ox - 1, ty, lean=-3)
+    sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 12, ty + 3)]); hand(c, ox + 13, ty + 2)
+frame('backdash', 'backdash hop', (16, 41), backdash, size=(32, 42))
+
 if __name__ == '__main__':
     os.makedirs('art', exist_ok=True)
     meta = {}

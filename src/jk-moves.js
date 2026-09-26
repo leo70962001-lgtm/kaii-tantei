@@ -43,11 +43,12 @@
     // hand-drawn walk cycle (H25–H30: contact → recoil → pass, twice)
     A.walk = { label: '前進', loop: true, frames: seq([25, 26, 27, 28, 29, 30].map((i) => ({ c: 'H' + i, d: 80 }))) };
     A.back = { label: '後退', loop: true, frames: seq([30, 29, 28, 27, 26, 25].map((i) => ({ c: 'H' + i, d: 90 }))) };
-    A.dash = { label: '衝刺', loop: true, frames: seq([{ c: 'A26', d: 70, ghost: true }, { c: 'A27', d: 70, ghost: true }]) };
-    A.backdash = { label: '後跳', frames: seq([{ c: 'B18', d: 60, ghost: true, inv: true }, { c: 'B19', d: 90, ghost: true, inv: true }, { c: 'B17', d: 80 }]) };
+    // hand-drawn: H58/H59 low run, H60 backward hop, H35 squat, H47 rise, H48 apex, H49 fall (hair up, 50 tall)
+    A.dash = { label: '衝刺', loop: true, frames: seq([{ c: 'H58', d: 70, ghost: true }, { c: 'H59', d: 70, ghost: true }]) };
+    A.backdash = { label: '後跳', frames: seq([{ c: 'H60', d: 60, ghost: true, inv: true }, { c: 'H60', d: 90, ghost: true, inv: true }, { c: 'H35', d: 80 }]) };
     A.jump = { label: '跳躍', frames: seq([
-      { c: 'B17', d: 70, air: 'squat' }, { c: 'B18', d: 100, air: 'rise', ghost: true }, { c: 'B20', d: 100, air: 'apex' },
-      { c: 'B21', d: 100, air: 'fall' }, { c: 'B17', d: 90, air: 'land', sfx: 'land' },
+      { c: 'H35', d: 70, air: 'squat' }, { c: 'H47', d: 100, air: 'rise', ghost: true }, { c: 'H48', d: 100, air: 'apex' },
+      { c: 'H49', d: 100, air: 'fall' }, { c: 'H35', d: 90, air: 'land', sfx: 'land' },
     ]) };
     A.crouch = { label: '蹲下', loop: true, frames: seq([{ c: 'H35', d: 300 }, { c: 'H35', d: 300, lift: 1 }]) };
     A.block = { label: '防禦', loop: true, frames: seq([{ c: 'H40', d: 200 }]) };
@@ -126,13 +127,14 @@
       { c: 'H6', d: 50, ph: 'RECOVER', chain: true },
       { c: 'H7', d: 50, ph: 'OVERSHOOT' },
     ]), nextHeavy: 'heavy2', nextLight: 'light3' };
+    // hand-drawn: H54 chambered at the hip, H55 step, H56 long thrust (blade x 19..38 at -28), H57 retract, H6 sword back
     A.heavy2 = { label: '刺突', frames: seq([
-      { c: 'A1', d: 70, ph: 'ANTICIPATION' },
-      { c: 'A2', d: 70, ph: 'CHAMBER', dx: 4 },
-      { c: 'A3', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', dx: 6, hb: [8, -31, 34, -21], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
-      { c: 'A3', d: 70, ph: 'HIT', hb: [8, -31, 34, -21], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
-      { c: 'A4', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
-      { c: 'A0', d: 90, ph: 'RECOVER', chain: true },
+      { c: 'H54', d: 70, ph: 'ANTICIPATION' },
+      { c: 'H55', d: 70, ph: 'CHAMBER', dx: 4 },
+      { c: 'H56', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', dx: 6, hb: [10, -31, 39, -22], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
+      { c: 'H56', d: 70, ph: 'HIT', hb: [10, -31, 39, -22], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
+      { c: 'H57', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
+      { c: 'H6', d: 90, ph: 'RECOVER', chain: true },
     ]), nextHeavy: 'heavy3', nextLight: 'light4' };
     A.heavy3 = { label: '連斬・回天', frames: seq([
       { c: 'A26', d: 60, ph: 'ANTICIPATION', ghost: true, dx: 6 },
@@ -164,23 +166,24 @@
       { c: 'H35', d: 130, ph: 'RECOVER' },
     ]), altWhenBroken: { leg: 'crouchHeavy' } };
     // ---------------------------------------------------------------- air
+    // hand-drawn: H48 apex body, H50 air punch (fist 12..13 / -28..-27), H51/H52 air slash (arc, blade to (26,-25)), H53 air kick (foot 15..17 / -8..-6), H49 fall
     A.air = { label: '空中義手', frames: seq([
-      { c: 'B20', d: 50, ph: 'ANTICIPATION' },
-      { c: 'B22', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [4, -28, 18, -14], dmg: 7, stun: 300, kb: 3 },
-      { c: 'B22', d: 90, ph: 'HOLD', hb: [4, -28, 18, -14], dmg: 7, stun: 300, kb: 3 },
-      { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
+      { c: 'H48', d: 50, ph: 'ANTICIPATION' },
+      { c: 'H50', d: 50, ph: 'HIT', sfx: 'swish', hb: [6, -32, 16, -22], dmg: 7, stun: 300, kb: 3 },
+      { c: 'H50', d: 90, ph: 'HOLD', hb: [6, -32, 16, -22], dmg: 7, stun: 300, kb: 3 },
+      { c: 'H49', d: 260, ph: 'FOLLOW THROUGH' },
     ]), altWhenBroken: { arm: 'air2' } };
     A.air2 = { label: '空中斬', frames: seq([
-      { c: 'B23', d: 60, ph: 'ANTICIPATION' },
-      { c: 'B24', d: 40, ph: 'SMEAR', sfx: 'swish', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
-      { c: 'B24', d: 80, ph: 'HIT', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
-      { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
+      { c: 'H51', d: 60, ph: 'ANTICIPATION' },
+      { c: 'H52', d: 40, ph: 'SMEAR', sfx: 'swish', hb: [4, -36, 28, -14], dmg: 8, stun: 320, kb: 3 },
+      { c: 'H52', d: 80, ph: 'HIT', hb: [4, -36, 28, -14], dmg: 8, stun: 320, kb: 3 },
+      { c: 'H49', d: 260, ph: 'FOLLOW THROUGH' },
     ]) };
     A.airKick = { label: '空中義足', frames: seq([
-      { c: 'B20', d: 50, ph: 'ANTICIPATION' },
-      { c: 'B23', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [2, -26, 20, -6], dmg: 8, stun: 340, kb: 3 },
-      { c: 'B23', d: 90, ph: 'HOLD', hb: [2, -26, 20, -6], dmg: 8, stun: 340, kb: 3 },
-      { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
+      { c: 'H48', d: 50, ph: 'ANTICIPATION' },
+      { c: 'H53', d: 50, ph: 'HIT', sfx: 'swish', hb: [4, -16, 20, -2], dmg: 8, stun: 340, kb: 3 },
+      { c: 'H53', d: 90, ph: 'HOLD', hb: [4, -16, 20, -2], dmg: 8, stun: 340, kb: 3 },
+      { c: 'H49', d: 260, ph: 'FOLLOW THROUGH' },
     ]) };
     // ---------------------------------------------------------------- specials
     A.special = { label: '影分身・居合', frames: seq([

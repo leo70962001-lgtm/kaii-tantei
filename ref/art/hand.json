@@ -421,5 +421,131 @@
   "w": 30,
   "h": 42,
   "fx": false
+ },
+ "H47": {
+  "name": "jump_rise",
+  "note": "jump rise",
+  "ax": 14,
+  "ay": 41,
+  "w": 28,
+  "h": 42,
+  "fx": false
+ },
+ "H48": {
+  "name": "jump_apex",
+  "note": "jump apex",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H49": {
+  "name": "jump_fall",
+  "note": "jump fall",
+  "ax": 14,
+  "ay": 49,
+  "w": 30,
+  "h": 50,
+  "fx": false
+ },
+ "H50": {
+  "name": "air_punch",
+  "note": "air punch hit; fist 12..13 / -28..-27",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": true
+ },
+ "H51": {
+  "name": "air_slash_antic",
+  "note": "air slash anticipation",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H52": {
+  "name": "air_slash_hit",
+  "note": "air slash hit; blade from (12,-33) to (26,-25)",
+  "ax": 14,
+  "ay": 41,
+  "w": 44,
+  "h": 42,
+  "fx": true
+ },
+ "H53": {
+  "name": "air_kick_hit",
+  "note": "air kick hit; foot (15..17, -8..-6)",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": true
+ },
+ "H54": {
+  "name": "thrust_antic",
+  "note": "thrust anticipation",
+  "ax": 14,
+  "ay": 41,
+  "w": 38,
+  "h": 42,
+  "fx": false
+ },
+ "H55": {
+  "name": "thrust_chamber",
+  "note": "thrust step",
+  "ax": 14,
+  "ay": 41,
+  "w": 38,
+  "h": 42,
+  "fx": false
+ },
+ "H56": {
+  "name": "thrust_hit",
+  "note": "thrust hit; blade x 19..38 at -28..-27",
+  "ax": 14,
+  "ay": 41,
+  "w": 58,
+  "h": 42,
+  "fx": true
+ },
+ "H57": {
+  "name": "thrust_follow",
+  "note": "thrust follow through",
+  "ax": 14,
+  "ay": 41,
+  "w": 46,
+  "h": 42,
+  "fx": false
+ },
+ "H58": {
+  "name": "dash0",
+  "note": "dash 1",
+  "ax": 14,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": false
+ },
+ "H59": {
+  "name": "dash1",
+  "note": "dash 2",
+  "ax": 14,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": false
+ },
+ "H60": {
+  "name": "backdash",
+  "note": "backdash hop",
+  "ax": 16,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": false
  }
 }
