@@ -259,68 +259,68 @@
     for (let g = 0; g < 8; g++) { const gx = cx + (HS(g, 31, seed) - 0.5) * rx * 1.4, gy = cy + (HS(g, 32, seed) - 0.5) * ry * 1.2; for (let y = gy - 2; y <= gy + 2; y++) for (let x = gx - 3; x <= gx + 3; x++) if (L.get(x, y) && HS(x, y, seed + 33) < 0.5) L.set(x, y, GAP); }
   }
   const WINDOWS = [];   // switching panes [x, y, w, h] in mid-layer coordinates
-  function paintMid() {
+  function paintMid() {   // the block across the road at 14 px / m: a storey = 42 px, a window = 14×17; bases at y 200
     const L = layer(MID_W, H); MASKL = L; TREES = layer(MID_W, H); WINDOWS.length = 0;
-    const win = (x, y, w, h, lit) => { rect(L, x - 1, y - 1, w + 2, h + 2, T('aptFrame')); rect(L, x, y, w, h, lit ? hx(TH.aptLit[0]) : T('aptWin')); if (lit) rect(L, x, y + (h >> 1), w, h - (h >> 1), hx(TH.aptLit[1])); WINDOWS.push([x, y, w, h]); };
-    // the viaduct behind the shops: rails, a deep deck with X bracing and lights beneath, pillars down to the far sidewalk
-    rect(L, 0, 110, MID_W, 2, T('gateLight')); rect(L, 0, 112, MID_W, 18, T('gate')); rect(L, 0, 128, MID_W, 2, T('gateDark'));
-    for (let x = 0; x < MID_W; x += 24) { line(L, x, 113, x + 22, 127, T('gateDark')); line(L, x + 22, 113, x, 127, T('gateDark')); }
-    for (let x = 0; x < MID_W; x += 6) rect(L, x, 106, 1, 4, T('pole')); rect(L, 0, 106, MID_W, 1, T('pole'));
-    for (let x = 10; x < MID_W; x += 30) rect(L, x, 129, 3, 2, T('midWin'));
-    for (let x = 40; x < MID_W; x += 96) { rect(L, x, 130, 10, 70, T('gateDark')); rect(L, x, 130, 2, 70, T('gate')); }
-    // the far sidewalk and kerb
+    const win = (x, y, w, h, lit) => { rect(L, x - 1, y - 1, w + 2, h + 2, T('aptFrame')); rect(L, x, y, w, h, lit ? hx(TH.aptLit[0]) : T('aptWin')); if (lit) rect(L, x, y + (h >> 1), w, h - (h >> 1), hx(TH.aptLit[1])); else { L.set(x + 2, y + 2, T('aptFrame')); L.set(x + 3, y + 2, T('aptFrame')); } rect(L, x + (w >> 1), y, 1, h, T('aptFrame')); WINDOWS.push([x, y, w, h]); };
+    // the viaduct behind the shops (the picture's bright middle bar carries the train): rails, a deep deck with X bracing
+    // and lights beneath, the K-1 station sign, pillars down to the far sidewalk
+    rect(L, 0, 86, MID_W, 2, T('gateLight')); rect(L, 0, 88, MID_W, 20, T('gate')); rect(L, 0, 106, MID_W, 3, T('gateDark')); rect(L, 0, 109, MID_W, 1, T('midEdge'));
+    for (let x = 0; x < MID_W; x += 26) { line(L, x, 89, x + 24, 105, T('gateDark')); line(L, x + 24, 89, x, 105, T('gateDark')); }
+    for (let x = 0; x < MID_W; x += 6) rect(L, x, 82, 1, 4, T('pole')); rect(L, 0, 82, MID_W, 1, T('pole'));
+    for (let x = 12; x < MID_W; x += 30) rect(L, x, 108, 3, 2, T('midWin'));
+    rect(L, 296, 92, 20, 10, T('plate')); for (const [x, w] of [[299, 3], [304, 1], [307, 6]]) rect(L, x, 95, w, 4, T('plateInk'));   // K-1
+    for (let x = 48; x < MID_W; x += 112) { rect(L, x, 110, 12, 90, T('gateDark')); rect(L, x, 110, 3, 90, T('gate')); }
     rect(L, 0, 194, MID_W, 6, T('sidewalk2')); rect(L, 0, 194, MID_W, 1, T('top')); rect(L, 0, 199, MID_W, 1, T('kerb'));
-    // the buildings of the block (10 px / m: a storey = 30 px, a window = 10×12), alleys of 8 px between them
     const wall = (x0, x1, top, key, edgeKey) => { rect(L, x0, top, x1 - x0, 200 - top, T(key)); rect(L, x0, top, x1 - x0, 2, T(edgeKey)); rect(L, x0, top, 1, 200 - top, T(edgeKey)); rect(L, x1 - 1, top, 1, 200 - top, T('aptDark')); for (let y = top; y < 200; y++) for (let x = x0; x < x1; x++) if (HS(x, y, 45) < 0.05) L.set(x, y, T(edgeKey)); };
     const shopfront = (x0, x1, y0, glassKey, awn) => {   // a lit ground-floor shop: glass, shelves, a door, an awning above
       rect(L, x0 + 2, y0, x1 - x0 - 4, 200 - y0, T('storeEdge'));
       for (let y = y0 + 2; y < 199; y++) for (let x = x0 + 4; x < x1 - 4; x++) L.set(x, y, dith(x, y, (y - y0) / (200 - y0)) ? T(glassKey) : T('storeGlassTop'));
-      for (let y = y0 + 8; y < 196; y += 7) { rect(L, x0 + 5, y, x1 - x0 - 10, 1, T('shelf')); for (let x = x0 + 6; x < x1 - 6; x += 3) rect(L, x, y - 3, 2, 3, [hx('#e84a5f'), hx('#5ad0ff'), hx('#7ae06a'), hx('#ffd24a'), hx('#ff8a3a'), hx('#c9cce6')][(x + y) % 6]); }
-      const dx = (x0 + x1) >> 1; rect(L, dx - 6, y0 + 2, 12, 198 - y0, hx('#f6e4c2')); rect(L, dx - 6, y0 + 2, 1, 198 - y0, T('storeDoor')); rect(L, dx + 5, y0 + 2, 1, 198 - y0, T('storeDoor'));
-      if (awn) { for (let x = x0 + 1; x < x1 - 1; x++) for (let y = y0 - 4; y < y0; y++) L.set(x, y, ((x >> 2) & 1) ? T(awn[0]) : T(awn[1])); for (let x = x0 + 1; x < x1 - 1; x++) L.set(x, y0 + ((x & 3) < 2 ? 0 : 1), T('signInk')); }
+      for (let y = y0 + 10; y < 196; y += 9) { rect(L, x0 + 5, y, x1 - x0 - 10, 1, T('shelf')); for (let x = x0 + 6; x < x1 - 6; x += 4) rect(L, x, y - 4, 3, 4, [hx('#e84a5f'), hx('#5ad0ff'), hx('#7ae06a'), hx('#ffd24a'), hx('#ff8a3a'), hx('#c9cce6')][(x + y) % 6]); }
+      const dx = (x0 + x1) >> 1; rect(L, dx - 8, y0 + 2, 16, 198 - y0, hx('#f6e4c2')); rect(L, dx - 8, y0 + 2, 1, 198 - y0, T('storeDoor')); rect(L, dx + 7, y0 + 2, 1, 198 - y0, T('storeDoor')); rect(L, dx - 1, y0 + 2, 1, 198 - y0, T('storeDoor'));
+      if (awn) { for (let x = x0 + 1; x < x1 - 1; x++) for (let y = y0 - 6; y < y0; y++) L.set(x, y, ((x >> 2) & 1) ? T(awn[0]) : T(awn[1])); for (let x = x0 + 1; x < x1 - 1; x++) L.set(x, y0 + ((x & 3) < 2 ? 0 : 1), T('signInk')); }
     };
-    const vsign = (x, y, h, col, inkCol) => { rect(L, x, y, 10, h, T('neonBox')); rect(L, x + 1, y + 1, 8, h - 2, hx(col)); for (let k = 0; k < Math.floor((h - 4) / 12); k++) { const yy = y + 4 + k * 12; rect(L, x + 3, yy, 4, 1, hx(inkCol)); rect(L, x + 4, yy + 1, 1, 6, hx(inkCol)); rect(L, x + 2, yy + 3, 6, 1, hx(inkCol)); rect(L, x + 3, yy + 7, 4, 1, hx(inkCol)); } if (!TH.day) glow(L, x + 5, y + h / 2, 22, h / 2 + 10, col, 48, 1.5); };
-    const acunit = (x, y) => { rect(L, x, y, 6, 4, T('ac')); rect(L, x, y, 6, 1, T('pole')); rect(L, x + 1, y + 2, 4, 1, T('aptDark')); };
-    // A: the pharmacy building (three and a half storeys, the tall vertical sign of the reference)
-    wall(0, 104, 96, 'storeWall', 'storeEdge');
-    for (const y of [104, 134]) for (let x = 8; x < 88; x += 22) win(x, y, 10, 12, HS(x, y, 41) < 0.5);
-    for (let x = 8; x < 88; x += 22) win(x, 160, 10, 8, HS(x, 160, 41) < 0.4);
-    acunit(70, 120); acunit(26, 150);
-    vsign(2, 100, 58, TH.neon, TH.neonText);   // on the building's left edge, clear of the near-side tree
-    shopfront(0, 104, 176, 'storeGlass', ['emblem', 'poster']);
+    const vsign = (x, y, h, col, inkCol) => { rect(L, x, y, 14, h, T('neonBox')); rect(L, x + 1, y + 1, 12, h - 2, hx(col)); for (let k = 0; k < Math.floor((h - 6) / 16); k++) { const yy = y + 5 + k * 16; rect(L, x + 4, yy, 6, 1, hx(inkCol)); rect(L, x + 6, yy + 1, 2, 8, hx(inkCol)); rect(L, x + 3, yy + 4, 8, 1, hx(inkCol)); rect(L, x + 4, yy + 9, 6, 1, hx(inkCol)); } if (!TH.day) glow(L, x + 7, y + h / 2, 28, h / 2 + 12, col, 50, 1.5); };
+    const acunit = (x, y) => { rect(L, x, y, 8, 5, T('ac')); rect(L, x, y, 8, 1, T('pole')); rect(L, x + 1, y + 2, 6, 1, T('aptDark')); rect(L, x + 1, y + 4, 6, 1, T('aptDark')); };
+    // A: the pharmacy building (three and a half storeys) with the tall blue sign on its left edge
+    wall(0, 104, 53, 'storeWall', 'storeEdge');
+    for (const y of [62, 104]) for (let x = 20; x < 90; x += 28) win(x, y, 14, 17, HS(x, y, 41) < 0.5);
+    for (let x = 20; x < 90; x += 28) win(x, 146, 14, 12, HS(x, 146, 41) < 0.4);
+    acunit(76, 84); acunit(24, 126);
+    vsign(2, 58, 80, TH.neon, TH.neonText);
+    shopfront(0, 104, 170, 'storeGlass', ['emblem', 'poster']);
     // B: the school — a low wall, the gate with its two pillars, the building behind, the great cherry tree
-    rect(L, 112, 126, 88, 60, T('school')); rect(L, 112, 126, 88, 2, T('schoolTrim')); for (const y of [134, 158]) for (let x = 118; x < 196; x += 14) { const lit = HS(x, y, 23) < 0.2; rect(L, x, y, 8, 10, lit ? T('schoolLit') : T('schoolWin')); if (lit) rect(L, x, y + 5, 8, 5, T('schoolLit2')); }
-    rect(L, 150, 168, 12, 18, T('schoolWin')); rect(L, 148, 166, 16, 2, T('schoolTrim')); rect(L, 130, 100, 1, 26, T('pole')); rect(L, 131, 101, 5, 3, hx('#e8e8f0'));
-    sakuraOn(L, 156, 110, 66, 48, 13, { big: true, trunkW: 6, bottom: 190, light: -1 });
-    for (let x = 112; x < 200; x++) for (let y = 186; y < 194; y++) L.set(x, y, y === 186 ? T('cap') : dith(x, y, 0.5) ? T('pillar') : T('pillarDark'));
-    for (const px0 of [118, 188]) { rect(L, px0, 176, 6, 18, T('pillar')); rect(L, px0, 176, 1, 18, T('pillarLight')); rect(L, px0 - 1, 175, 8, 2, T('cap')); rect(L, px0 + 1, 170, 4, 5, hx(TH.lampGlass)); }
-    for (let x = 126; x < 188; x += 4) rect(L, x, 180, 1, 14, T('gateLight')); rect(L, 124, 179, 64, 1, T('gateLight')); rect(L, 124, 193, 64, 1, T('gateDark'));
-    rect(L, 189, 182, 4, 10, T('plate'));
-    // C: the konbini (two storeys)
-    wall(208, 296, 138, 'storeWall', 'storeEdge');
-    for (let x = 216; x < 290; x += 24) win(x, 146, 10, 12, HS(x, 146, 41) < 0.5);
-    rect(L, 208, 168, 88, 8, T('storeSign')); rect(L, 212, 170, 34, 2, T('signA')); rect(L, 212, 173, 34, 2, T('signB')); for (let x = 254; x < 292; x += 6) rect(L, x, 170, 4, 4, T('signInk'));
-    shopfront(208, 296, 180, 'storeGlass', ['awning', 'awning2']);
+    rect(L, 112, 106, 88, 80, T('school')); rect(L, 112, 106, 88, 2, T('schoolTrim')); for (const y of [116, 146]) for (let x = 118; x < 196; x += 16) { const lit = HS(x, y, 23) < 0.2; rect(L, x, y, 10, 13, lit ? T('schoolLit') : T('schoolWin')); if (lit) rect(L, x, y + 7, 10, 6, T('schoolLit2')); }
+    rect(L, 150, 166, 12, 20, T('schoolWin')); rect(L, 148, 164, 16, 2, T('schoolTrim')); rect(L, 130, 76, 1, 30, T('pole')); rect(L, 131, 77, 6, 4, hx('#e8e8f0'));
+    sakuraOn(L, 156, 92, 90, 66, 13, { big: true, trunkW: 8, bottom: 190, light: -1 });
+    for (let x = 112; x < 200; x++) for (let y = 182; y < 194; y++) L.set(x, y, y === 182 ? T('cap') : dith(x, y, 0.5) ? T('pillar') : T('pillarDark'));
+    for (const px0 of [116, 188]) { rect(L, px0, 168, 8, 26, T('pillar')); rect(L, px0, 168, 1, 26, T('pillarLight')); rect(L, px0 - 1, 167, 10, 2, T('cap')); rect(L, px0 + 2, 161, 4, 6, hx(TH.lampGlass)); }
+    for (let x = 126; x < 188; x += 4) rect(L, x, 174, 1, 20, T('gateLight')); rect(L, 124, 173, 64, 1, T('gateLight')); rect(L, 124, 193, 64, 1, T('gateDark'));
+    rect(L, 189, 176, 5, 14, T('plate'));
+    // C: the konbini (two storeys) with the blue-white awning
+    wall(208, 296, 116, 'storeWall', 'storeEdge');
+    for (let x = 216; x < 290; x += 26) win(x, 124, 14, 17, HS(x, 124, 41) < 0.5);
+    rect(L, 208, 152, 88, 10, T('storeSign')); rect(L, 212, 154, 34, 3, T('signA')); rect(L, 212, 158, 34, 3, T('signB')); for (let x = 254; x < 292; x += 7) rect(L, x, 154, 5, 6, T('signInk'));
+    shopfront(208, 296, 170, 'storeGlass', ['awning', 'awning2']);
     // D: a narrow tall one with the pink sign and lanterns
-    wall(304, 368, 106, 'apt', 'aptEdge');
-    for (const y of [114, 144]) for (let x = 312; x < 350; x += 18) win(x, y, 10, 12, HS(x, y, 43) < 0.5);
-    acunit(340, 130); vsign(356, 112, 56, TH.neon2, '#fff0f8');
-    rect(L, 304, 176, 64, 24, T('storeEdge')); for (let y = 178; y < 199; y++) for (let x = 306; x < 366; x++) L.set(x, y, dith(x, y, 0.5) ? hx('#ffb070') : hx('#ffd0a0')); for (let x = 310; x < 364; x += 12) { rect(L, x, 178, 6, 8, hx('#e84a3a')); rect(L, x + 2, 177, 2, 1, hx('#2a1a20')); rect(L, x + 1, 186, 4, 1, hx('#2a1a20')); }
+    wall(304, 368, 74, 'apt', 'aptEdge');
+    for (const y of [82, 118]) for (let x = 312; x < 346; x += 20) win(x, y, 14, 17, HS(x, y, 43) < 0.5);
+    acunit(338, 104); vsign(352, 80, 72, TH.neon2, '#fff0f8');
+    rect(L, 304, 168, 64, 32, T('storeEdge')); for (let y = 170; y < 199; y++) for (let x = 306; x < 366; x++) L.set(x, y, dith(x, y, 0.5) ? hx('#ffb070') : hx('#ffd0a0')); for (let x = 310; x < 364; x += 12) { rect(L, x, 171, 7, 10, hx('#e84a3a')); rect(L, x + 2, 170, 3, 1, hx('#2a1a20')); rect(L, x + 1, 181, 5, 1, hx('#2a1a20')); }
     // E: the apartment (two storeys, balconies)
-    wall(376, 466, 140, 'apt', 'aptEdge');
-    for (const y of [148, 174]) for (let x = 382; x < 460; x += 20) { win(x, y, 10, 12, HS(x, y, 47) < 0.45); rect(L, x - 2, y + 12, 14, 1, T('balcony')); for (let i = 0; i < 14; i += 2) L.set(x - 2 + i, y + 10, T('balcony')); }
-    rect(L, 418, 188, 10, 12, T('door')); rect(L, 420, 190, 6, 4, T('doorLit'));
-    // F: three storeys with a rooftop billboard
-    wall(474, 556, 110, 'storeWall', 'storeEdge');
-    rect(L, 486, 96, 60, 14, T('neonBox')); rect(L, 488, 98, 56, 10, T('neon')); for (let x = 492; x < 540; x += 8) rect(L, x, 101, 5, 4, T('neonText')); if (!TH.day) glow(L, 516, 103, 40, 14, TH.neon, 40, 1.4);
-    for (const y of [118, 146, 172]) for (let x = 482; x < 550; x += 20) win(x, y, 10, 12, HS(x, y, 49) < 0.4);
-    acunit(534, 132);
+    wall(376, 466, 116, 'apt', 'aptEdge');
+    for (const y of [124, 158]) for (let x = 382; x < 460; x += 22) { win(x, y, 14, 17, HS(x, y, 47) < 0.45); rect(L, x - 2, y + 17, 18, 1, T('balcony')); for (let i = 0; i < 18; i += 2) L.set(x - 2 + i, y + 15, T('balcony')); }
+    rect(L, 416, 184, 14, 16, T('door')); rect(L, 418, 186, 8, 6, T('doorLit'));
+    // F: three storeys with a big pink neon board on the roof
+    wall(474, 556, 74, 'storeWall', 'storeEdge');
+    rect(L, 480, 50, 72, 24, T('neonBox')); rect(L, 482, 52, 68, 20, T('neon2')); for (let x = 488; x < 544; x += 10) rect(L, x, 57, 6, 10, hx('#fff0f8')); if (!TH.day) glow(L, 516, 62, 50, 22, TH.neon2, 46, 1.4);
+    for (const y of [82, 118, 154]) for (let x = 482; x < 550; x += 22) win(x, y, 14, 17, HS(x, y, 49) < 0.4);
+    acunit(534, 104);
     // G: two small shops
-    wall(564, 656, 138, 'storeWall', 'storeEdge');
-    for (let x = 572; x < 650; x += 22) win(x, 146, 10, 12, HS(x, 146, 51) < 0.5);
-    shopfront(564, 610, 176, 'storeGlass', ['emblem', 'poster']); shopfront(612, 656, 176, 'storeGlass', ['awning', 'awning2']);
-    // the far-side cherry trees in front of the shops
-    sakuraOn(L, 58, 116, 44, 34, 21, { trunkW: 4, bottom: 196 }); sakuraOn(L, 420, 118, 52, 40, 17, { trunkW: 4, bottom: 196, light: -1 }); sakuraOn(L, 612, 120, 48, 36, 19, { trunkW: 4, bottom: 196 });
+    wall(564, 656, 116, 'storeWall', 'storeEdge');
+    for (let x = 572; x < 650; x += 26) win(x, 124, 14, 17, HS(x, 124, 51) < 0.5);
+    shopfront(564, 610, 170, 'storeGlass', ['emblem', 'poster']); shopfront(612, 656, 170, 'storeGlass', ['awning', 'awning2']);
+    // the far-side cherry trees, their crowns reaching the viaduct (the picture's pink band sits at the train's level)
+    sakuraOn(L, 58, 104, 58, 46, 21, { trunkW: 5, bottom: 196 }); sakuraOn(L, 420, 106, 70, 54, 17, { trunkW: 5, bottom: 196, light: -1 }); sakuraOn(L, 612, 108, 64, 50, 19, { trunkW: 5, bottom: 196 });
     windowSpans();
     return L;
   }
@@ -349,6 +349,9 @@
     rect(L, 620, 58, 14, 22, T('aptDark')); rect(L, 620, 58, 14, 2, T('pole')); rect(L, 622, 62, 10, 14, T('storeWall')); rect(L, 620, 80, 14, 2, T('poleDark'));
     const wire = (x0, y0, x1, y1, sag) => { for (let x = x0; x <= x1; x++) { const t = (x - x0) / (x1 - x0), y = y0 + (y1 - y0) * t + sag * 4 * t * (1 - t); L.set(x, Math.round(y), T('wire')); } };
     wire(0, 24, 584, 32, 9); wire(0, 32, 598, 32, 10); wire(628, 32, W, 20, 4); wire(642, 32, W, 28, 4); wire(0, 44, 606, 50, 7);
+    rect(L, 300, 150, 3, 82, T('poleDark')); rect(L, 300, 150, 1, 82, T('poleLight')); rect(L, 293, 138, 16, 14, T('aptDark')); rect(L, 294, 139, 14, 12, hx('#1a1a2a'));   // the pedestrian signal
+    rect(L, 296, 141, 4, 4, TH.day ? hx('#5a2020') : hx('#ff3a3a')); rect(L, 302, 141, 4, 4, hx('#204020')); rect(L, 296, 146, 10, 3, hx('#2a2a3a')); if (!TH.day) glow(L, 298, 143, 10, 8, '#ff3a3a', 60, 1.3);
+    rect(L, 468, 60, 4, 172, T('neonBox')); rect(L, 469, 61, 2, 170, T('neon2')); if (!TH.day) glow(L, 470, 146, 16, 90, TH.neon2, 40, 1.5);   // the magenta post
     const PET = TH.petals.map(hx);   // fallen petals, thickest under the near tree
     for (let y = 201; y < H; y++) for (let x = 0; x < W; x++) { let dens = 0.012 + 0.09 * Math.max(0, 1 - Math.abs(x - 130) / 150); if (y < 232) dens *= 0.5; if (HS(x, y, 61) < dens) { const c = PET[Math.floor(HS(x, y, 62) * 4)]; L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); } }
     SAKURA = sakuraOn;
@@ -397,8 +400,8 @@
     }
     if (!TH.day) {   // the shopfronts' light and the neon hum across the road (mid), the vending machine's (near)
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (Hh(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
-      for (const [x0, w] of [[2, 100], [210, 84], [566, 42], [614, 40]]) out.push({ mid: true, x: x0, y: 178, w, h: 22, col: TH.storeGlow, a: 0.035 * f });
-      out.push({ mid: true, x: 88, y: 98, w: 18, h: 62, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) }); out.push({ mid: true, x: 352, y: 110, w: 18, h: 60, col: TH.neon2, a: 0.03 + 0.03 * Math.sin(s * 9 + 1) });
+      for (const [x0, w] of [[2, 100], [210, 84], [566, 42], [614, 40]]) out.push({ mid: true, x: x0, y: 172, w, h: 28, col: TH.storeGlow, a: 0.035 * f });
+      out.push({ mid: true, x: 0, y: 56, w: 20, h: 84, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) }); out.push({ mid: true, x: 350, y: 78, w: 20, h: 76, col: TH.neon2, a: 0.03 + 0.03 * Math.sin(s * 9 + 1) }); out.push({ mid: true, x: 478, y: 48, w: 76, h: 28, col: TH.neon2, a: 0.025 + 0.025 * Math.sin(s * 7 + 2) });
       if (!broken.has('vend')) out.push({ x: 198, y: 148, w: 48, h: 92, col: '#c0e8ff', a: 0.03 * f });
     }
     if (!TH.day) for (let k = 0; k < 5; k++) {   // the block's windows switching, only where no canopy covers the pane (mid)
@@ -412,7 +415,7 @@
     for (let k = 0; k < 14; k++) { const x = Math.floor(Hh(k, 1, 11) * FAR_W), y = Math.floor(Math.pow(Hh(k, 2, 11), 1.5) * 150); if (TH.stars) out.push({ far: true, x, y, w: 1, h: 1, col: '#ffffff', a: 0.5 + 0.5 * Math.sin(s * (1.5 + Hh(k, 12, 21) * 3) + k * 1.7) }); }
     if (Math.floor(s * 1.2) & 1) out.push({ far: true, x: 379, y: 49, w: 3, h: 2, col: '#ff6060', a: 0.9 });
     const tp = (s % 16) / 16;   // the train on the viaduct every 16 s (mid): eight cars, big lit windows, a headlight
-    if (tp < 0.4) { const u = tp / 0.4, tx0 = MID_W + 60 - u * (MID_W + 400); for (let c = 0; c < 8; c++) { const cx = tx0 + c * 42; out.push({ mid: true, x: cx, y: 86, w: 40, h: 24, col: '#d8e4f4', a: 1 }); out.push({ mid: true, x: cx, y: 86, w: 40, h: 3, col: '#f4f8ff', a: 1 }); out.push({ mid: true, x: cx, y: 105, w: 40, h: 5, col: '#2a3058', a: 1 }); for (let i = 0; i < 5; i++) out.push({ mid: true, x: cx + 3 + i * 8, y: 91, w: 6, h: 10, col: TH.day ? '#8ab0d0' : TH.rain ? '#ffb0e0' : '#bfeaff', a: 1 }); if (c === 0) out.push({ mid: true, x: cx - 2, y: 96, w: 2, h: 5, col: '#ffffff', a: 1 }); } }
+    if (tp < 0.4) { const u = tp / 0.4, tx0 = MID_W + 60 - u * (MID_W + 400); for (let c = 0; c < 8; c++) { const cx = tx0 + c * 46; out.push({ mid: true, x: cx, y: 60, w: 44, h: 26, col: '#d8e4f4', a: 1 }); out.push({ mid: true, x: cx, y: 60, w: 44, h: 3, col: '#f4f8ff', a: 1 }); out.push({ mid: true, x: cx, y: 81, w: 44, h: 5, col: '#2a3058', a: 1 }); for (let i = 0; i < 5; i++) out.push({ mid: true, x: cx + 3 + i * 8, y: 65, w: 6, h: 12, col: TH.day ? '#8ab0d0' : TH.rain ? '#ffb0e0' : '#bfeaff', a: 1 }); if (c === 0) out.push({ mid: true, x: cx - 2, y: 70, w: 2, h: 6, col: '#ffffff', a: 1 }); } }
     const cp2 = (s % 9) / 9;   // a car crossing the road behind the fighters every 9 s, alternating direction
     if (cp2 < 0.5) { const dir = Math.floor(s / 9) & 1 ? 1 : -1, u = cp2 / 0.5, cx = dir > 0 ? -80 + u * (W + 160) : W + 80 - u * (W + 160), CB = TH.day ? '#3a3e6a' : '#141a3a';
       out.push({ x: cx, y: 210, w: 64, h: 12, col: CB, a: 1 }); out.push({ x: cx + 10, y: 204, w: 40, h: 7, col: CB, a: 1 }); out.push({ x: cx + 13, y: 205, w: 14, h: 5, col: '#9ad8ff', a: 1 }); out.push({ x: cx + 31, y: 205, w: 16, h: 5, col: '#9ad8ff', a: 1 });
