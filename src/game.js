@@ -721,6 +721,8 @@
   const MODES = [['1p', '1P vs CPU'], ['practice', '練習（木人）'], ['2p', '1P vs 2P'], ['demo', 'CPU vs CPU（觀戰）']];
   // the character select: the club so far (the JK) and the two members whose sheets are not cut yet
   const SLOTS = [{ C: ROSTER[0] }, { locked: true, name: '吸血鬼ニート', sub: 'COMING SOON', color: '#c46bff' }, { locked: true, name: '狼人メイド', sub: 'COMING SOON', color: '#ff8a3a' }];
+  // the character's CG for the select screen (「選擇角色的 CG 圖」: src/cg/jk.png — the user's render, cropped, 96 colours, faded edges)
+  const CG = { jk: Object.assign(new Image(), { src: 'src/cg/jk.png' }) };
   let modeI = 0;
   const LEVELS = [['かんたん', 0.3], ['ふつう', 0.6], ['つよい', 0.95]];
   let levelI = 1;
@@ -1090,9 +1092,9 @@
     lx.drawImage(FAR, -60, 0); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
     lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.fillRect(0, 0, VW, VH);
     if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); sim.selCast.forEach((f) => { if (f) play(f, 'idle'); }); }
-    const mode = MODES[modeI][0];
+    const mode = MODES[modeI][0], slotX = (i) => (mode === '2p' ? 168 + i * 72 : 190 + i * 90);   // the CG panels take the sides
     SLOTS.forEach((S, i) => {
-      const x = 96 + i * 144, f = sim.selCast[i];
+      const x = slotX(i), f = sim.selCast[i];
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
       if (f) {
         f.x = x; f.face = 1;
@@ -1109,12 +1111,22 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
+    // the CG panels: P1's on the left, P2's mirrored on the right (2P mode); dimmed while the cursor is on a locked member
+    const cg = CG.jk;
+    if (cg.complete && cg.naturalWidth) {
+      const ch = cv.height, cw = Math.round(ch * cg.naturalWidth / cg.naturalHeight);
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = SLOTS[sim.sel[0]].C ? 1 : 0.35; ctx.drawImage(cg, 0, 0, cw, ch);
+      if (mode === '2p') { ctx.save(); ctx.translate(cv.width, 0); ctx.scale(-1, 1); ctx.globalAlpha = SLOTS[sim.sel[1]].C ? 1 : 0.35; ctx.drawImage(cg, 0, 0, cw, ch); ctx.restore(); }
+      ctx.globalAlpha = 1;
+    }
     text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), VW / 2, 24, 21, '#ffd24a');
     SLOTS.forEach((S, i) => {
-      const x = 96 + i * 144;
+      const x = slotX(i);
       const chosen = (sim.selStep === 0 && sim.sel[0] === i) || (sim.selStep === 1 && sim.sel[1] === i);
-      if (S.C) { text(S.C.R.name, x, 252, 13, chosen ? S.C.color : '#b9c2ea'); text(S.C.R.height + ' · ' + S.C.R.PARTS.map((p) => p.label).join('/'), x, 264, 8, '#8f97b8'); }
-      else { text('?', x, G - 44, 34, chosen ? S.color : '#3a4270'); text(S.name, x, 252, 13, chosen ? S.color : '#b9c2ea'); text(S.sub, x, 264, 8, '#8f97b8'); }
+      const nf = mode === '2p' ? 10 : 13, sf = mode === '2p' ? 7 : 8;   // two CG panels leave less room for the names
+      if (S.C) { text(S.C.R.name, x, 252, nf, chosen ? S.C.color : '#b9c2ea'); text(S.C.R.height + ' · ' + S.C.R.PARTS.map((p) => p.label).join('/'), x, 264, sf, '#8f97b8'); }
+      else { text('?', x, G - 44, 34, chosen ? S.color : '#3a4270'); text(S.name, x, 252, nf, chosen ? S.color : '#b9c2ea'); text(S.sub, x, 264, sf, '#8f97b8'); }
       if (sim.selStep === 1 && sim.sel[0] === i) text('1P', x - 42, 150, 12, ROSTER[0].color);
     });
     text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
