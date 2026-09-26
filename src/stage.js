@@ -76,36 +76,36 @@
     return Object.assign(o, over || {});
   }
   const NIGHT = {
-    id: 'night', name: '夜の校門前', en: 'NIGHT GATE', day: false, rain: false, dense: false, cloudSpeed: 2.5,
-    sky: ['#07061a', '#0b0a26', '#120e34', '#1a1240', '#22164c', '#2c1a58', '#382066', '#4a2874', '#603280'], stars: 220, moon: true, sun: null,
+    id: 'night', name: '夜の校門前', en: 'NIGHT GATE', day: false, rain: false, dense: true, cloudSpeed: 2.5,
+    sky: ['#04061a', '#060a24', '#0a1030', '#0e163c', '#121e4a', '#182858', '#203468', '#2a4078', '#344c88'], stars: 220, moon: true, sun: null,
     cloud: { body: '#2c2262', shade: '#1c1648', lit: '#5a4a98', rim: '#a08ad0', warm: '#5a2a5c' }, cum: ['#c8b8f0', '#7a68b8', '#524698', '#241c50', '#3c3278', '#302868'],
-    haze: ['#4a2a70', '#7a3a80'], farBody: '#1a1640', farEdge: '#2c2658', farWin: ['#ff8ad4', '#5ad0ff', '#ffd98a'], farLit: 0.14,
-    midBody: '#141232', midEdge: '#26224e', midWin: '#ff8ad4', midWin2: '#c050a0', midLit: 0.22, mist: '#3a2a60',
-    storeWall: '#2a2450', storeEdge: '#3a3466', storeSign: '#f0e4ec', signA: '#ff5ad0', signB: '#ff9a3a', signInk: '#2a1a40', storeGlass: '#f8dfae', storeGlassTop: '#fae6c8', shelf: '#8a7a50', storeDoor: '#9aa0b0', storeGlow: '#ffe0a0', poster: '#ece6dc', posterInk: '#d8302c',
-    neon: '#ff5ad0', neonText: '#ffd0f0', neonBox: '#3a1040', neon2: '#5ad0ff',
+    haze: ['#1e3a78', '#3a4a90'], farBody: '#0c1430', farEdge: '#1c2a58', farWin: ['#e8f4ff', '#9ad8ff', '#5ad0ff', '#ffffff'], farLit: 0.42,
+    midBody: '#101a3a', midEdge: '#24325e', midWin: '#d0ecff', midWin2: '#7ac0ff', midLit: 0.34, mist: '#24346a',
+    storeWall: '#2a2450', storeEdge: '#3a3466', storeSign: '#e8eef6', signA: '#3a8aff', signB: '#5ad0ff', signInk: '#1a2a50', awning: '#3a7ae0', awning2: '#e8f0ff', storeGlass: '#f8dfae', storeGlassTop: '#fae6c8', shelf: '#8a7a50', storeDoor: '#9aa0b0', storeGlow: '#ffe0a0', poster: '#ece6dc', posterInk: '#d8302c',
+    neon: '#5ad0ff', neonText: '#e8faff', neonBox: '#0a2040', neon2: '#ff5ad0',
     pillar: '#3c3868', pillarLight: '#5c5694', pillarDark: '#242048', cap: '#7c76ae', gate: '#3a3e66', gateLight: '#5c6190', gateDark: '#2c3060', plate: '#e8e8f0', plateInk: '#302a40', emblem: '#b8202c', emblemInk: '#fff4e0', yard: '#1c1a40',
-    school: '#141232', schoolTrim: '#20264a', schoolWin: '#0f1330', schoolLit: '#ffd98a', schoolLit2: '#e0b850',
-    apt: '#1e1c48', aptEdge: '#2e2c64', aptDark: '#151438', aptWin: '#0f1130', aptFrame: '#2c3060', aptLit: ['#ffd98a', '#e0b850'], balcony: '#3c4074', ac: '#3a3e70', shutter: '#2a2e5a', shutter2: '#383c6c', door: '#101430', doorLit: '#ffe0a0', pipe: '#2a2e5c',
+    school: '#101838', schoolTrim: '#1c2650', schoolWin: '#0b1130', schoolLit: '#e8f4ff', schoolLit2: '#a8d0f0',
+    apt: '#1e1c48', aptEdge: '#2e2c64', aptDark: '#151438', aptWin: '#0b1130', aptFrame: '#2c3466', aptLit: ['#e8f4ff', '#a8d0f0'], balcony: '#3c4074', ac: '#3a3e70', shutter: '#2a2e5a', shutter2: '#383c6c', door: '#101430', doorLit: '#ffe0a0', pipe: '#2a2e5c',
     pole: '#5a5f8a', poleLight: '#7a7fae', poleDark: '#3a3e66', wire: '#141a3a', lampHead: '#3a3e66', lampGlass: '#fff6d0', lampGlass2: '#ffe080', lampGlow: '#ffe8b0', insulator: '#c8c4d8',
-    bark: '#241832', bark2: '#463050', bark3: '#140c1c', sakura: ['#6a1a70', '#c0209a', '#ff5ad0', '#ff8ad4', '#ffc4ea'], gap: '#2a1040',
+    bark: '#1c1838', bark2: '#3a3058', bark3: '#100c20', sakura: ['#5a2a8a', '#8a48b8', '#b878d8', '#d8a0f0', '#f0d0ff'], gap: '#221a44',
     sidewalk: '#444a78', sidewalk2: '#4a4f80', joint: '#2f3462', top: '#7a7fae', tactile: '#c9a830', tactile2: '#d8b83a', kerb: '#8a8fbe', kerb2: '#3a3e66',
-    road: ['#3e4374', '#2f3462', '#262a52', '#1e2246', '#181b3a'], roadLine: '#c9cce6', sheen: '#5a4a8a', puddle: '#8a7ab8', petals: ['#ff9cd6', '#f070bc', '#ffd0ea', '#d04a98'], drain: '#1a1d38',
-    winLit: ['#ffd98a', '#e0b850'],
+    road: ['#3e4374', '#2f3462', '#262a52', '#1e2246', '#181b3a'], roadLine: '#c9cce6', sheen: '#4a4a9a', puddle: '#7a80c0', petals: ['#d8a0f0', '#b878d8', '#f0d0ff', '#8a48b8'], drain: '#1a1d38',
+    winLit: ['#e8f4ff', '#a8d0f0'],
   };
   const THEMES = {
     night: NIGHT,
     dusk: derive(NIGHT, (c) => mixc(lift(c, 0.2), '#ff9a60', 0.14), { id: 'dusk', name: '夕暮れの校門前', en: 'DUSK GATE', moon: false, sun: [470, 158], stars: 30,
       sky: ['#1a1440', '#2c1c58', '#48286a', '#6a3a72', '#8c4a6e', '#b06062', '#d08262', '#eaa472', '#f8c484'],
       cloud: { body: '#5a3a70', shade: '#3a2450', lit: '#c07890', rim: '#ffd0b0', warm: '#c06a60' }, cum: ['#ffd8c0', '#e09aa0', '#a06080', '#4a2e60', '#7c4a7c', '#603a68'], haze: ['#8a5a78', '#c07a70'],
-      farWin: ['#ffc890', '#ffd0a0'], farLit: 0.06, midLit: 0.1, sakura: ['#a03a80', '#d0509c', '#f078b8', '#ffa0d0', '#ffd0e6'] }),
+      farWin: ['#ffc890', '#ffd0a0'], farLit: 0.06, midLit: 0.1, dense: false, sakura: ['#a03a80', '#d0509c', '#f078b8', '#ffa0d0', '#ffd0e6'], petals: ['#ffa0d0', '#f078b8', '#ffd0e6', '#d0509c'], aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff5ad0', neon2: '#5ad0ff', signA: '#ff5ad0', signB: '#ff9a3a' }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
       sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'],
       cloud: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0', warm: '#4a2a5a' }, cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
-      farWin: ['#ff5ad0', '#5ad0ff'], farLit: 0.3, midLit: 0.4, sakura: ['#8a2a70', '#c0409a', '#e864b8', '#ff8ad4', '#ffc4ea'], winLit: ['#ff8ad4', '#c050a0'], aptLit: ['#ff8ad4', '#c050a0'] }),
+      farWin: ['#ff5ad0', '#5ad0ff'], farLit: 0.3, midLit: 0.4, sakura: ['#8a2a70', '#c0409a', '#e864b8', '#ff8ad4', '#ffc4ea'], petals: ['#ff9cd6', '#f070bc', '#ffd0ea', '#d04a98'], winLit: ['#ff8ad4', '#c050a0'], aptLit: ['#ff8ad4', '#c050a0'], schoolLit: '#ff8ad4', schoolLit2: '#c050a0', neon: '#ff5ad0', neon2: '#5ad0ff', signA: '#ff5ad0', signB: '#ff9a3a', midWin: '#ff8ad4', midWin2: '#c050a0' }),
     pastel: derive(NIGHT, (c) => lift(c, 0.5, '#c8b8e8'), { id: 'pastel', name: '桜の午後', en: 'PASTEL NOON', day: true, moon: false, stars: 0, cloudSpeed: 4,
       sky: ['#6a7ad0', '#7a8ad8', '#8c98e0', '#a0a8e4', '#b4b4e8', '#c4bce8', '#d4c4e8', '#e4cce8', '#f0d4e8'],
       cloud: { body: '#f0ecf8', shade: '#c4bce0', lit: '#ffffff', rim: '#ffffff', warm: '#f8e0e8' }, cum: ['#ffffff', '#f6f2fc', '#e6def4', '#b8acd8', '#dcd4ee', '#d0c8ea'], haze: ['#c8c0e8', '#ead4ea'],
-      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, winLit: ['#fff4e0', '#f0e0c0'], aptLit: ['#fff4e0', '#f0e0c0'], schoolLit: '#fff4e0', schoolLit2: '#f0e0c0', storeGlass: '#f6e8d4', storeGlassTop: '#f8ecdc',
+      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, dense: false, winLit: ['#fff4e0', '#f0e0c0'], petals: ['#ff9ad8', '#f078c8', '#ffc0ea', '#d858b0'], aptLit: ['#fff4e0', '#f0e0c0'], schoolLit: '#fff4e0', schoolLit2: '#f0e0c0', storeGlass: '#f6e8d4', storeGlassTop: '#f8ecdc',
       sakura: ['#b040a0', '#d858b0', '#f078c8', '#ff9ad8', '#ffc0ea'], lampGlass: '#e8f0f8', lampGlass2: '#d0dce8' }),
   };
   const THEME_IDS = ['night', 'dusk', 'cyber', 'pastel'];
@@ -214,9 +214,11 @@
       if (HS(k, 46, 5) > 0.6) { rect(L, x0 + 6, top - 5, 8, 5, edge); rect(L, x0 + w - 12, top - 3, 6, 3, edge); }
       if (TH.dense && HS(k, 47, 5) > 0.5) { const sx = x0 + 4, sc = HS(k, 48, 5) > 0.5 ? '#ff5ad0' : '#5ad0ff'; rect(L, sx, top + 2, w - 8, 3, hx(sc)); glow(L, sx + (w - 8) / 2, top + 3, w / 2 + 8, 8, sc, 50, 1.4); }
     }
-    rect(L, 0, 72, MID_W, 3, T('gateLight')); rect(L, 0, 75, MID_W, 9, T('gate')); rect(L, 0, 84, MID_W, 2, T('gateDark'));
-    for (let x = 0; x < MID_W; x += 7) rect(L, x, 68, 1, 4, T('pole')); rect(L, 0, 68, MID_W, 1, T('pole'));
-    for (let x = 20; x < MID_W; x += 64) { rect(L, x, 86, 8, 114, T('gateDark')); rect(L, x, 86, 2, 114, T('gate')); rect(L, x + 3, 58, 1, 14, T('pole')); rect(L, x + 1, 58, 6, 1, T('pole')); }
+    // the elevated line crossing above the roofs (the reference's viaduct): rails, a deep deck with lights beneath, pillars
+    rect(L, 0, 44, MID_W, 2, T('gateLight')); rect(L, 0, 46, MID_W, 12, T('gate')); rect(L, 0, 58, MID_W, 4, T('gateDark')); rect(L, 0, 62, MID_W, 1, T('midEdge'));
+    for (let x = 0; x < MID_W; x += 6) rect(L, x, 40, 1, 4, T('pole')); rect(L, 0, 40, MID_W, 1, T('pole'));
+    for (let x = 8; x < MID_W; x += 32) rect(L, x, 59, 3, 2, T('midWin'));
+    for (let x = 20; x < MID_W; x += 64) { rect(L, x, 62, 10, 138, T('gateDark')); rect(L, x, 62, 2, 138, T('gate')); rect(L, x + 4, 28, 1, 12, T('pole')); rect(L, x + 2, 28, 6, 1, T('pole')); }
     for (let y = 96; y < 150; y++) for (let x = 0; x < MID_W; x++) { const t = Math.sin((y - 96) / 54 * Math.PI); if (HS(x >> 1, y, 49) < t * 0.5) mixPx(L, x, y, T('mist'), Math.round(30 + t * 60)); }
     return L;
   }
@@ -297,11 +299,13 @@
     rect(L, 0, 136, 196, 16, T('storeSign')); rect(L, 0, 136, 196, 1, hx('#c8c4d8')); rect(L, 0, 151, 196, 1, hx('#a8a4b8'));   // the sign band
     rect(L, 8, 139, 60, 5, T('signA')); rect(L, 8, 145, 60, 4, T('signB'));
     for (const [x, w] of [[80, 6], [90, 5], [99, 7], [110, 5], [119, 6], [129, 5], [138, 7], [150, 5], [160, 6], [170, 5]]) rect(L, x, 140, w, 8, T('signInk'));
-    rect(L, 0, 152, 196, 88, T('storeEdge'));   // the glass front: the lit interior, shelves of goods, the door, posters
-    for (let y = 154; y < GROUND; y++) for (let x = 6; x < 190; x++) L.set(x, y, dith(x, y, (y - 154) / 90) ? T('storeGlass') : T('storeGlassTop'));
-    for (let y = 168; y < GROUND; y += 14) { rect(L, 10, y, 76, 1, T('shelf')); rect(L, 130, y, 56, 1, T('shelf')); for (let x = 12; x < 84; x += 4) rect(L, x, y - 6, 3, 6, [hx('#e84a5f'), hx('#5ad0ff'), hx('#7ae06a'), hx('#ffd24a'), hx('#ff8a3a'), hx('#c9cce6')][(x + y) % 6]); for (let x = 132; x < 184; x += 4) rect(L, x, y - 6, 3, 6, [hx('#ff5ad0'), hx('#7ad4ff'), hx('#ffd24a'), hx('#c9cce6')][(x + y) % 4]); }
-    rect(L, 92, 152, 2, 88, T('storeDoor')); rect(L, 128, 152, 2, 88, T('storeDoor')); rect(L, 94, 154, 34, 86, hx('#f6e4c2')); rect(L, 109, 154, 2, 86, T('storeDoor')); rect(L, 96, 200, 30, 2, T('shelf'));   // the sliding door
-    for (const [x, y] of [[14, 158], [40, 158]]) { rect(L, x, y, 18, 24, T('poster')); rect(L, x + 2, y + 2, 14, 6, T('posterInk')); for (let j = 0; j < 4; j++) rect(L, x + 2, y + 11 + j * 3, 14, 1, hx('#302a40')); }
+    for (let x = 2; x < 194; x++) for (let y = 152; y < 160; y++) L.set(x, y, ((x >> 3) & 1) ? T('awning') : T('awning2'));
+    for (let x = 2; x < 194; x++) L.set(x, 160 + ((x & 7) < 4 ? 0 : 1), T('signInk'));   // the striped awning with a scalloped edge
+    rect(L, 0, 162, 196, 78, T('storeEdge'));   // the glass front: the lit interior, shelves of goods, the door, posters
+    for (let y = 164; y < GROUND; y++) for (let x = 6; x < 190; x++) L.set(x, y, dith(x, y, (y - 164) / 80) ? T('storeGlass') : T('storeGlassTop'));
+    for (let y = 182; y < GROUND; y += 14) { rect(L, 10, y, 76, 1, T('shelf')); rect(L, 130, y, 56, 1, T('shelf')); for (let x = 12; x < 84; x += 4) rect(L, x, y - 6, 3, 6, [hx('#e84a5f'), hx('#5ad0ff'), hx('#7ae06a'), hx('#ffd24a'), hx('#ff8a3a'), hx('#c9cce6')][(x + y) % 6]); for (let x = 132; x < 184; x += 4) rect(L, x, y - 6, 3, 6, [hx('#ff5ad0'), hx('#7ad4ff'), hx('#ffd24a'), hx('#c9cce6')][(x + y) % 4]); }
+    rect(L, 92, 162, 2, 78, T('storeDoor')); rect(L, 128, 162, 2, 78, T('storeDoor')); rect(L, 94, 164, 34, 76, hx('#f6e4c2')); rect(L, 109, 154, 2, 86, T('storeDoor')); rect(L, 96, 200, 30, 2, T('shelf'));   // the sliding door
+    for (const [x, y] of [[14, 168], [40, 168]]) { rect(L, x, y, 18, 24, T('poster')); rect(L, x + 2, y + 2, 14, 6, T('posterInk')); for (let j = 0; j < 4; j++) rect(L, x + 2, y + 11 + j * 3, 14, 1, hx('#302a40')); }
     rect(L, 6, 232, 184, 8, hx('#2a2450'));   // the sill
     if (!TH.day) glow(L, 98, 244, 120, 30, TH.storeGlow, 40, 1.4);
     glow(L, 190, 100, 30, 44, TH.neon, TH.day ? 0 : 60, 1.5);   // the vertical neon sign on the store's corner
@@ -410,7 +414,7 @@
     }
     if (!TH.day) {   // the store's light and the neon hum
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (Hh(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
-      out.push({ x: 6, y: 154, w: 184, h: 86, col: TH.storeGlow, a: 0.03 * f });
+      out.push({ x: 6, y: 164, w: 184, h: 76, col: TH.storeGlow, a: 0.03 * f });
       out.push({ x: 176, y: 66, w: 28, h: 72, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) });
       if (!broken.has('vend')) out.push({ x: 198, y: 148, w: 48, h: 92, col: '#c0e8ff', a: 0.03 * f });
     }
@@ -424,8 +428,8 @@
     }
     for (let k = 0; k < 14; k++) { const x = Math.floor(Hh(k, 1, 11) * FAR_W), y = Math.floor(Math.pow(Hh(k, 2, 11), 1.5) * 150); if (TH.stars) out.push({ far: true, x, y, w: 1, h: 1, col: '#ffffff', a: 0.5 + 0.5 * Math.sin(s * (1.5 + Hh(k, 12, 21) * 3) + k * 1.7) }); }
     if (Math.floor(s * 1.2) & 1) out.push({ far: true, x: 379, y: 49, w: 3, h: 2, col: '#ff6060', a: 0.9 });
-    const tp = (s % 22) / 22;   // the train on the elevated railway (mid)
-    if (tp < 0.32) { const u = tp / 0.32, tx0 = MID_W + 40 - u * (MID_W + 260); for (let c = 0; c < 6; c++) { const cx = tx0 + c * 34; out.push({ mid: true, x: cx, y: 60, w: 32, h: 12, col: '#c9cce6', a: 1 }); out.push({ mid: true, x: cx, y: 60, w: 32, h: 2, col: '#e8e8f0', a: 1 }); out.push({ mid: true, x: cx, y: 69, w: 32, h: 3, col: '#3a3e66', a: 1 }); for (let i = 0; i < 5; i++) out.push({ mid: true, x: cx + 3 + i * 6, y: 62, w: 4, h: 5, col: TH.rain ? '#ffb0e0' : '#ffe6a0', a: 1 }); if (c === 0) out.push({ mid: true, x: cx - 2, y: 64, w: 2, h: 3, col: '#ffffff', a: 1 }); } }
+    const tp = (s % 16) / 16;   // the train on the elevated line every 16 s (mid): eight bright cars with cyan windows
+    if (tp < 0.4) { const u = tp / 0.4, tx0 = MID_W + 60 - u * (MID_W + 400); for (let c = 0; c < 8; c++) { const cx = tx0 + c * 40; out.push({ mid: true, x: cx, y: 30, w: 38, h: 14, col: '#d8e4f4', a: 1 }); out.push({ mid: true, x: cx, y: 30, w: 38, h: 2, col: '#f4f8ff', a: 1 }); out.push({ mid: true, x: cx, y: 41, w: 38, h: 3, col: '#2a3058', a: 1 }); for (let i = 0; i < 6; i++) out.push({ mid: true, x: cx + 3 + i * 6, y: 33, w: 4, h: 6, col: TH.day ? '#8ab0d0' : TH.rain ? '#ffb0e0' : '#bfeaff', a: 1 }); if (c === 0) out.push({ mid: true, x: cx - 2, y: 35, w: 2, h: 4, col: '#ffffff', a: 1 }); } }
     if (TH.rain) for (let k = 0; k < 110; k++) { const spd = 160 + Hh(k, 51, 21) * 120, x = ((Hh(k, 52, 21) * (W + 60) + s * 14) % (W + 60)) - 30, y = ((Hh(k, 53, 21) * 320 + s * spd) % (H + 40)) - 20, front = k % 4 === 0; out.push(front ? { x: Math.round(x), y: Math.round(y), w: 1, h: 9, col: '#bfe0ff', a: 0.5, front: true } : { mid: true, x: Math.round(x * 1.2), y: Math.round(y), w: 1, h: 7, col: '#9ad0e0', a: 0.35 }); }
     const bp = (s % 14) / 14;   // bats (far)
     if (bp < 0.45 && !TH.day) for (let k = 0; k < 3; k++) { const bx = FAR_W + 40 - bp / 0.45 * (FAR_W + 80) + k * 22, by = 58 + k * 9 + Math.sin(s * 6 + k) * 4, flap = Math.floor(s * 10 + k) & 1; out.push({ far: true, x: bx, y: by, w: 2, h: 1, col: '#0a0b1c', a: 1 }); out.push({ far: true, x: bx - 3, y: by - flap, w: 3, h: 1, col: '#0a0b1c', a: 1 }); out.push({ far: true, x: bx + 2, y: by - flap, w: 3, h: 1, col: '#0a0b1c', a: 1 }); }

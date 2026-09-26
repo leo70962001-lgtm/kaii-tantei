@@ -722,7 +722,7 @@
   // the character select: the club so far (the JK) and the two members whose sheets are not cut yet
   const SLOTS = [{ C: ROSTER[0] }, { locked: true, name: '吸血鬼ニート', sub: 'COMING SOON', color: '#c46bff' }, { locked: true, name: '狼人メイド', sub: 'COMING SOON', color: '#ff8a3a' }];
   // the character's CG for the select screen (「選擇角色的 CG 圖」: src/cg/jk.png — the user's render, cropped, 96 colours, faded edges)
-  const CG = { jk: Object.assign(new Image(), { src: 'src/cg/jk.png' }) };
+  const CG = { jk: Object.assign(new Image(), { src: 'src/cg/jk_bust.png' }), icon: Object.assign(new Image(), { src: 'src/cg/jk_icon.png' }) };   // the bust for the big picture, a pixel portrait for the icon
   let modeI = 0;
   const LEVELS = [['かんたん', 0.3], ['ふつう', 0.6], ['つよい', 0.95]];
   let levelI = 1;
@@ -1099,7 +1099,7 @@
     if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); }
     const mode = MODES[modeI][0], who = sim.selStep === 0 ? 0 : 1, curSel = sim.sel[who], S0 = SLOTS[curSel];
     // the roster grid: 4 × 3 round icons, the club members first, the other seats still empty
-    const GX = 240, GY = 104, GS = 58, COLS = SLOTS.length, ROWS = 1, icons = [];
+    const GX = 262, GY = 104, GS = 58, COLS = SLOTS.length, ROWS = 1, icons = [];
     lx.fillStyle = 'rgba(8,10,28,0.75)'; lx.fillRect(GX - 14, GY - 30, COLS * GS + 28, ROWS * GS + 44);
     lx.fillStyle = '#ffd24a'; lx.fillRect(GX - 14, GY - 30, COLS * GS + 28, 2);
     lx.fillStyle = 'rgba(255,210,74,0.35)'; lx.fillRect(GX - 14, GY + ROWS * GS + 12, COLS * GS + 28, 1);
@@ -1109,8 +1109,10 @@
       lx.beginPath(); lx.arc(cx, cy, r + 2, 0, Math.PI * 2); lx.fillStyle = chosen ? '#ffd24a' : S ? (S.C ? S.C.color : S.color) : '#2c3060'; lx.fill();
       lx.beginPath(); lx.arc(cx, cy, r, 0, Math.PI * 2); lx.fillStyle = S && S.C ? '#1b2150' : '#0e1130'; lx.fill();
       if (S && S.C) {
-        const pr = portrait(sim.selCast[i]); lx.save(); lx.beginPath(); lx.arc(cx, cy, r - 1, 0, Math.PI * 2); lx.clip();
-        const k = (r * 2) / 34; lx.imageSmoothingEnabled = false; lx.drawImage(pr, Math.round(cx - 19 * k), Math.round(cy - 17 * k + 3), Math.round(38 * k), Math.round(34 * k)); lx.restore();
+        lx.save(); lx.beginPath(); lx.arc(cx, cy, r - 1, 0, Math.PI * 2); lx.clip(); lx.imageSmoothingEnabled = false;
+        if (CG.icon.complete && CG.icon.naturalWidth) { const k = (r * 2) / CG.icon.naturalWidth; lx.drawImage(CG.icon, Math.round(cx - r), Math.round(cy - r), Math.round(CG.icon.naturalWidth * k), Math.round(CG.icon.naturalHeight * k)); }
+        else { const pr = portrait(sim.selCast[i]), k = (r * 2) / 34; lx.drawImage(pr, Math.round(cx - 19 * k), Math.round(cy - 17 * k + 3), Math.round(38 * k), Math.round(34 * k)); }
+        lx.restore();
       }
       if (S && S.locked) { lx.fillStyle = 'rgba(5,6,15,0.5)'; lx.beginPath(); lx.arc(cx, cy, r, 0, Math.PI * 2); lx.fill(); }
       if (sim.selStep === 1 && sim.sel[0] === i) { lx.fillStyle = ROSTER[0].color; lx.fillRect(cx - r - 4, cy - r - 4, 16, 9); }
@@ -1121,8 +1123,8 @@
     // the CG, nearly full height on the left, dimmed while the cursor is on a locked member
     const cg = CG.jk;
     if (cg.complete && cg.naturalWidth) {
-      const ch = Math.round(cv.height * 0.7), cw = Math.round(ch * cg.naturalWidth / cg.naturalHeight);
-      ctx.globalAlpha = S0.C ? 1 : 0.3; ctx.drawImage(cg, Math.round(16 * scale), cv.height - ch - Math.round(8 * scale), cw, ch); ctx.globalAlpha = 1;
+      const cw = Math.round(cv.width * 0.5), ch = Math.round(cw * cg.naturalHeight / cg.naturalWidth);   // 「至少畫面的一半」: half the width, the bust running off the bottom
+      ctx.globalAlpha = S0.C ? 1 : 0.3; ctx.drawImage(cg, 0, 0, cw, ch); ctx.globalAlpha = 1;
     }
     text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), 340, 22, 16, '#ffd24a');
     text('◀ ▶ 選擇　Z 決定　ESC 返回', 340, 40, 9, '#b9c2ea');
