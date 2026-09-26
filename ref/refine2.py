@@ -1,19 +1,24 @@
-# refine2.py — precise re-analysis of the Gemini action sheets + a "16-bit RPG sprite" clean-up of every sheet cell.
+# refine2.py — precise re-analysis of the Gemini action sheets + a "16-bit RPG sprite" clean-up of every sheet cell,
+# with sheet B (ref/jk_actions3.jpg) as the drawing baseline.
 #
 # Findings (grid_analysis.py): the three sheets have NO true pixel grid (the gradient autocorrelation peaks at 1 px —
-# they are AI "pixel-look" paintings), so the 4-px block average that cells.py/pixelize.py used mixes neighbouring
-# pseudo-pixels and leaves JPEG mud. Here every sprite pixel is re-derived from its 4×4 (C: 2.9×2.9) block of SOURCE
-# pixels: each source pixel is first classified into a MATERIAL (hair, skin, top, collar, scarf, skirt, chrome leg,
-# stocking, boot, blade, hilt, guard, line) using colour + the pixel's height on the figure, the block takes the
-# majority material, and its tone is the block's median luminance mapped onto that material's fixed 3-shade ramp
-# (light source top-left; ramps from the standing picture). Then, after the infographic the user sent
-# ("How to draw a 16-bit RPG sprite"): silhouette first (the cell's figure mask), 1-px locked dark outline, 3–5 shades
-# per area, cluster shading (a 3×3 majority pass on tones inside each material — no dithering / gradients), simple
-# face (red eye 1 px under a dark lash, the white streak), no half pixels. Effects (the sheet's cyan / magenta / fire
-# strokes) are re-quantised to 3 tones each and kept on their own layer.
+# they are AI "pixel-look" paintings; a figure is ~165 source px tall), so the old 4-px block average mixed
+# neighbouring pseudo-pixels and left JPEG mud. Here every sprite pixel is re-derived from its own window of SOURCE
+# pixels (UP = 1: 4×4 → 41-px cells; UP = 2: 2×2 → 82-px cells drawn 1:1 in the 480×270 world, i.e. the sheet's
+# drawing at half size — the finest the source supports): each source pixel is classified into a MATERIAL (hair,
+# skin, top, collar, scarf, skirt, chrome leg, stocking, boot, blade, hilt, guard, sheen, line) by colour + its
+# height on the figure, the window takes the majority material (small features — face, scarf, guard — win at a
+# quarter), the tone is the window's median luminance mapped onto that material's fixed 3-shade ramp (from the
+# standing picture), the two legs are split dark / light per column. Then, after the "How to draw a 16-bit RPG
+# sprite" sheet: silhouette first (from the source, inside the cutter's mask), a locked 1-px dark outline, 3 shades
+# per area, cluster shading (3×3 tone majority inside a material), a consistent top-left light (rim light / rim
+# shade), a simple face (red eye under a dark lash, the white streak), no half pixels. Effects (cyan / magenta /
+# fire / white strokes) are re-cut from the source inside the cutter's effect mask and quantised to 3 tones.
 #
-#   python refine2.py            rewrites src/sprites-jk.js (A/B/C cells; H cells untouched), exports ref/art/cells/
-#   python refine2.py review     only writes ref/art/refine2_review.png (a strip of cells before / after, ×6)
+#   python refine2.py            41-px cells (UP 1) → src/sprites-jk.js (A/B/C; H cells untouched), ref/art/cells/
+#   python refine2.py x2         82-px cells (UP 2; the engine then needs SCALE 1 / hit boxes ×2 — tools/patch)
+#   ... review                   only writes ref/art/refine2_review.png (before / after, ×6);  nolight = no rim light
+# The cutter's 41-px geometry + masks are kept in each cell as 'g41' so the pass can be re-run at either scale.
 import os, sys, json, base64, math
 from collections import Counter
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -23,7 +28,8 @@ SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg'
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
 OUT = (14, 12, 24)
-LIGHT_PASS = 'nolight' not in sys.argv                 # consistent top-left rim light / bottom-right shade (see below)
+UP = 2 if 'x2' in sys.argv else 1
+LIGHT_PASS = 'nolight' not in sys.argv
 
 # ---- material ramps (shade, base, light) from the standing picture / hand.py palette
 RAMPS = {
@@ -81,37 +87,91 @@ def classify(p, hy):
     if L > 56: return 'chrome' if hy > 0.5 else ('hair' if b >= r else 'skin')
     if L > 36: return 'stock' if hy > 0.55 else 'hair'
     return 'boot' if hy > 0.88 else ('stock' if hy > 0.6 else 'hair')
+def is_fx(cls): return cls in FX_RAMPS
 
 def load_cells():
     src = open('../src/sprites-jk.js', encoding='utf-8').read()
     h0 = 'root.SPRITES.jk = '; i = src.index(h0) + len(h0); j = src.rindex('; })')
     return src, i, j, json.loads(src[i:j])
 
+# ---- the cutter's 41-px geometry and masks, kept per cell as 'g41' (packed bits)
+def pack(bits):
+    out = bytearray((len(bits) + 7) // 8)
+    for k, b in enumerate(bits):
+        if b: out[k >> 3] |= 1 << (k & 7)
+    return base64.b64encode(bytes(out)).decode('ascii')
+def unpack(s, n):
+    raw = base64.b64decode(s); return [(raw[k >> 3] >> (k & 7)) & 1 == 1 for k in range(n)]
+def geom(c):
+    if 'g41' not in c:
+        w, h = c['w'], c['h']
+        fig = Image.frombytes('RGBA', (w, h), base64.b64decode(c['f']))
+        eff = Image.frombytes('RGBA', (w, h), base64.b64decode(c['e'])) if c['e'] else None
+        c['g41'] = {'w': w, 'h': h, 'ax': c['ax'], 'ay': c['ay'], 'sX': c['sX'], 'sY': c['sY'],
+                    'm': pack([p[3] > 0 for p in fig.getdata()]), 'e': pack([p[3] > 0 for p in eff.getdata()]) if eff else None}
+    g = c['g41']; n = g['w'] * g['h']
+    m = unpack(g['m'], n); e = unpack(g['e'], n) if g['e'] else [False] * n
+    return g, [m[y * g['w']:(y + 1) * g['w']] for y in range(g['h'])], [e[y * g['w']:(y + 1) * g['w']] for y in range(g['h'])]
+
 BG = {}
 def sheet_bg(tag, sheet):
-    """the sheet's background colour (its most common colour)"""
     if tag not in BG:
         small = sheet.resize((sheet.width // 4, sheet.height // 4))
         BG[tag] = Counter(small.getdata()).most_common(1)[0][0]
     return BG[tag]
-def block_source(sheet, tag, c, X, Y):
-    """the source pixels behind sprite pixel (X, Y) of the cell, background pixels dropped"""
+def window(sheet, tag, g, X, Y):
+    """the source pixels behind sprite pixel (X, Y) (UP-scale coordinates), background dropped; also the bg count"""
     f = CSCALE if tag == 'C' else 1.0
-    nx0 = (c['sX'] - c['ax']) / f; ny0 = (c['sY'] - c['ay']) / f
-    cx = (nx0 + (X + 0.5) / f) * GRID; cy = (ny0 + (Y + 0.5) / f) * GRID
-    half = GRID / f / 2
+    nx0 = (g['sX'] - g['ax']) / f; ny0 = (g['sY'] - g['ay']) / f
+    cx = (nx0 + (X + 0.5) / (f * UP)) * GRID; cy = (ny0 + (Y + 0.5) / (f * UP)) * GRID
+    half = GRID / f / UP / 2
     xs = range(max(0, int(cx - half + 0.5)), min(sheet.width, int(cx + half + 0.5)))
     ys = range(max(0, int(cy - half + 0.5)), min(sheet.height, int(cy + half + 0.5)))
-    bg = sheet_bg(tag, sheet)
-    return [p for p in (sheet.getpixel((x, y)) for y in ys for x in xs) if abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) >= 48]
+    bg = sheet_bg(tag, sheet); keep = []; nbg = 0
+    for y in ys:
+        for x in xs:
+            p = sheet.getpixel((x, y))
+            if abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) >= 48: keep.append(p)
+            else: nbg += 1
+    return keep, nbg
+
+def upscale_mask(m41, w41, h41):
+    w, h = w41 * UP, h41 * UP
+    return [[m41[y // UP][x // UP] for x in range(w)] for y in range(h)], w, h
+def dilate(m, w, h):
+    out = [[False] * w for _ in range(h)]
+    for y in range(h):
+        for x in range(w):
+            if any(0 <= x + dx < w and 0 <= y + dy < h and m[y + dy][x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)): out[y][x] = True
+    return out
 
 def refine_cell(tag, c, sheet):
-    w, h = c['w'], c['h']
-    fig = Image.frombytes('RGBA', (w, h), base64.b64decode(c['f'])); fp = fig.load()
-    eff = Image.frombytes('RGBA', (w, h), base64.b64decode(c['e'])) if c['e'] else None
-    ep = eff.load() if eff else None
-    # the silhouette = the cell's figure mask (from the cutter); its vertical extent gives the height fraction
-    mask = [[fp[x, y][3] > 0 for x in range(w)] for y in range(h)]
+    g, m41, e41 = geom(c); w41, h41 = g['w'], g['h']
+    base, w, h = upscale_mask(m41, w41, h41); ebase, _, _ = upscale_mask(e41, w41, h41)
+    cand = dilate(base, w, h) if UP > 1 else base
+    ecand = dilate(ebase, w, h) if UP > 1 else ebase
+    # the silhouette from the source: inside the (dilated) cutter mask, a pixel is figure when its window is mostly
+    # non-background and not an effect stroke; effect pixels come from the (dilated) effect mask the same way
+    win = {}; mask = [[False] * w for _ in range(h)]; emask = [[False] * w for _ in range(h)]; ecls = {}
+    for y in range(h):
+        for x in range(w):
+            if not (cand[y][x] or ecand[y][x]): continue
+            keep, nbg = window(sheet, tag, g, x, y); win[(x, y)] = keep
+            n = len(keep) + nbg
+            if n == 0: continue
+            fx = Counter(classify(p, 0.5) for p in keep if is_fx(classify(p, 0.5)))
+            nfx = sum(fx.values())
+            if ecand[y][x] and nfx >= max(1, n * 0.5) and nfx >= len(keep) * 0.5:
+                emask[y][x] = True; ecls[(x, y)] = fx.most_common(1)[0][0]; continue
+            if cand[y][x] and len(keep) - nfx >= n * 0.5: mask[y][x] = True
+            elif ecand[y][x] and keep and nfx == 0 and len(keep) >= n * 0.5 and base[y][x]: mask[y][x] = True
+            elif cand[y][x] and UP == 1 and base[y][x] and keep: mask[y][x] = True
+    # the white smear strokes (pale, low saturation) inside the effect mask that the effect classes miss
+    for y in range(h):
+        for x in range(w):
+            if ecand[y][x] and not mask[y][x] and not emask[y][x] and win.get((x, y)):
+                pale = [p for p in win[(x, y)] if lum(p) > 150 and sat(p) < 60]
+                if len(pale) >= len(win[(x, y)]) * 0.5 and ebase[y][x]: emask[y][x] = True; ecls[(x, y)] = 'white'
     ys = [y for y in range(h) if any(mask[y])]
     if not ys: return None
     top, bot = min(ys), max(ys)
@@ -120,36 +180,30 @@ def refine_cell(tag, c, sheet):
         hy = (y - top) / max(1, bot - top)
         for x in range(w):
             if not mask[y][x]: continue
-            blk = block_source(sheet, tag, c, x, y)
-            if not blk: mat[y][x] = 'line'; continue
-            cls = Counter(classify(p, hy) for p in blk)
-            n = sum(cls.values())
-            # small features win the block when they hold a quarter of it (the face, the scarf, the guard, the sheen)
+            blk = [p for p in win.get((x, y), []) if not is_fx(classify(p, hy))]
+            if not blk: mat[y][x] = 'line'; lums[(x, y)] = 0; continue
+            cls = Counter(classify(p, hy) for p in blk); n = sum(cls.values())
             m = None
             for small in ('skin', 'scarf', 'guard', 'sheen', 'hilt'):
                 if cls.get(small, 0) >= max(2, n * 0.25): m = small; break
-            if m is None:
-                nonfx = [k for k in cls if k not in FX_RAMPS]
-                m = max(nonfx, key=lambda k: cls[k]) if nonfx else 'line'
+            if m is None: m = cls.most_common(1)[0][0]
             mat[y][x] = m
             ls = sorted(lum(p) for p in blk if classify(p, hy) == m)
             lums[(x, y)] = ls[len(ls) // 2] if ls else lum(blk[0])
-    # the two legs: the sheet draws the stocking leg dark and the chrome leg light, but both sit in the same grey-blue
-    # band, so split the cell's leg pixels at their own luminance median (dark half → stocking, light half → chrome)
-    # — decided per COLUMN (the legs stand side by side; a kicking chrome leg spans its own columns), smoothed
+    # the two legs: split dark (stocking) / light (chrome) per COLUMN of the cell's leg pixels
     legs = [(x, y) for y in range(h) for x in range(w) if mat[y][x] in ('chrome', 'stock')]
-    if len(legs) >= 6:
+    if len(legs) >= 6 * UP:
         colL = {}
         for (x, y) in legs: colL.setdefault(x, []).append(lums[(x, y)])
         colmean = {x: sum(v) / len(v) for x, v in colL.items()}
         vals = sorted(colmean.values()); med = vals[len(vals) // 2]
         if vals[-1] - vals[0] > 16:
-            dark = {x: colmean[x] < med for x in colmean}
-            xs = sorted(dark)
-            for k in range(1, len(xs) - 1):                      # a lone column between two of the other kind joins them
-                if dark[xs[k - 1]] == dark[xs[k + 1]] != dark[xs[k]]: dark[xs[k]] = dark[xs[k - 1]]
+            dark = {x: colmean[x] < med for x in colmean}; xs = sorted(dark)
+            for _ in range(UP):
+                for k in range(1, len(xs) - 1):
+                    if dark[xs[k - 1]] == dark[xs[k + 1]] != dark[xs[k]]: dark[xs[k]] = dark[xs[k - 1]]
             for (x, y) in legs: mat[y][x] = 'stock' if dark[x] else 'chrome'
-    # tones: per material, split the block luminances into shade / base / light by the material's own distribution
+    # tones per material: shade / base / light by the material's own luminance distribution in the cell
     for m in set(v for row in mat for v in row if v):
         if m == 'line': continue
         vals = sorted(lums[(x, y)] for y in range(h) for x in range(w) if mat[y][x] == m)
@@ -159,8 +213,7 @@ def refine_cell(tag, c, sheet):
             for x in range(w):
                 if mat[y][x] == m:
                     L = lums[(x, y)]; tone[y][x] = 0 if L < lo - 1 else (2 if L > hi + 1 else 1)
-    # lines that came out as single dark specks inside a material become that material (the sheet's JPEG noise);
-    # materials that are isolated single pixels take the majority of their 4 neighbours (silhouette-first, no specks)
+    # specks: an isolated material pixel takes the majority of its neighbours
     def neigh(x, y):
         return [mat[y + dy][x + dx] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= x + dx < w and 0 <= y + dy < h and mask[y + dy][x + dx]]
     for _ in range(2):
@@ -171,7 +224,7 @@ def refine_cell(tag, c, sheet):
                 if len(nb) >= 3:
                     cnt = Counter(nb); top_m, n = cnt.most_common(1)[0]
                     if top_m != mat[y][x] and n >= 3 and cnt[mat[y][x]] == 0: mat[y][x] = top_m
-    # cluster shading: a tone majority inside the material (3×3), so shades form clusters instead of dithering
+    # cluster shading: tone majority inside the material (3×3)
     for _ in range(2):
         nt = [row[:] for row in tone]
         for y in range(h):
@@ -183,9 +236,7 @@ def refine_cell(tag, c, sheet):
                     cnt = Counter(same); t, n = cnt.most_common(1)[0]
                     if n >= len(same) * 0.6: nt[y][x] = t
         tone = nt
-    # consistent light from the top-left (2D game art 101): inside each material region a pixel whose upper or left
-    # neighbour is another material / the outline / outside is lit (base → light), one whose lower or right neighbour
-    # is gets the shade (base → shade); pixels the sheet already shaded keep their tone. Only for regions ≥ 3 px wide.
+    # consistent light from the top-left: rim light on the upper / left edge of a region, rim shade lower / right
     if LIGHT_PASS:
         def other(x, y, m):
             return not (0 <= x < w and 0 <= y < h and mask[y][x]) or mat[y][x] != m or mat[y][x] == 'line'
@@ -196,18 +247,14 @@ def refine_cell(tag, c, sheet):
                 if not mask[y][x] or m in ('line', 'boot', 'hilt', 'guard', 'sheen'): continue
                 lit = other(x - 1, y, m) or other(x, y - 1, m)
                 shd = other(x + 1, y, m) or other(x, y + 1, m)
-                inner = not other(x - 1, y, m) and not other(x + 1, y, m)
                 if lit and not shd and tone[y][x] == 1: nt[y][x] = 2
                 elif shd and not lit and tone[y][x] == 1: nt[y][x] = 0
         tone = nt
     out = Image.new('RGBA', (w, h), (0, 0, 0, 0)); op = out.load()
     for y in range(h):
         for x in range(w):
-            if not mask[y][x]: continue
-            m = mat[y][x] or 'line'
-            op[x, y] = RAMPS[m][tone[y][x]] + (255,)
-    # the locked outline: 1 px of OUT around the silhouette (outside), plus a line between hair/skin and the face's
-    # front edge where the sheet had dark pixels (already 'line' material)
+            if mask[y][x]: op[x, y] = RAMPS[mat[y][x] or 'line'][tone[y][x]] + (255,)
+    # the locked outline: 1 px of OUT around the silhouette
     for y in range(h):
         for x in range(w):
             if op[x, y][3]: continue
@@ -215,34 +262,39 @@ def refine_cell(tag, c, sheet):
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < w and 0 <= ny < h and op[nx, ny][3] and op[nx, ny][:3] != OUT:
                     op[x, y] = OUT + (255,); break
-    # effects: 3 tones per family
-    if eff:
+    # effects: 3 tones per family, from the source
+    eff = None
+    if any(any(r) for r in emask):
+        eff = Image.new('RGBA', (w, h), (0, 0, 0, 0)); ep = eff.load()
         for y in range(h):
             for x in range(w):
-                p = ep[x, y]
-                if not p[3]: continue
-                fam = classify(p, 0.5)
-                if fam not in FX_RAMPS: fam = 'white' if lum(p) > 150 else 'cyan'
-                L = lum(p); ramp = FX_RAMPS[fam]
-                ep[x, y] = ramp[0 if L < 130 else (2 if L > 215 else 1)] + (255,)
+                if not emask[y][x]: continue
+                fam = ecls[(x, y)]; ps = win.get((x, y), [])
+                L = sorted(lum(p) for p in ps)[len(ps) // 2] if ps else 200
+                ramp = FX_RAMPS[fam]; ep[x, y] = ramp[0 if L < 130 else (2 if L > 215 else 1)] + (255,)
     return out, eff
 
-def features(im, c):
-    """the face: red eye under a dark lash at the front-top of the skin blob, the streak in the hair in front of it"""
+def features(im):
+    """the face: red eye under a dark lash at the front-top of the skin blob, the white streak in the hair in front"""
     px = im.load(); w, h = im.size
     skin = [(x, y) for y in range(h) for x in range(w) if px[x, y][3] and px[x, y][:3] in RAMPS['skin']]
-    if len(skin) < 4: return
+    if len(skin) < 4 * UP: return
     ys = sorted(set(y for _, y in skin)); ytop = ys[0]
-    face = [(x, y) for (x, y) in skin if y <= ytop + 4]
-    if not face: return
-    # the eye: the front-most skin pixel 2 rows under the skin top
-    row = [x for (x, y) in face if y == min(ytop + 2, ys[-1])]
+    ey = min(ytop + 2 * UP, ys[-1])
+    row = [x for (x, y) in skin if y == ey and y <= ytop + 4 * UP]
     if not row: return
-    ex, ey = max(row), min(ytop + 2, ys[-1])
-    px[ex, ey] = (196, 44, 62, 255)
-    if ey - 1 >= 0 and px[ex, ey - 1][3] and px[ex, ey - 1][:3] in RAMPS['skin']: px[ex, ey - 1] = OUT + (255,)
-    # the streak: the hair pixels just in front / above the eye
-    for (x, y) in ((ex + 1, ey - 2), (ex, ey - 3), (ex + 1, ey - 3)):
+    ex = max(row)
+    if UP == 1:
+        px[ex, ey] = (196, 44, 62, 255)
+        if ey - 1 >= 0 and px[ex, ey - 1][3] and px[ex, ey - 1][:3] in RAMPS['skin']: px[ex, ey - 1] = OUT + (255,)
+        streak = ((ex + 1, ey - 2), (ex, ey - 3), (ex + 1, ey - 3))
+    else:   # 82 px: a 2-px lash, the iris (red) with a dark pupil behind it, a 2-px streak
+        for x in (ex - 1, ex):
+            if x >= 0 and px[x, ey - 1][3]: px[x, ey - 1] = OUT + (255,)
+        px[ex, ey] = (196, 44, 62, 255)
+        if ex - 1 >= 0 and px[ex - 1, ey][3]: px[ex - 1, ey] = OUT + (255,)
+        streak = ((ex + 1, ey - 3), (ex + 2, ey - 3), (ex + 1, ey - 4), (ex, ey - 5), (ex + 1, ey - 5))
+    for (x, y) in streak:
         if 0 <= x < w and 0 <= y < h and px[x, y][3] and px[x, y][:3] in RAMPS['hair']: px[x, y] = (214, 218, 228, 255)
 
 def main():
@@ -252,32 +304,42 @@ def main():
     before, after = [], []
     for tag in ('A', 'B', 'C'):
         for c in data[tag]:
+            g = geom(c)[0]
             res = refine_cell(tag, c, sheets[tag])
             if not res: continue
-            out, eff = res
-            features(out, c)
-            w, h = c['w'], c['h']
-            before.append(Image.frombytes('RGBA', (w, h), base64.b64decode(c['f'])))
+            out, eff = res; features(out)
+            w, h = out.size
+            before.append(Image.frombytes('RGBA', (c['w'], c['h']), base64.b64decode(c['f'])))
             after.append(out)
             if not review_only:
+                c['w'], c['h'] = w, h
+                c['ax'] = g['ax'] * UP + (UP - 1); c['ay'] = g['ay'] * UP + (UP - 1)
+                c['sX'] = g['sX'] * UP; c['sY'] = g['sY'] * UP
                 c['f'] = base64.b64encode(out.tobytes()).decode('ascii')
                 c['e'] = base64.b64encode(eff.tobytes()).decode('ascii') if eff else None
-                c['refined'] = 2
-                xs = [x for y in range(h) for x in range(w) if out.getpixel((x, y))[3]]
-                ys = [y for y in range(h) for x in range(w) if out.getpixel((x, y))[3]]
-                if xs: c['fig'] = [min(xs) - c['ax'], min(ys) - c['ay'], max(xs) - c['ax'], max(ys) - c['ay']]
+                c['refined'] = 2; c['res'] = UP
+                op = out.load()
+                xs = [x for y in range(h) for x in range(w) if op[x, y][3]]; ys = [y for y in range(h) for x in range(w) if op[x, y][3]]
+                c['fig'] = [min(xs) - c['ax'], min(ys) - c['ay'], max(xs) - c['ax'], max(ys) - c['ay']] if xs else None
+                if eff:
+                    ep = eff.load()
+                    xs = [x for y in range(h) for x in range(w) if ep[x, y][3]]; ys = [y for y in range(h) for x in range(w) if ep[x, y][3]]
+                    c['eff'] = [min(xs) - c['ax'], min(ys) - c['ay'], max(xs) - c['ax'], max(ys) - c['ay']] if xs else None
+                    c['ne'] = len(xs)
+                else: c['eff'] = None; c['ne'] = 0
                 out.save(os.path.join('art', 'cells', '%s%d.png' % (tag, c['i'])))
     if not review_only:
         open('../src/sprites-jk.js', 'w', encoding='utf-8', newline='\n').write(src[:i] + json.dumps(data) + src[j:])
-        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in ('A', 'B', 'C')), 'cells refined')
-    # review strip: before (top) / after (bottom), ×6, the first 24 cells of each sheet
-    S = 6; sel = list(range(0, len(after), max(1, len(after) // 40)))[:40]
-    W = sum(after[k].width * S + 6 for k in sel) + 6; H = max(after[k].height for k in sel) * S * 2 + 30
+        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in ('A', 'B', 'C')), 'cells refined at UP', UP)
+    S = 6 // UP * 2 if UP > 1 else 6
+    sel = list(range(0, len(after), max(1, len(after) // 40)))[:40]
+    W = sum(after[k].width * S + 6 for k in sel) + 6
+    H = max(before[k].height * S * (UP if before[k].height * UP <= after[k].height else 1) for k in sel) + max(after[k].height for k in sel) * S + 30
     sheet = Image.new('RGBA', (W, H), (121, 139, 141, 255)); x = 6
     for k in sel:
-        b, a = before[k], after[k]
-        sheet.alpha_composite(b.resize((b.width * S, b.height * S), Image.NEAREST), (x, 6))
-        sheet.alpha_composite(a.resize((a.width * S, a.height * S), Image.NEAREST), (x, 18 + b.height * S))
+        b, a = before[k], after[k]; sb = S * (a.height // b.height)
+        sheet.alpha_composite(b.resize((b.width * sb, b.height * sb), Image.NEAREST), (x, 6))
+        sheet.alpha_composite(a.resize((a.width * S, a.height * S), Image.NEAREST), (x, 18 + b.height * sb))
         x += a.width * S + 6
     sheet.save(os.path.join('art', 'refine2_review.png')); print('review', sheet.size)
 

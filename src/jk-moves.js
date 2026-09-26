@@ -6,7 +6,7 @@
 // to world px by the sheet's scale on emit.
 (function (root) {
   'use strict';
-  const K = { A: 2, B: 2, C: 2, H: 2 };   // = src/sprite.js SCALE (cell px -> world px); H = hand-drawn
+  const K = { A: 1, B: 1, C: 1, H: 2 };   // = src/sprite.js SCALE (cell px -> world px); A/B/C = 82-px cells, hb below in those units
   let hitSerial = 1;
   const parse = (s) => ({ tag: s[0], i: +s.slice(1) });
   function seq(list) {
@@ -71,50 +71,50 @@
     // ---------------------------------------------------------------- Z chain (steel arm / chrome leg)
     A.light = { label: '義手ジャブ', frames: seq([
       { c: 'A5', d: 40, ph: 'ANTICIPATION' },
-      { c: 'A6', d: 50, ph: 'HIT', sfx: 'swish', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2 },
-      { c: 'A6', d: 60, ph: 'HOLD', hb: [3, -31, 19, -19], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
+      { c: 'A6', d: 50, ph: 'HIT', sfx: 'swish', hb: [6, -62, 38, -38], dmg: 5, stun: 260, kb: 2.2 },
+      { c: 'A6', d: 60, ph: 'HOLD', hb: [6, -62, 38, -38], dmg: 5, stun: 260, kb: 2.2, chain: true, cancel: true },
       { c: 'A5', d: 70, ph: 'RECOVER', chain: true, cancel: true },
     ]), nextLight: 'light2', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
     A.light2 = { label: '義手ストレート', frames: seq([
       { c: 'A20', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A21', d: 60, ph: 'HIT', ghost: true, sfx: 'heavy', shake: 2, dx: 4, hb: [2, -32, 14, -19], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
-      { c: 'A21', d: 90, ph: 'HOLD', hb: [2, -32, 14, -19], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
+      { c: 'A21', d: 60, ph: 'HIT', ghost: true, sfx: 'heavy', shake: 2, dx: 4, hb: [4, -64, 28, -38], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
+      { c: 'A21', d: 90, ph: 'HOLD', hb: [4, -64, 28, -38], dmg: 9, stun: 340, kb: 4, pd: 1.6 },
       { c: 'A20', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
       { c: 'A5', d: 90, ph: 'RECOVER', chain: true },
     ]), nextLight: 'kick', nextHeavy: 'heavy', altWhenBroken: { arm: 'bump' } };
     A.bump = { label: '肩タックル', frames: seq([
       { c: 'A5', d: 90, ph: 'ANTICIPATION' },
-      { c: 'A2', d: 60, ph: 'HIT', ghost: true, dx: 6, sfx: 'heavy', shake: 1, hb: [0, -32, 12, -10], dmg: 6, stun: 300, kb: 4, pd: 1.2 },
-      { c: 'A2', d: 90, ph: 'HOLD', hb: [0, -32, 12, -10], dmg: 6, stun: 300, kb: 4, pd: 1.2, chain: true },
+      { c: 'A2', d: 60, ph: 'HIT', ghost: true, dx: 6, sfx: 'heavy', shake: 1, hb: [0, -64, 24, -20], dmg: 6, stun: 300, kb: 4, pd: 1.2 },
+      { c: 'A2', d: 90, ph: 'HOLD', hb: [0, -64, 24, -20], dmg: 6, stun: 300, kb: 4, pd: 1.2, chain: true },
       { c: 'A0', d: 120, ph: 'RECOVER', chain: true },
     ]), nextLight: 'kick', nextHeavy: 'heavy' };
     A.kick = { label: '義足ミドル', frames: seq([
       { c: 'A10', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A9', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [4, -27, 24, -11], dmg: 7, stun: 340, kb: 3.2, pd: 1.2 },
-      { c: 'A9', d: 80, ph: 'HOLD', hb: [4, -27, 24, -11], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, chain: true, cancel: true },
+      { c: 'A9', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [8, -54, 48, -22], dmg: 7, stun: 340, kb: 3.2, pd: 1.2 },
+      { c: 'A9', d: 80, ph: 'HOLD', hb: [8, -54, 48, -22], dmg: 7, stun: 340, kb: 3.2, pd: 1.2, chain: true, cancel: true },
       { c: 'A10', d: 70, ph: 'RETRACT', chain: true, cancel: true },
       { c: 'A5', d: 100, ph: 'RECOVER', chain: true },
     ]), nextLight: 'light3', nextHeavy: 'heavy', altWhenBroken: { leg: 'light3' } };
     A.light3 = { label: '横薙ぎ', frames: seq([
       { c: 'B9', d: 80, ph: 'ANTICIPATION' },
-      { c: 'B10', d: 50, ph: 'SMEAR', sfx: 'swish', hb: [-6, -32, 16, -2], dmg: 7, stun: 320, kb: 3 },
-      { c: 'A22', d: 80, ph: 'HIT', hb: [-2, -30, 16, -10], dmg: 7, stun: 320, kb: 3 },
+      { c: 'B10', d: 50, ph: 'SMEAR', sfx: 'swish', hb: [-12, -64, 32, -4], dmg: 7, stun: 320, kb: 3 },
+      { c: 'A22', d: 80, ph: 'HIT', hb: [-4, -60, 32, -20], dmg: 7, stun: 320, kb: 3 },
       { c: 'A22', d: 60, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
       { c: 'B9', d: 80, ph: 'RECOVER', chain: true, cancel: true },
     ]), nextLight: 'light4', nextHeavy: 'heavy3' };
     A.light4 = { label: 'ハイキック', frames: seq([
       { c: 'A10', d: 60, ph: 'ANTICIPATION' },
-      { c: 'A7', d: 40, ph: 'RISE', ghost: true, hb: [4, -30, 20, -12], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
-      { c: 'A8', d: 45, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [2, -40, 22, -18], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
-      { c: 'A12', d: 90, ph: 'HOLD', hb: [2, -38, 18, -16], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
+      { c: 'A7', d: 40, ph: 'RISE', ghost: true, hb: [8, -60, 40, -24], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
+      { c: 'A8', d: 45, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [4, -80, 44, -36], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
+      { c: 'A12', d: 90, ph: 'HOLD', hb: [4, -76, 36, -32], dmg: 9, stun: 420, kb: 3, kbUp: 6, kd: true, pd: 1.3 },
       { c: 'A13', d: 80, ph: 'RETRACT' },
       { c: 'A5', d: 120, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- X chain (sword)
     A.heavy = { label: '袈裟斬', frames: seq([
       { c: 'A30', d: 100, ph: 'ANTICIPATION' },
-      { c: 'A31', d: 50, ph: 'SMEAR', sfx: 'swish', shake: 2, hb: [-4, -30, 24, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
-      { c: 'A31', d: 100, ph: 'HIT', hb: [-4, -30, 24, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
+      { c: 'A31', d: 50, ph: 'SMEAR', sfx: 'swish', shake: 2, hb: [-8, -60, 48, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
+      { c: 'A31', d: 100, ph: 'HIT', hb: [-8, -60, 48, 0], dmg: 12, stun: 420, kb: 4, pd: 1.4 },
       { c: 'A29', d: 50, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
       { c: 'A0', d: 50, ph: 'RECOVER', chain: true },
       { c: 'B1', d: 50, ph: 'OVERSHOOT' },
@@ -122,56 +122,56 @@
     A.heavy2 = { label: '刺突', frames: seq([
       { c: 'A1', d: 70, ph: 'ANTICIPATION' },
       { c: 'A2', d: 70, ph: 'CHAMBER', dx: 4 },
-      { c: 'A3', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', dx: 6, hb: [8, -31, 34, -21], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
-      { c: 'A3', d: 70, ph: 'HIT', hb: [8, -31, 34, -21], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
+      { c: 'A3', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', dx: 6, hb: [16, -62, 68, -42], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
+      { c: 'A3', d: 70, ph: 'HIT', hb: [16, -62, 68, -42], dmg: 11, stun: 400, kb: 4, pd: 1.5 },
       { c: 'A4', d: 70, ph: 'FOLLOW THROUGH', chain: true, cancel: true },
       { c: 'A0', d: 90, ph: 'RECOVER', chain: true },
     ]), nextHeavy: 'heavy3', nextLight: 'light4' };
     A.heavy3 = { label: '連斬・回天', frames: seq([
       { c: 'A26', d: 60, ph: 'ANTICIPATION', ghost: true, dx: 6 },
-      { c: 'A28', d: 60, ph: 'HIT', ghost: true, sfx: 'swish', dx: 8, hb: [-4, -30, 18, -4], dmg: 6, stun: 300, kb: 2, hid: 1 },
-      { c: 'A29', d: 60, ph: 'HIT', sfx: 'swish', dx: 6, hb: [-8, -30, 12, -4], dmg: 6, stun: 300, kb: 2, hid: 2 },
+      { c: 'A28', d: 60, ph: 'HIT', ghost: true, sfx: 'swish', dx: 8, hb: [-8, -60, 36, -8], dmg: 6, stun: 300, kb: 2, hid: 1 },
+      { c: 'A29', d: 60, ph: 'HIT', sfx: 'swish', dx: 6, hb: [-16, -60, 24, -8], dmg: 6, stun: 300, kb: 2, hid: 2 },
       { c: 'A30', d: 40, ph: 'ARC' },
-      { c: 'A31', d: 90, ph: 'HIT', sfx: 'swish', shake: 2, hb: [-4, -30, 24, 0], dmg: 12, stun: 500, kb: 5, kbUp: 6, kd: true, pd: 1.5, hid: 3 },
+      { c: 'A31', d: 90, ph: 'HIT', sfx: 'swish', shake: 2, hb: [-8, -60, 48, 0], dmg: 12, stun: 500, kb: 5, kbUp: 6, kd: true, pd: 1.5, hid: 3 },
       { c: 'A29', d: 60, ph: 'FOLLOW THROUGH' },
       { c: 'A0', d: 100, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- crouching
     A.crouchLight = { label: '屈み義手', frames: seq([
       { c: 'A14', d: 50, ph: 'ANTICIPATION' },
-      { c: 'A15', d: 60, ph: 'HIT', sfx: 'swish', hb: [2, -22, 17, -10], dmg: 5, stun: 280, kb: 2.5 },
-      { c: 'A16', d: 70, ph: 'HOLD', hb: [2, -22, 14, -10], dmg: 5, stun: 280, kb: 2.5, chain: true, cancel: true },
+      { c: 'A15', d: 60, ph: 'HIT', sfx: 'swish', hb: [4, -44, 34, -20], dmg: 5, stun: 280, kb: 2.5 },
+      { c: 'A16', d: 70, ph: 'HOLD', hb: [4, -44, 28, -20], dmg: 5, stun: 280, kb: 2.5, chain: true, cancel: true },
       { c: 'A14', d: 100, ph: 'RECOVER' },
     ]), nextLight: 'crouchKick', altWhenBroken: { arm: 'crouchHeavy' } };
     A.crouchHeavy = { label: '足払い', frames: seq([
       { c: 'A17', d: 70, ph: 'ANTICIPATION' },
-      { c: 'A18', d: 50, ph: 'HIT', sfx: 'swish', hb: [-6, -14, 16, 0], dmg: 7, stun: 340, kb: 3, kd: true },
-      { c: 'A18', d: 80, ph: 'HOLD', hb: [-6, -14, 16, 0], dmg: 7, stun: 340, kb: 3, kd: true },
+      { c: 'A18', d: 50, ph: 'HIT', sfx: 'swish', hb: [-12, -28, 32, 0], dmg: 7, stun: 340, kb: 3, kd: true },
+      { c: 'A18', d: 80, ph: 'HOLD', hb: [-12, -28, 32, 0], dmg: 7, stun: 340, kb: 3, kd: true },
       { c: 'A19', d: 120, ph: 'RECOVER' },
     ]) };
     A.crouchKick = { label: '炎の足払い', frames: seq([
       { c: 'A14', d: 60, ph: 'ANTICIPATION' },
-      { c: 'C11', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
-      { c: 'C11', d: 90, ph: 'HOLD', hb: [-8, -12, 12, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
+      { c: 'C11', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', shake: 1, hb: [-16, -24, 24, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
+      { c: 'C11', d: 90, ph: 'HOLD', hb: [-16, -24, 24, 0], dmg: 7, stun: 360, kb: 3.5, kd: true, pd: 1.2 },
       { c: 'A14', d: 130, ph: 'RECOVER' },
     ]), altWhenBroken: { leg: 'crouchHeavy' } };
     // ---------------------------------------------------------------- air
     A.air = { label: '空中義手', frames: seq([
       { c: 'B20', d: 50, ph: 'ANTICIPATION' },
-      { c: 'B22', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [4, -28, 18, -14], dmg: 7, stun: 300, kb: 3 },
-      { c: 'B22', d: 90, ph: 'HOLD', hb: [4, -28, 18, -14], dmg: 7, stun: 300, kb: 3 },
+      { c: 'B22', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [8, -56, 36, -28], dmg: 7, stun: 300, kb: 3 },
+      { c: 'B22', d: 90, ph: 'HOLD', hb: [8, -56, 36, -28], dmg: 7, stun: 300, kb: 3 },
       { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
     ]), altWhenBroken: { arm: 'air2' } };
     A.air2 = { label: '空中斬', frames: seq([
       { c: 'B23', d: 60, ph: 'ANTICIPATION' },
-      { c: 'B24', d: 40, ph: 'SMEAR', sfx: 'swish', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
-      { c: 'B24', d: 80, ph: 'HIT', hb: [4, -28, 32, -10], dmg: 8, stun: 320, kb: 3 },
+      { c: 'B24', d: 40, ph: 'SMEAR', sfx: 'swish', hb: [8, -56, 64, -20], dmg: 8, stun: 320, kb: 3 },
+      { c: 'B24', d: 80, ph: 'HIT', hb: [8, -56, 64, -20], dmg: 8, stun: 320, kb: 3 },
       { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
     ]) };
     A.airKick = { label: '空中義足', frames: seq([
       { c: 'B20', d: 50, ph: 'ANTICIPATION' },
-      { c: 'B23', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [2, -26, 20, -6], dmg: 8, stun: 340, kb: 3 },
-      { c: 'B23', d: 90, ph: 'HOLD', hb: [2, -26, 20, -6], dmg: 8, stun: 340, kb: 3 },
+      { c: 'B23', d: 50, ph: 'HIT', ghost: true, sfx: 'swish', hb: [4, -52, 40, -12], dmg: 8, stun: 340, kb: 3 },
+      { c: 'B23', d: 90, ph: 'HOLD', hb: [4, -52, 40, -12], dmg: 8, stun: 340, kb: 3 },
       { c: 'B21', d: 260, ph: 'FOLLOW THROUGH' },
     ]) };
     // ---------------------------------------------------------------- specials
@@ -179,11 +179,11 @@
       { c: 'A25', d: 90, ph: 'ANTICIPATION' },
       { c: 'A26', d: 70, ph: 'DASH', dx: 14, ghost: true, sfx: 'dash', inv: true },
       { c: 'A27', d: 60, ph: 'DASH', dx: 16, ghost: true, sfx: 'dash', inv: true },
-      { c: 'A28', d: 45, ph: 'SMEAR', dx: 10, ghost: true, sfx: 'swish', hb: [-4, -30, 18, -4], dmg: 8, stun: 400, kb: 2, hid: 1 },
-      { c: 'A29', d: 70, ph: 'HIT', hb: [-8, -30, 12, -4], dmg: 8, stun: 400, kb: 2, hid: 1 },
+      { c: 'A28', d: 45, ph: 'SMEAR', dx: 10, ghost: true, sfx: 'swish', hb: [-8, -60, 36, -8], dmg: 8, stun: 400, kb: 2, hid: 1 },
+      { c: 'A29', d: 70, ph: 'HIT', hb: [-16, -60, 24, -8], dmg: 8, stun: 400, kb: 2, hid: 1 },
       { c: 'A30', d: 80, ph: 'WIND' },
-      { c: 'A31', d: 40, ph: 'SMEAR', sfx: 'swish', shake: 3, hb: [-6, -30, 24, 0], dmg: 14, stun: 520, kb: 5, kbUp: 4, kd: true, pd: 1.8, hid: 2 },
-      { c: 'A31', d: 110, ph: 'HIT', hb: [-6, -30, 24, 0], dmg: 14, stun: 520, kb: 5, kbUp: 4, kd: true, pd: 1.8, hid: 2 },
+      { c: 'A31', d: 40, ph: 'SMEAR', sfx: 'swish', shake: 3, hb: [-12, -60, 48, 0], dmg: 14, stun: 520, kb: 5, kbUp: 4, kd: true, pd: 1.8, hid: 2 },
+      { c: 'A31', d: 110, ph: 'HIT', hb: [-12, -60, 48, 0], dmg: 14, stun: 520, kb: 5, kbUp: 4, kd: true, pd: 1.8, hid: 2 },
       { c: 'A29', d: 90, ph: 'FOLLOW THROUGH' },
       { c: 'A0', d: 120, ph: 'RECOVER' },
     ]) };
@@ -200,15 +200,15 @@
       { c: 'C41', d: 150, ph: 'CHARGE', sfx: 'charge', shake: 1 },
       { c: 'C42', d: 150, ph: 'CHARGE', shake: 2 },
       { c: 'C43', d: 150, ph: 'CHARGE', shake: 3 },
-      { c: 'C44', d: 70, ph: 'BURST', sfx: 'burst', shake: 7, hb: [-30, -30, 26, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
-      { c: 'C44', d: 120, ph: 'BURST', shake: 3, hb: [-34, -30, 28, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
+      { c: 'C44', d: 70, ph: 'BURST', sfx: 'burst', shake: 7, hb: [-60, -60, 52, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
+      { c: 'C44', d: 120, ph: 'BURST', shake: 3, hb: [-68, -60, 56, 0], dmg: 26, stun: 640, kb: 6, kbUp: 7, kd: true, pd: 2.2 },
       { c: 'C45', d: 160, ph: 'FADE' },
       { c: 'B0', d: 240, ph: 'RECOVER' },
     ]) };
     // ---------------------------------------------------------------- throw
     A.throw = { label: '投げ', frames: seq([
       { c: 'B30', d: 60, ph: 'REACH' },
-      { c: 'B30', d: 40, ph: 'GRAB', throw: true, hb: [2, -34, 16, -8], dmg: 0, stun: 0, kb: 0 },
+      { c: 'B30', d: 40, ph: 'GRAB', throw: true, hb: [4, -68, 32, -16], dmg: 0, stun: 0, kb: 0 },
       { c: 'B31', d: 140, ph: 'MISS' },
       { c: 'B0', d: 100, ph: 'RECOVER' },
     ]) };
