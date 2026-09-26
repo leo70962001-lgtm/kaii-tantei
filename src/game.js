@@ -664,13 +664,53 @@
   });
   window.addEventListener('keyup', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; const m = KEYS[k]; if (m) held[m[0]][m[1]] = false; });
   window.addEventListener('blur', () => { for (const h of held) for (const k of Object.keys(h)) h[k] = false; });
-  // touch pad: hold buttons for P1
-  document.querySelectorAll('[data-hold]').forEach((b) => {
-    const k = b.dataset.hold;
-    const on = (e) => { e.preventDefault(); ensureAudio(); if (!held[0][k]) { uiPress = uiPress || { slot: 0, key: k }; stick[0][k] = true; } held[0][k] = true; };
-    const off = () => { held[0][k] = false; };
-    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
-  });
+  // ------------------------------------------------------------ touch: a pad laid over the picture (「把方向跟 AB 鍵加在上面」)
+  // The stick on the left reads the finger's offset from its centre as one of 8 directions (slide, no lifting; up =
+  // jump); the keys on the right are held and can be slid between (a light→heavy roll). Every finger is tracked by
+  // its pointerId so directions and attacks work at the same time.
+  const pressKey = (k) => { ensureAudio(); if (!held[0][k]) { uiPress = uiPress || { slot: 0, key: k }; stick[0][k] = true; } held[0][k] = true; };
+  const releaseKey = (k) => { held[0][k] = false; };
+  const touch = document.getElementById('touch');
+  if (touch) {
+    const stickEl = touch.querySelector('.stick'), knob = touch.querySelector('.knob'), DIRS = ['left', 'right', 'up', 'down'];
+    let stickId = null, cx = 0, cy = 0, R = 40;
+    const setDir = (dx, dy) => {
+      const d = Math.hypot(dx, dy), want = {};
+      if (d > R * 0.22) { const ax = Math.abs(dx), ay = Math.abs(dy); if (ax > ay * 0.45) want[dx < 0 ? 'left' : 'right'] = true; if (ay > ax * 0.45) want[dy < 0 ? 'up' : 'down'] = true; }
+      for (const k of DIRS) { if (want[k] && !held[0][k]) pressKey(k); else if (!want[k] && held[0][k]) releaseKey(k); }
+      stickEl.dataset.dir = DIRS.filter((k) => want[k]).join(' ');
+      const m = Math.min(1, d / R) * R * 0.55, a = Math.atan2(dy, dx);
+      knob.style.transform = d > 0 ? `translate(${Math.cos(a) * m}px, ${Math.sin(a) * m}px)` : '';
+    };
+    const capture = (el, id) => { try { el.setPointerCapture(id); } catch (_) { /* synthetic pointers have no capture */ } };
+    stickEl.addEventListener('pointerdown', (e) => { e.preventDefault(); if (stickId !== null) return; stickId = e.pointerId; capture(stickEl, e.pointerId); const r = stickEl.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width / 2; setDir(e.clientX - cx, e.clientY - cy); });
+    stickEl.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) setDir(e.clientX - cx, e.clientY - cy); });
+    const endStick = (e) => { if (e.pointerId !== stickId) return; stickId = null; setDir(0, 0); };
+    stickEl.addEventListener('pointerup', endStick); stickEl.addEventListener('pointercancel', endStick);
+    const keysEl = touch.querySelector('.keys'), btns = [...keysEl.querySelectorAll('[data-hold]')], owner = new Map();   // pointerId → button
+    const under = (x, y) => btns.find((b) => { const r = b.getBoundingClientRect(); return x >= r.left && x < r.right && y >= r.top && y < r.bottom; }) || null;
+    const holders = (b) => [...owner.values()].filter((o) => o === b).length;
+    const grab = (id, b) => {
+      const prev = owner.get(id) || null; if (prev === b) return;
+      if (prev) { owner.delete(id); if (!holders(prev)) { prev.classList.remove('on'); releaseKey(prev.dataset.hold); } }
+      if (b) { owner.set(id, b); if (holders(b) === 1) { b.classList.add('on'); pressKey(b.dataset.hold); } }
+    };
+    const active = new Set();   // pointers that came down on the key area (slides are tracked until they lift)
+    keysEl.addEventListener('pointerdown', (e) => { e.preventDefault(); active.add(e.pointerId); capture(keysEl, e.pointerId); grab(e.pointerId, under(e.clientX, e.clientY)); });
+    keysEl.addEventListener('pointermove', (e) => { if (active.has(e.pointerId)) grab(e.pointerId, under(e.clientX, e.clientY)); });
+    const endKey = (e) => { active.delete(e.pointerId); grab(e.pointerId, null); };
+    keysEl.addEventListener('pointerup', endKey); keysEl.addEventListener('pointercancel', endKey);
+    touch.addEventListener('contextmenu', (e) => e.preventDefault());
+    const fsBtn = touch.querySelector('[data-fs]');
+    if (fsBtn) fsBtn.addEventListener('click', () => {
+      const st = document.getElementById('stage');
+      if (document.fullscreenElement) { document.exitFullscreen(); return; }
+      const p = st.requestFullscreen ? st.requestFullscreen() : null;
+      if (p && p.then) p.then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', () => { fit(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 't' || e.key === 'T') touch.classList.toggle('show'); });
+  }
   document.querySelectorAll('[data-press]').forEach((b) => b.addEventListener('click', () => { ensureAudio(); uiPress = { slot: 0, key: b.dataset.press }; }));
 
   function applyInput() {
@@ -748,10 +788,13 @@
   const holder = document.getElementById('stage');
   function fit() {
     const dpr = window.devicePixelRatio || 1;
-    const availCss = holder.clientWidth - 12;
-    const intScale = Math.floor((availCss * dpr) / VW);
-    const fill = intScale >= 1 && (intScale * VW) / dpr >= availCss * 0.8;
-    scale = fill ? intScale : Math.max(1, (availCss * dpr) / VW);
+    const fs = document.fullscreenElement === holder;
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;   // a phone: keep the whole picture on screen
+    const availCss = holder.clientWidth - (fs ? 0 : 12), availH = fs ? holder.clientHeight : coarse ? Math.max(200, window.innerHeight - 24) : Infinity;
+    const maxScale = Math.min((availCss * dpr) / VW, (availH * dpr) / VH);
+    const intScale = Math.floor(maxScale);
+    const fill = intScale >= 1 && intScale >= maxScale * 0.8;
+    scale = fill ? intScale : Math.max(1, maxScale);
     cv.width = Math.round(VW * scale); cv.height = Math.round(VH * scale);
     cv.style.width = (cv.width / dpr) + 'px'; cv.style.height = (cv.height / dpr) + 'px';
     if (glc) { glc.style.width = cv.style.width; glc.style.height = cv.style.height; }
