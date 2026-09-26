@@ -30,6 +30,7 @@ PAL = {
     'x': '7c2232', 'X': 'd0404a', 'y': 'c8a24c',                # hilt wrap dark / light, guard
     'a': 'dfe9ff', 'A': '9fc4e8', 'i': '6a9ad0',                # smear: core, mid, edge
     'f': 'ffe066', 'F': 'ff8a3c',                               # hit spark
+    'z': '5ef2ff', 'Z': 'ff6ae6', 'P': 'fff8ff',                # energy: cyan, magenta, white core
     '.': None,
 }
 def rgb(hx): return tuple(int(hx[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
@@ -170,10 +171,38 @@ class Canvas:
                 if self.g[y][x] != '.': continue
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     c = self.get(x + dx, y + dy)
-                    if c not in ('.', 'k', 'a', 'A', 'i', 'f', 'F'): add.append((x, y)); break
+                    if c != '.' and c != 'k' and c not in self.FX: add.append((x, y)); break
         for (x, y) in add: self.g[y][x] = 'k'
     def rows(self): return [''.join(r) for r in self.g]
-    FX = ('a', 'A', 'i', 'f', 'F')
+    FX = ('a', 'A', 'i', 'f', 'F', 'z', 'Z', 'P')
+    def aura(self, rings, jitter=True):
+        """rings[d-1] fills every empty cell at 4-neighbour distance d from the figure (an energy rim)"""
+        from collections import deque
+        dist = [[-1] * self.w for _ in range(self.h)]; q = deque()
+        for y in range(self.h):
+            for x in range(self.w):
+                if self.g[y][x] != '.' and self.g[y][x] not in self.FX: dist[y][x] = 0; q.append((x, y))
+        while q:
+            x, y = q.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.w and 0 <= ny < self.h and dist[ny][nx] < 0: dist[ny][nx] = dist[y][x] + 1; q.append((nx, ny))
+        for y in range(self.h):
+            for x in range(self.w):
+                d = dist[y][x]
+                if 0 < d <= len(rings) and self.g[y][x] == '.':
+                    if jitter and d == len(rings) and (x * 3 + y * 5) % 3 == 0: continue
+                    self.g[y][x] = rings[d - 1]
+    def boom(self, cx, cy, r):
+        """an explosion: white core → yellow → orange → magenta rim, jittered edge"""
+        for y in range(self.h):
+            for x in range(self.w):
+                d = math.hypot(x - cx, (y - cy) * 1.1) + (((x * 7 + y * 13) % 5) - 2) * 0.7
+                t = d / r
+                if t < 0.28: self.g[y][x] = 'P'
+                elif t < 0.55: self.g[y][x] = 'f'
+                elif t < 0.8: self.g[y][x] = 'F'
+                elif t < 1.0: self.g[y][x] = 'Z'
     def image(self, chars=None):
         im = Image.new('RGBA', (self.w, self.h), (0, 0, 0, 0)); px = im.load()
         for y in range(self.h):
@@ -894,6 +923,211 @@ def backdash(c):              # a hop backward: leaning back, legs tucked forwar
     upper(c, ox - 1, ty, lean=-3)
     sleeve(c, ox + 7, ty + 1); arm(c, [(ox + 9, ty + 5), (ox + 12, ty + 3)]); hand(c, ox + 13, ty + 2)
 frame('backdash', 'backdash hop', (16, 41), backdash, size=(32, 42))
+
+# ---------------------------------------------------------------- specials, super, throw, win, idle2, bump
+# A row 5 (影分身・居合: low stance → dash → rising cut → wind-up → the big cut), A row 6 / B row 4 (電磁衝撃破 + the
+# shot), C row 6 (量子爆裂: rainbow aura ×3 → explosion → smoke), B row 4 (投げ), B row 6 / C row 6 (勝利), B row 1 (構え直し).
+def iai_antic(c):             # the low draw stance: body lowered, legs wide, hand on the hilt at the far hip
+    ox, ty = 9, 14
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    lower(c, ox, ty - 3, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+    far_arm_rest(c, ox, ty, dx=1, kat_ang=112, kat_len=13)
+    upper(c, ox, ty, lean=1)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 6, ty + 9)]); hand(c, ox + 3, ty + 10)
+frame('iai_antic', 'iai low stance', (14, 41), iai_antic, size=(30, 42))
+
+def iai_rise_smear(c):        # the rising cut in flight: a fan from the far hip up the front
+    ox, ty = 9, 12
+    c.wedge(ox + 9, ty + 6, 8, 20, -62, 62)
+    c.blit(HAIR_FLY, ox - 11, ty - 6)
+    lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 5), (ox + 14, ty + 4)]); hand(c, ox + 14, ty + 3, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 15, ty + 4)]); hand(c, ox + 16, ty + 3)
+frame('iai_rise_smear', 'iai rising cut smear', (14, 42), iai_rise_smear, size=(34, 43))
+
+def iai_rise_hit(c):          # the blade up-forward after the rising cut
+    ox, ty = 9, 16
+    c.blit(HAIR_FLY, ox - 11, ty - 6)
+    lower(c, ox, ty - 5, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 3), (ox + 13, ty)]); hand(c, ox + 13, ty - 1, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 15, ty + 1)]); hand(c, ox + 15, ty)
+    katana(c, ox + 17, ty - 1, -50, blade=15)
+    c.blit(STAR, ox + 25, ty - 16)
+frame('iai_rise_hit', 'iai rising cut hit; blade from (12,-33) up to (22,-48)', (14, 46), iai_rise_hit, size=(40, 47))
+
+def big_smear(c):             # the big cut in flight: a huge fan from over the head down to the front
+    ox, ty = 9, 26
+    c.wedge(ox + 9, ty + 4, 10, 29, -100, 55)
+    c.blit(HAIR_FLY, ox - 11, ty - 6)
+    lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 6), (ox + 14, ty + 9)]); hand(c, ox + 15, ty + 9, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 7), (ox + 16, ty + 10)]); hand(c, ox + 16, ty + 10)
+frame('big_smear', 'big cut smear (55 tall)', (14, 56), big_smear, size=(50, 57))
+
+def big_hit(c):               # the big cut: blade 20 down-forward into the ground, chips
+    ox, ty = 8, 12
+    c.blit(HAIR_FLY, ox - 11, ty - 6)
+    lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=8)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox - 1, ty + 5), (ox + 7, ty + 7), (ox + 13, ty + 10)]); hand(c, ox + 14, ty + 10, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty + 8), (ox + 16, ty + 11)]); hand(c, ox + 16, ty + 11)
+    katana(c, ox + 18, ty + 12, 42, blade=20)
+    c.blit(STAR, ox + 32, ty + 24)
+    for i, x in enumerate(range(ox + 24, ox + 42, 3)): c.put(x, ty + 29 - (i % 3), 'f'); c.put(x + 1, ty + 28 - (i % 2), 'F')
+frame('big_hit', 'big cut hit; blade from (12,-28) to (26,-14) + chips', (14, 42), big_hit, size=(52, 43))
+
+def em_antic(c):              # 電磁衝撃破: the steel arm pulled back at the hip, palm open, sparks
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=-1, near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=-1)
+    steel_arm(c, [(ox - 1, ty + 5), (ox - 2, ty + 9), (ox + 1, ty + 9)]); hand(c, ox + 1, ty + 8, 'm')
+    for (x, y) in ((ox + 4, ty + 7), (ox + 3, ty + 10), (ox + 1, ty + 6), (ox + 5, ty + 9)): c.put(x, y, 'z')
+    near_sword_low(c, ox, ty, ang=95, blade=12)
+frame('em_antic', 'em charge 1', (14, 41), em_antic, size=(32, 42))
+
+def em_charge(c):             # palm forward at chest height, the ball forming
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=-1, near=slant(LEG_CHROME, 6), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 6), (ox + 13, ty + 4)]); hand(c, ox + 13, ty + 3, 'm')
+    c.blit(["..Z..", ".zzz.", "ZzPzZ", ".zzz.", "..Z.."], ox + 15, ty + 2)
+    near_sword_low(c, ox, ty, ang=95, blade=12)
+frame('em_charge', 'em charge 2', (14, 41), em_charge, size=(34, 42))
+
+def em_fire(c):               # the arm fully extended, the ball leaving with speed lines
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 10, ty + 4), (ox + 19, ty + 4)]); hand(c, ox + 19, ty + 3, 'm')
+    c.blit(["...Zzz...", ".ZzzzzzZ.", "ZzzPPPzzZ", ".ZzzzzzZ.", "...Zzz..."], ox + 21, ty + 1)
+    for x in range(ox + 12, ox + 20): c.put(x, ty + 1, 'z'); c.put(x, ty + 7, 'z')
+    near_sword_low(c, ox, ty, ang=100, blade=12)
+frame('em_fire', 'em fire (spawn shot)', (14, 41), em_fire, size=(40, 42))
+
+def em_recover(c):            # the arm lowering
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 7, ty - 7); lower(c, ox, ty, far=slant(LEG_STOCK, 4, -1), far_x=-1, near=slant(LEG_CHROME, 4), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 6), (ox + 13, ty + 8)]); hand(c, ox + 13, ty + 7, 'm')
+    near_sword_low(c, ox, ty, ang=100, blade=12)
+frame('em_recover', 'em recover', (14, 41), em_recover, size=(34, 42))
+
+def shot(c):                  # the projectile (effect pixels only): white core, cyan body, magenta trail to the left
+    c.blit([
+        ".......ZZzzZ....",
+        "....ZZzzzzzzzZ..",
+        "..ZzzzzzPPPzzzZ.",
+        "ZZzzzzzPPPPPzzzZ",
+        "..ZzzzzzPPPzzzZ.",
+        "....ZZzzzzzzzZ..",
+        ".......ZZzzZ....",
+    ], 0, 0)
+frame('shot', 'projectile', (8, 3), shot, size=(16, 7))
+
+def super_charge(n):
+    def build(c):
+        ox, ty = 16, 19
+        c.blit(HAIR_BACK, ox - 6, ty - 7)
+        lower(c, ox, ty, far_x=0, near_x=7)
+        far_arm_rest(c, ox, ty, kat_ang=100, kat_len=14)
+        upper(c, ox, ty, head=HEAD_SHOUT if n == 2 else HEAD)
+        sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 2)]); hand(c, ox + 12, ty)
+        c.aura([['z'], ['z', 'Z'], ['P', 'z', 'Z']][n])
+        for i in range(4 + 4 * n):                               # flames rising above the head and shoulders
+            x = ox - 4 + (i * 5) % 22; h = 3 + (i * 7) % (4 + 3 * n)
+            for k in range(h): c.put(x, ty - 12 - k, 'z' if k < h - 1 else 'Z')
+    return build
+for n in range(3): frame('super_charge%d' % (n + 1), 'quantum charge %d' % (n + 1), (21, 49), super_charge(n), size=(44, 50))
+
+def super_burst(c):           # the explosion around her
+    ox, ty = 16, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7); far_arm_rest(c, ox, ty, kat_ang=100, kat_len=14)
+    upper(c, ox, ty, head=HEAD_SHOUT)
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 1)]); hand(c, ox + 13, ty - 1)
+    c.boom(ox + 5, ty + 8, 24)
+frame('super_burst', 'quantum burst', (21, 49), super_burst, size=(44, 50))
+
+def super_fade(c):            # smoke and embers after the blast
+    ox, ty = 16, 19
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7); far_arm_rest(c, ox, ty, kat_ang=105, kat_len=14)
+    upper(c, ox, ty)
+    near_arm_rest(c, ox, ty)
+    for i in range(14):
+        x = ox - 8 + (i * 9) % 30; y = ty - 14 + (i * 5) % 30
+        c.put(x, y, 'Z' if i % 3 else 'F'); c.put(x + 1, y - 1, 'z' if i % 2 else 'f')
+frame('super_fade', 'quantum fade', (21, 49), super_fade, size=(44, 50))
+
+def throw_reach(c):           # 投げ: both hands reaching forward
+    ox, ty = 9, 11
+    c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near=slant(LEG_CHROME, 5), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, lean=1)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 8, ty + 7), (ox + 15, ty + 7)]); hand(c, ox + 15, ty + 6, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 16, ty + 4)]); hand(c, ox + 16, ty + 3)
+frame('throw_reach', 'throw reach / grab', (14, 41), throw_reach, size=(34, 42))
+
+def throw_toss(c):            # the toss: body twisted, arms swung up and over (the foe is drawn by the game at holdX/Y)
+    ox, ty = 9, 15
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 3), near_x=7)
+    sleeve(c, ox - 3, ty + 1)
+    upper(c, ox, ty, head=HEAD_SHOUT, lean=2)
+    steel_arm(c, [(ox + 1, ty + 4), (ox + 7, ty), (ox + 12, ty - 5)]); hand(c, ox + 12, ty - 7, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 14, ty), (ox + 15, ty - 6)]); hand(c, ox + 15, ty - 8)
+frame('throw_toss', 'throw toss (release)', (14, 45), throw_toss, size=(34, 46))
+
+def win_salute(n):
+    def build(c):             # the fist raised over the head
+        ox, ty = 9, 15
+        c.blit(HAIR_BACK, ox - 6, ty - 7); lower(c, ox, ty, far_x=0, near_x=7)
+        far_arm_rest(c, ox, ty, kat_ang=105, kat_len=14)
+        upper(c, ox, ty, lean=n)
+        sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty), (ox + 12 + n, ty - 7 - n)]); hand(c, ox + 11 + n, ty - 10 - n)
+    return build
+frame('win_salute1', 'win salute 1', (14, 45), win_salute(0), size=(30, 46))
+frame('win_salute2', 'win salute 2', (14, 45), win_salute(1), size=(30, 46))
+
+def win_sit(c):               # sitting on the heels, the katana laid across the lap, head bowed a little
+    ox, ty = 9, 25
+    c.blit(HAIR_BACK, ox - 6, ty - 7)
+    leg(c, [(ox + 3, ty + 9), (ox + 9, ty + 14), (ox + 1, ty + 15)], 'stock', foot='fwd')
+    leg(c, [(ox + 6, ty + 9), (ox + 12, ty + 13), (ox + 4, ty + 15)], 'chrome', foot='fwd')
+    c.blit(SKIRT[:6], ox - 2, ty + 8)
+    upper(c, ox, ty, lean=1)
+    katana(c, ox + 2, ty + 11, 0, blade=17)
+    sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox, ty + 10)]); hand(c, ox, ty + 10, 'm')
+    sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 12, ty + 10)]); hand(c, ox + 11, ty + 10)
+frame('win_sit', 'win sit (loop)', (14, 41), win_sit, size=(32, 42))
+
+def idle2_frame(n):
+    def build(c):             # 構え直し: the katana shouldered in the near hand, far arm relaxed
+        ox, ty = 9, 15
+        c.blit(HAIR_BACK, ox - 6 - n, ty - 7); lower(c, ox, ty)
+        sleeve(c, ox - 3, ty + 1); steel_arm(c, [(ox - 2, ty + 5), (ox - 2, ty + 10)]); hand(c, ox - 3, ty + 11, 'm')
+        upper(c, ox, ty, lean=-n)
+        katana(c, ox + 11 - n, ty + 1, -110, blade=15)
+        sleeve(c, ox + 8, ty + 1); arm(c, [(ox + 10, ty + 5), (ox + 13, ty + 5), (ox + 12 - n, ty + 3)]); hand(c, ox + 11 - n, ty + 2)
+    return build
+frame('idle2a', 'shoulder the sword 1', (14, 45), idle2_frame(0), size=(30, 46))
+frame('idle2b', 'shoulder the sword 2 (hair flick)', (14, 45), idle2_frame(1), size=(30, 46))
+
+def bump_hit(c):              # 肩タックル (the arm is broken): shoulder-first lunge, arms back
+    ox, ty = 9, 11
+    c.blit(HAIR_FLY, ox - 11, ty - 6); lower(c, ox, ty, far=slant(LEG_STOCK, 3, -1), far_x=-2, near=slant(LEG_CHROME, 2), near_x=7)
+    far_arm_rest(c, ox - 2, ty, dx=-2, kat_ang=135, kat_len=12)
+    upper(c, ox + 2, ty, head=HEAD_SHOUT, lean=2)
+    sleeve(c, ox + 10, ty + 1); arm(c, [(ox + 12, ty + 5), (ox + 11, ty + 10)]); hand(c, ox + 10, ty + 11)
+frame('bump_hit', 'shoulder tackle hit', (14, 41), bump_hit, size=(34, 42))
 
 if __name__ == '__main__':
     os.makedirs('art', exist_ok=True)

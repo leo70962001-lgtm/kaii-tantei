@@ -547,5 +547,212 @@
   "w": 32,
   "h": 42,
   "fx": false
+ },
+ "H61": {
+  "name": "iai_antic",
+  "note": "iai low stance",
+  "ax": 14,
+  "ay": 41,
+  "w": 30,
+  "h": 42,
+  "fx": false
+ },
+ "H62": {
+  "name": "iai_rise_smear",
+  "note": "iai rising cut smear",
+  "ax": 14,
+  "ay": 42,
+  "w": 34,
+  "h": 43,
+  "fx": true
+ },
+ "H63": {
+  "name": "iai_rise_hit",
+  "note": "iai rising cut hit; blade from (12,-33) up to (22,-48)",
+  "ax": 14,
+  "ay": 46,
+  "w": 40,
+  "h": 47,
+  "fx": true
+ },
+ "H64": {
+  "name": "big_smear",
+  "note": "big cut smear (55 tall)",
+  "ax": 14,
+  "ay": 56,
+  "w": 50,
+  "h": 57,
+  "fx": true
+ },
+ "H65": {
+  "name": "big_hit",
+  "note": "big cut hit; blade from (12,-28) to (26,-14) + chips",
+  "ax": 14,
+  "ay": 42,
+  "w": 52,
+  "h": 43,
+  "fx": true
+ },
+ "H66": {
+  "name": "em_antic",
+  "note": "em charge 1",
+  "ax": 14,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": true
+ },
+ "H67": {
+  "name": "em_charge",
+  "note": "em charge 2",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": true
+ },
+ "H68": {
+  "name": "em_fire",
+  "note": "em fire (spawn shot)",
+  "ax": 14,
+  "ay": 41,
+  "w": 40,
+  "h": 42,
+  "fx": true
+ },
+ "H69": {
+  "name": "em_recover",
+  "note": "em recover",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H70": {
+  "name": "shot",
+  "note": "projectile",
+  "ax": 8,
+  "ay": 3,
+  "w": 16,
+  "h": 7,
+  "fx": true
+ },
+ "H71": {
+  "name": "super_charge1",
+  "note": "quantum charge 1",
+  "ax": 21,
+  "ay": 49,
+  "w": 44,
+  "h": 50,
+  "fx": true
+ },
+ "H72": {
+  "name": "super_charge2",
+  "note": "quantum charge 2",
+  "ax": 21,
+  "ay": 49,
+  "w": 44,
+  "h": 50,
+  "fx": true
+ },
+ "H73": {
+  "name": "super_charge3",
+  "note": "quantum charge 3",
+  "ax": 21,
+  "ay": 49,
+  "w": 44,
+  "h": 50,
+  "fx": true
+ },
+ "H74": {
+  "name": "super_burst",
+  "note": "quantum burst",
+  "ax": 21,
+  "ay": 49,
+  "w": 44,
+  "h": 50,
+  "fx": true
+ },
+ "H75": {
+  "name": "super_fade",
+  "note": "quantum fade",
+  "ax": 21,
+  "ay": 49,
+  "w": 44,
+  "h": 50,
+  "fx": true
+ },
+ "H76": {
+  "name": "throw_reach",
+  "note": "throw reach / grab",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
+ },
+ "H77": {
+  "name": "throw_toss",
+  "note": "throw toss (release)",
+  "ax": 14,
+  "ay": 45,
+  "w": 34,
+  "h": 46,
+  "fx": false
+ },
+ "H78": {
+  "name": "win_salute1",
+  "note": "win salute 1",
+  "ax": 14,
+  "ay": 45,
+  "w": 30,
+  "h": 46,
+  "fx": false
+ },
+ "H79": {
+  "name": "win_salute2",
+  "note": "win salute 2",
+  "ax": 14,
+  "ay": 45,
+  "w": 30,
+  "h": 46,
+  "fx": false
+ },
+ "H80": {
+  "name": "win_sit",
+  "note": "win sit (loop)",
+  "ax": 14,
+  "ay": 41,
+  "w": 32,
+  "h": 42,
+  "fx": false
+ },
+ "H81": {
+  "name": "idle2a",
+  "note": "shoulder the sword 1",
+  "ax": 14,
+  "ay": 45,
+  "w": 30,
+  "h": 46,
+  "fx": false
+ },
+ "H82": {
+  "name": "idle2b",
+  "note": "shoulder the sword 2 (hair flick)",
+  "ax": 14,
+  "ay": 45,
+  "w": 30,
+  "h": 46,
+  "fx": false
+ },
+ "H83": {
+  "name": "bump_hit",
+  "note": "shoulder tackle hit",
+  "ax": 14,
+  "ay": 41,
+  "w": 34,
+  "h": 42,
+  "fx": false
  }
 }
