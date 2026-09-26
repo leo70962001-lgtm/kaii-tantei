@@ -24,13 +24,14 @@ from collections import Counter
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 
-SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg'}
+SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg', 'V': 'jk_actions3v_clean.png'}
+TAGS = ('A', 'B', 'C', 'V')
 GRID = 4.0
 CSCALE = 41 / 30                                       # sheet C's figures are 30 px on its grid; cells were resampled to 41
 OUT = (20, 23, 42)                                     # the sheets' own outline colour (analyze_b.py: median of L < 30)
 UP = 2 if 'x2' in sys.argv else 1
 LIGHT_PASS = 'nolight' not in sys.argv
-BASE_H = {'A': 164, 'B': 164, 'C': 123}               # the idle figure's source height per sheet (analyze_b.py)
+BASE_H = {'A': 164, 'B': 164, 'C': 123, 'V': 164}     # the idle figure's source height per sheet (analyze_b.py)
 
 # ---- material ramps (shade, base, light): the sheets' OWN colours, measured by analyze_b.py (luminance
 # percentiles per material with the median chroma; the shirt's base taken at its lit percentile so it reads white)
@@ -48,6 +49,8 @@ SHEET_PAL = {                                          # measured on the sheets 
     'hilt':    [(167, 38, 89), (227, 64, 74), (222, 127, 139)],
     'guard':   [(170, 160, 81), (219, 200, 84), (225, 221, 93)],
     'sheen':   [(183, 157, 172), (167, 223, 162), (205, 253, 172)],
+    'blood':   [(96, 8, 12), (150, 14, 20), (200, 40, 40)],
+    'dust':    [(150, 146, 136), (190, 186, 174), (222, 218, 206)],
     'line':    [OUT, OUT, OUT],
 }
 PIC_PAL = {                                            # the standing picture's colours (cleaner, more saturated)
@@ -64,6 +67,8 @@ PIC_PAL = {                                            # the standing picture's 
     'hilt':    [(96, 26, 46), (150, 46, 64), (208, 64, 74)],
     'guard':   [(150, 120, 60), (200, 162, 76), (236, 208, 120)],
     'sheen':   [(120, 200, 160), (142, 216, 168), (214, 144, 208)],
+    'blood':   [(96, 8, 12), (150, 14, 20), (200, 40, 40)],
+    'dust':    [(150, 146, 136), (190, 186, 174), (222, 218, 206)],
     'line':    [OUT, OUT, OUT],
 }
 RAMPS = SHEET_PAL if 'sheetpal' in sys.argv else PIC_PAL
@@ -99,6 +104,9 @@ def classify(p, hy):
     if (g > r + 60 and b > r + 40 and g > 140) or (g > r + 35 and b > r + 25 and g > 100 and L < 200 and b > 120): return 'cyan'
     if r > g + 50 and b > g + 50 and b > 150 and r > 120: return 'magenta'
     if (r > 200 and g > 110 and b < 90 and r > g + 40) or (r > 225 and g > 205 and b < 120): return 'fire'
+    # blood (the vector sheet's hit splatter: dark saturated red) and dust (pale warm grey at the feet)
+    if r > 90 and g < 48 and b < 48 and r > 2.2 * max(g, b): return 'blood'
+    if hy > 0.8 and 150 < L < 226 and 6 <= S < 40 and r >= g >= b and r - b >= 8: return 'dust'
     # skin
     if r > 165 and r > g + 18 and g > b and r - b > 40 and L > 110 and S < 130: return 'skin'
     # reds
@@ -292,6 +300,20 @@ def refine_cell(tag, c, sheet):
             if ecand[y][x] and not mask[y][x] and not emask[y][x] and win.get((x, y)):
                 pale = [q for q in win[(x, y)] if lum(q[2]) > 150 and sat(q[2]) < 60]
                 if len(pale) >= len(win[(x, y)]) * 0.5 and ebase[y][x]: emask[y][x] = True; ecls[(x, y)] = 'white'
+    # the vector sheet's thin cell-separator lines: a dark column at the cell's edge running most of its height
+    for _ in range(2):
+        for x in list(range(min(5, w) - 1, -1, -1)) + list(range(max(0, w - 5), w)):   # inside-out, so a 2-px line goes fully
+            col = [y for y in range(h) if mask[y][x]]
+            if not col: continue
+            samples = [lum(q[2]) for y in col for q in win.get((x, y), [])[:4]]
+            mean = sum(samples) / len(samples) if samples else 255
+            inner = x + 1 if x < 5 else x - 1                 # a separator (solid or dashed) stands alone: the next column inward is mostly empty
+            lonely = 0 <= inner < w and sum(1 for y in col if mask[y][inner]) < 0.5 * len(col)
+            if 2 < x < w - 3:                                 # further in, the outer neighbour must be mostly empty as well
+                outer = x - 1 if x < 5 else x + 1
+                lonely = lonely and 0 <= outer < w and sum(1 for y in col if mask[y][outer]) < 0.5 * len(col)
+            if lonely and mean < 130 and (len(col) >= 0.3 * h or (len(col) >= 0.1 * h and mean < 95)):
+                for y in col: mask[y][x] = False
     ys = [y for y in range(h) if any(mask[y])]
     if not ys: return None
     top, bot = min(ys), max(ys)
@@ -457,7 +479,7 @@ def main():
     alts = {t: Image.open(fn).convert('RGB') for t, fn in ALT.items() if os.path.exists(fn)}
     used = Counter()
     before, after = [], []
-    for tag in ('A', 'B', 'C'):
+    for tag in TAGS:
         for c in data[tag]:
             g = geom(c)[0]
             chosen = pick_sheet(tag, c, sheets[tag], alts.get(tag)); used['vector' if chosen is alts.get(tag) else 'base'] += 1
@@ -490,7 +512,7 @@ def main():
                 out.save(os.path.join('art', 'cells', '%s%d.png' % (tag, c['i'])))
     if not review_only:
         open('../src/sprites-jk.js', 'w', encoding='utf-8', newline='\n').write(src[:i] + json.dumps(data) + src[j:])
-        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in ('A', 'B', 'C')), 'cells refined at UP', UP, 'sources', dict(used))
+        print('rewrote src/sprites-jk.js', sum(len(data[t]) for t in TAGS), 'cells refined at UP', UP, 'sources', dict(used))
     S = 6 // UP * 2 if UP > 1 else 6
     sel = list(range(0, len(after), max(1, len(after) // 40)))[:40]
     W = sum(after[k].width * S + 6 for k in sel) + 6

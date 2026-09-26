@@ -14,8 +14,8 @@
   // the small pixel-art scale: cells are drawn at their native size (a standing figure is 41 px; ref/pixelize.py
   // brings sheet C to the same size) and shown at an integer ×2, nearest-neighbour, so every sprite pixel is a
   // crisp 2×2 world-pixel block like the references at zoom
-  const SCALE = { A: 1, B: 1, C: 1, H: 2 };   // A/B/C = 82-px cells (ref/refine2.py x2) drawn 1:1; H = hand-drawn 41-px frames ×2
-  const RES = { A: 2, B: 2, C: 2, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
+  const SCALE = { A: 1, B: 1, C: 1, V: 1, H: 2 };   // A/B/C = 82-px cells (ref/refine2.py x2) drawn 1:1; H = hand-drawn 41-px frames ×2
+  const RES = { A: 2, B: 2, C: 2, V: 2, H: 1 };     // cell px per 41-px-scale unit (offsets authored at the 41 scale)
   const HEAD_H = 27;   // (picture-head overlay; inactive unless the sheet data carries 'heads')
   const hasDoc = typeof document !== 'undefined';
 

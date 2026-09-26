@@ -14,7 +14,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 from extract import to_native
 
-SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg'}
+SHEETS = {'A': 'jk_actions2.jpg', 'B': 'jk_actions3.jpg', 'C': 'jk_actions4.jpg',
+          'V': 'jk_actions3v_clean.png'}   # V = the vector re-draw of B (clean_v.py removes its cell numbers)
 def lum(p): return 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
 def sat(p): return max(p[:3]) - min(p[:3])
 def dist(a, b): return abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
@@ -22,13 +23,16 @@ def dist(a, b): return abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
 def is_energy(p):
     r, g, b = p[:3]
     return (g > r + 60 and b > r + 40 and g > 140) or (r > g + 50 and b > g + 50 and b > 150 and r > 120)   # cyan/teal, magenta
+def is_blood(p):
+    r, g, b = p[:3]
+    return r > 90 and g < 48 and b < 48 and r > 2.2 * max(g, b)                                            # the vector sheet's blood
 def is_fire(p):
     r, g, b = p[:3]
-    return (r > 200 and g > 110 and b < 90 and r > g + 40) or (r > 225 and g > 205 and b < 120)             # orange, yellow
+    return (r > 200 and g > 110 and b < 90 and r > g + 40) or (r > 225 and g > 205 and b < 120) or is_blood(p)   # orange, yellow
 def grow_ok(p):
     r, g, b = p[:3]
     return is_energy(p) or is_fire(p) or (g > r + 35 and b > r + 25 and g > 100) or (r > g + 40 and b > g + 40 and b > 120) \
-        or (lum(p) > 215 and sat(p) < 40) or (r > 180 and g > 90 and b < 80)
+        or (lum(p) > 215 and sat(p) < 40) or (r > 180 and g > 90 and b < 80) or (r > 60 and g < 36 and b < 36 and r > 2 * max(g, b))
 
 def cut_sheet(tag, src):
     os.environ['GRID'] = '4,4,0,0'

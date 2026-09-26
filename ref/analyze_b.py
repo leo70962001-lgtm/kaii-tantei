@@ -37,7 +37,7 @@ def cell_source_box(tag, c):
     xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
     return (min(xs), min(ys), max(xs), max(ys)), pts
 
-for tag in ('A', 'B', 'C'):
+for tag in ('A', 'B', 'C', 'V'):
     for c in data[tag]:
         res = cell_source_box(tag, c)
         if not res: continue
