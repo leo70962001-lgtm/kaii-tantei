@@ -51,6 +51,16 @@
     const key = f.C.id + ':' + f.form;
     if (portraits.has(key)) return portraits.get(key);
     const R = f.C.R;
+    if (f.C === ROSTER[0] && f.form !== 'wolf' && typeof CG !== 'undefined') {   // 「這裡也用 CG 圖」: the HUD portrait is the CG bust's face (at 2× so the 38×34 slot shows it sharp)
+      if (!(CG.jk.complete && CG.jk.naturalWidth)) { const tmp = spritePortrait(f); return tmp; }   // not loaded yet: the sprite's head for now, not cached
+      const c = document.createElement('canvas'); c.width = 76; c.height = 68; const g = c.getContext('2d'); g.imageSmoothingEnabled = true;
+      g.fillStyle = '#141a3a'; g.fillRect(0, 0, 76, 68); g.drawImage(CG.jk, 95, 40, 160, 140, 0, 0, 76, 68);
+      portraits.set(key, c); return c;
+    }
+    const cv0 = spritePortrait(f); portraits.set(key, cv0); return cv0;
+  }
+  function spritePortrait(f) {
+    const R = f.C.R;
     const buf = new PX.Buf(38, 34);
     const C = window.CAST && window.CAST[f.C.id];
     if (C && f.form !== 'wolf') {
@@ -59,9 +69,7 @@
       for (let y = 0; y < 34; y++) for (let x = 0; x < 38; x++) { const sx = x0 + Math.floor((x - (38 - hw / s) / 2) * s), sy = y0 + Math.floor((y - (34 - hh / s)) * s); if (sx < x0 || sx > x1 || sy < y0 || sy > y1) continue; const c = src[sy * C.body.w + sx]; if (c) buf.set(x, y, c, 0, 1, 1); }
     }
     PX.outline(buf);
-    const cv = toCanvas(buf.c, buf.w, buf.h);
-    portraits.set(key, cv);
-    return cv;
+    return toCanvas(buf.c, buf.w, buf.h);
   }
 
   // ------------------------------------------------------------ sound
@@ -951,7 +959,7 @@
       hbar(x0, 8, BW, BH, f.hp / f.maxhp, f.hpShown / f.maxhp, col, '#3a1420', right);
       const pr = portrait(f), px0 = right ? VW - 12 - 38 : 12;   // the framed portrait at the outer end
       lx.fillStyle = '#05060f'; lx.fillRect(px0 - 2, 2, 42, 38); lx.fillStyle = f.C.color; lx.fillRect(px0 - 2, 2, 42, 1); lx.fillRect(px0 - 2, 39, 42, 1); lx.fillRect(px0 - 2, 2, 1, 38); lx.fillRect(px0 + 39, 2, 1, 38);
-      lx.drawImage(pr, px0, 4);
+      lx.drawImage(pr, px0, 4, 38, 34);
       lx.fillStyle = 'rgba(5,6,15,0.6)'; lx.fillRect(right ? VW - 12 - 124 : 12, 44, 124, 13); lx.fillStyle = f.C.color; lx.fillRect(right ? VW - 12 - 124 : 12, 56, 124, 1);   // the name plate
       f.C.R.PARTS.forEach((P, i) => {   // the part-break icons under the bar (this game's own gauge)
         const st = f.parts[P.id];
