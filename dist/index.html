@@ -2810,23 +2810,45 @@
       const pop = k > 0.85 ? 1 + (k - 0.85) * 6 : 1;
       ctx.save(); ctx.globalAlpha = k < 0.2 ? k / 0.2 : 1;
       const y = t.text.startsWith('PART') ? 78 : t.text === 'FIGHT!' || t.text === 'K.O.' ? 126 : 108;
+      if (t.text === 'FIGHT!' || t.text === 'K.O.') uiBand(y - 18, 36, 0.45);
       text(t.text, VW / 2, y, (t.text.length > 12 ? 16 : 24) * pop, t.color);
       ctx.restore();
     }
-    if (sim.phase === 'intro') { const k = sim.introT; if (k < 1200) text('ROUND ' + sim.round, VW / 2, 120, 27, '#ffd24a'); }
+    if (sim.phase === 'intro') { const k = sim.introT; if (k < 1200) { uiBand(102, 36, 0.5); text('ROUND ' + sim.round, VW / 2, 120, 27, '#ffd24a'); } }
     if (sim.phase === 'result' && sim.resultT > 1200) text('PRESS Z / ENTER', VW / 2, 225, 12, '#b9c2ea');
     if (sim.phase === 'end') {
       const w = sim.fighters.find((f) => f.wins >= 2);
-      ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(0, 90 * scale, cv.width, 105 * scale);
+      uiBand(90, 105, 0.6);
       text((w ? (w.slot === 0 ? 'P1 ' : (sim.mode === '2p' ? 'P2 ' : 'CPU ')) + w.C.R.name : '') + ' WINS', VW / 2, 126, 24, w ? w.C.color : '#fff');
       text('破壞部位 ' + sim.fighters[0].breaks + ' / ' + sim.fighters[1].breaks + '   PRESS Z / ENTER', VW / 2, 159, 12, '#e8ebf8');
     }
-    if (sim.paused) text('PAUSE', VW / 2, 135, 24, '#ffffff');
+    if (sim.paused) { ctx.fillStyle = 'rgba(5,6,15,0.35)'; ctx.fillRect(0, 0, cv.width, cv.height); uiBand(116, 38, 0.6); text('PAUSE', VW / 2, 135, 24, '#ffffff'); }
+  }
+  function uiHeader(title, tag, tagCol) {   // the screen's name in a band across the top, a player tag at the right
+    ctx.fillStyle = 'rgba(5,6,15,0.72)'; ctx.fillRect(0, 6 * scale, cv.width, 24 * scale);
+    ctx.fillStyle = '#ffd24a'; ctx.fillRect(0, 6 * scale, cv.width, scale); ctx.fillRect(0, 30 * scale, cv.width, scale);
+    ctx.fillStyle = 'rgba(255,210,74,0.25)'; ctx.fillRect(VW / 2 * scale - 70 * scale, 27 * scale, 140 * scale, scale);
+    text(title, VW / 2, 18, 14, '#ffd24a');
+    if (tag) text(tag, VW - 16, 18, 11, tagCol || '#e8ebf8', 'right');
+  }
+  function uiPrompt(hint) {   // the key hints in a bar along the bottom (KOF's SELECTION / OK / CANCEL bar)
+    ctx.fillStyle = 'rgba(5,6,15,0.72)'; ctx.fillRect(0, 250 * scale, cv.width, 20 * scale);
+    ctx.fillStyle = '#ffd24a'; ctx.fillRect(0, 250 * scale, cv.width, scale);
+    text(hint, VW / 2, 260, 9, '#b9c2ea');
+  }
+  function uiBand(y, h, a) {   // a translucent band with gold rules behind a big callout
+    ctx.fillStyle = 'rgba(5,6,15,' + (a === undefined ? 0.5 : a) + ')'; ctx.fillRect(0, y * scale, cv.width, h * scale);
+    ctx.fillStyle = '#ffd24a'; ctx.fillRect(0, y * scale, cv.width, scale); ctx.fillRect(0, (y + h - 1) * scale, cv.width, scale);
   }
   function drawTitle() {
     lx.setTransform(RS, 0, 0, RS, 0, 0);
     farStack(lx, -30); if (MID) lx.drawImage(MID, -52, 0); lx.drawImage(NEAR, -120, 0);
     lx.fillStyle = 'rgba(5,6,15,0.45)'; lx.fillRect(0, 0, VW, VH);
+    lx.fillStyle = 'rgba(5,6,15,0.4)'; lx.fillRect(0, 24, VW, 66); lx.fillStyle = '#ffd24a'; lx.fillRect(VW / 2 - 130, 89, 260, 1); lx.fillStyle = 'rgba(255,210,74,0.35)'; lx.fillRect(VW / 2 - 90, 25, 180, 1);   // the logo band
+    badge(292, 142, 182, 104, '#ffd24a', 'rgba(5,6,15,0.72)');   // the menu plate
+    lx.fillStyle = '#ffd24a'; lx.fillRect(300, 154 + modeI * 18, 3, 12); lx.fillStyle = 'rgba(255,210,74,0.12)'; lx.fillRect(303, 152 + modeI * 18, 164, 16);   // the cursor
+    lx.fillStyle = 'rgba(255,210,74,0.3)'; lx.fillRect(300, 226, 166, 1);
+    lx.fillStyle = 'rgba(5,6,15,0.72)'; lx.fillRect(0, 250, VW, 20); lx.fillStyle = '#ffd24a'; lx.fillRect(0, 250, VW, 1);   // the prompt bar
     // three club members standing in a row
     if (!sim.titleCast) {
       sim.titleCast = ROSTER.map((C) => makeFighter(C, 0));
@@ -2838,11 +2860,10 @@
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
     text('怪異探偵部', VW / 2, 50, 45, '#ffffff');
     text('KAII TANTEI-BU — PART BREAK FIGHTERS', VW / 2, 78, 10, '#ffd24a');
-    const mx = 352;
-    MODES.forEach((m, i) => text((i === modeI ? '▶ ' : '   ') + m[1], mx, 160 + i * 18, 13, i === modeI ? '#ffd24a' : '#b9c2ea'));
-    text('CPU 強度 ◀ ' + LEVELS[levelI][0] + ' ▶', mx, 236, 12, '#e8ebf8');
-    text('Z / ENTER で開始', mx, 254, 10, '#b9c2ea');
-    text('東京鬼高校・怪異探偵部', 140, 258, 10, '#8f97b8');
+    MODES.forEach((m, i) => text(m[1], 310, 160 + i * 18, 13, i === modeI ? '#ffd24a' : '#b9c2ea', 'left'));
+    text('CPU 強度', 310, 238, 11, '#8f97b8', 'left'); text('◀ ' + LEVELS[levelI][0] + ' ▶', 462, 238, 12, '#e8ebf8', 'right');
+    text('↑↓ 模式　◀▶ CPU 強度　Z / ENTER 開始　T 觸控', VW / 2, 260, 9, '#b9c2ea');
+    text('東京鬼高校・怪異探偵部', 10, 14, 9, '#8f97b8', 'left');
   }
   function drawSelect() {   // the reference (a mobile fighting game's roster screen): the CG large on the left with the
                             // name plate, the club roster as round icons on the right, the cursor a gold ring
@@ -2879,8 +2900,8 @@
       const cw = Math.round(cv.width * 0.5), ch = Math.round(cw * cg.naturalHeight / cg.naturalWidth);   // 「至少畫面的一半」: half the width, the bust running off the bottom
       ctx.globalAlpha = S0.C ? 1 : 0.3; ctx.drawImage(cg, 0, 0, cw, ch); ctx.globalAlpha = 1;
     }
-    text(sim.selStep === 0 ? 'P1 SELECT' : (mode === '2p' ? 'P2 SELECT' : 'CPU'), 340, 22, 16, '#ffd24a');
-    text('◀ ▶ 選擇　Z 決定　ESC 返回', 340, 40, 9, '#b9c2ea');
+    uiHeader('CHARACTER SELECT', sim.selStep === 0 ? '1P' : (mode === '2p' ? '2P' : 'CPU'), sim.selStep === 0 ? ROSTER[0].color : '#e8ebf8');
+    uiPrompt('◀ ▶ 選擇　Z 決定　ESC 返回');
     // the name plate: big, in the member's colour, on a dark slab across the CG's legs (the reference's "CAMMY")
     const nm = S0.C ? S0.C.R.name : S0.name, col = S0.C ? S0.C.color : S0.color;
     ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(10 * scale, 206 * scale, 200 * scale, 40 * scale);
@@ -2898,16 +2919,18 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(low, 0, 0, cv.width, cv.height);
-    text('STAGE SELECT', VW / 2, 24, 21, '#ffd24a');
+    uiHeader('STAGE SELECT', '1P', ROSTER[0].color);
+    ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(0, 74 * scale, cv.width, 112 * scale); ctx.fillStyle = 'rgba(255,210,74,0.35)'; ctx.fillRect(0, 74 * scale, cv.width, scale); ctx.fillRect(0, 185 * scale, cv.width, scale);
     STAGES.forEach((id, i) => {
-      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 140, y = 120, chosen = i === sim.stageSel;
+      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 116, y = 120, chosen = i === sim.stageSel;   // four 120-px thumbnails fit the 480-px screen
       const tb = stageThumb(id);
+      if (chosen) { ctx.fillStyle = 'rgba(255,210,74,0.25)'; ctx.fillRect((x - 66) * scale, (y - 40) * scale, 132 * scale, 80 * scale); }
       ctx.fillStyle = chosen ? '#ffd24a' : '#2c3060'; ctx.fillRect((x - 62) * scale, (y - 36) * scale, 124 * scale, 72 * scale);
       ctx.drawImage(tb, (x - 60) * scale, (y - 34) * scale, 120 * scale, 68 * scale);
       text(th.name, x, y + 50, 12, chosen ? '#ffd24a' : '#b9c2ea'); text(th.en, x, y + 63, 8, '#8f97b8');
     });
-    text('◀ ▶ 選擇　Z 決定　ESC 返回', VW / 2, 45, 10, '#b9c2ea');
-    text(STAGE.name, VW / 2, 250, 10, '#8f97b8');
+    text(STAGE.name, VW / 2, 236, 10, '#8f97b8');
+    uiPrompt('◀ ▶ 選擇　Z 決定　ESC 返回');
   }
 
   let last = performance.now(), acc = 0;

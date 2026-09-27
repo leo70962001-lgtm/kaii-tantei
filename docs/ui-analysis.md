@@ -25,6 +25,16 @@ Select 分類、Argentics 與 Sunstrike 的 HUD 設計指南、NeoGAF「Best and
 - 我們的版本（依使用者給的手遊選角參考）：左半大半身圖、右邊三個圓形頭像（一個開放、兩個問號）、名字牌與身高／部位資訊、
   「◀▶ 選擇 Z 決定 ESC 返回」提示——結構與上述一致，這次只換了圖：半身圖改用 3D 全身圖裁的胸像，圓形頭像改用像素全身圖的臉。
 
+## 套到所有畫面的介面語言
+
+| 元件 | 做法 | 用在 |
+| --- | --- | --- |
+| 標題帶 `uiHeader` | 上方 24 px 的暗帶、上下金線、置中的畫面名、右側玩家標籤（玩家色） | 選角、選場景 |
+| 提示列 `uiPrompt` | 下方 20 px 的暗帶＋金線、按鍵提示置中（KOF 的 SELECTION／OK／CANCEL 列） | 標題、選角、選場景 |
+| 切角牌 `badge` | 深底、金框、四角切 2 px | 標題的選單牌、計時器徽章、存量徽章 |
+| 游標 | 玩家色的直條＋淡金底（選單）、金環（頭像）、金框＋光暈（縮圖） | 標題、選角、選場景 |
+| 大字幕帶 `uiBand` | 半透明暗帶＋上下金線 | ROUND、FIGHT!、K.O.、WINS 結算、PAUSE |
+
 ## 來源
 
 - SuperCombo Wiki — Fighting Layer/HUD: https://wiki.supercombo.gg/w/Fighting_Layer/HUD
