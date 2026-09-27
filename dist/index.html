@@ -1310,6 +1310,7 @@
       }
       k++;
     }
+    if (opts.canopy) { const { x0, x1, ytop, ylow, n } = opts.canopy; for (let i = 0; i < n; i++) { const x = x0 + HS(i, 61, seed) * (x1 - x0), yl = ylow(x), y = ytop + HS(i, 62, seed) * (yl - ytop), r = (2.5 + HS(i, 63, seed) * 3) * (opts.puff || 1); if (y + r * 0.5 > yl) continue; cluster(x, y, r, 200 + (i % 37)); } }   // the canopy: one mass above an undulating lower edge
     for (const [x0, y0, x1, y1, w, depth] of limbs) if (depth === 0 && HS(x0 + x1, y0 + y1, seed + 45) < 0.35) line(L, x0, y0, x1, y1, BARK3);   // twigs threading through the blossoms
     if (opts.puff > 1.5) { for (const [x0, y0, x1, y1, w, depth] of limbs) if (depth >= 2 && HS(x0 * 3 + x1, y0 + y1 * 3, seed + 47) < 0.6) limbLine(x0, y0, x1, y1, Math.max(2, w * 0.8)); let kk = 0; for (const [x0, y0, x1, y1, w, depth] of limbs) { if (depth >= 2 && HS(x0 + y1, y0 + x1, seed + 48) < 0.5) { const t = HS(kk, 49, seed), fx = x0 + (x1 - x0) * t, fy = y0 + (y1 - y0) * t; cluster(fx + (HS(kk, 50, seed) - 0.5) * 8, fy - 2, 5 * (opts.puff || 1) * 0.9, kk); } kk++; } }   // the pin's thick branches in front of the blossoms, a few clusters over them again
     for (let g = 0; g < 8; g++) { const gx = cx + (HS(g, 31, seed) - 0.5) * rx * 1.4, gy = cy + (HS(g, 32, seed) - 0.5) * ry * 1.2; for (let y = gy - 2; y <= gy + 2; y++) for (let x = gx - 3; x <= gx + 3; x++) if (L.get(x, y) && HS(x, y, seed + 33) < 0.5) L.set(x, y, GAP); }
@@ -1352,27 +1353,54 @@
     // lettering, the tube and downlights, a wide coral lintel with large text, the 2.6 m glass front, the open door
     rect(L, 200, 88, 30, B - 92, hx(mixc(TH.storeWall, '#000000', 0.35))); rect(L, 214, 96, 1, B - 100, hx('#5a5a7a'));   // the store's dark side wall and a downpipe
     wall(230, 490, 88, 'storeWall', 'storeEdge'); roof(230, 490, 76, 14);
+    for (let y = 78; y < 89; y += 3) for (let x = 226; x < 494; x += 6) rect(L, x + ((y / 3) & 1) * 3, y, 3, 1, hx(mixc(TH.aptDark, '#ffffff', 0.12)));   // the tiles' lit edges, staggered
+    rect(L, 226, 89, 268, 2, hx('#4a4a62')); rect(L, 226, 89, 268, 1, hx('#7a7a92')); for (let x = 232; x < 490; x += 12) rect(L, x, 91, 1, 3, hx('#4a4a62'));   // the gutter and its brackets
     rect(L, 230, 90, 260, 30, T('signBand')); rect(L, 230, 90, 260, 1, hx('#c8d8e8')); for (let y = 112; y < 119; y++) for (let x = 230; x < 490; x++) mixPx(L, x, y, hx('#ffffff'), Math.round(6 + (y - 112) * 5)); rect(L, 230, 119, 260, 1, T('signInk2'));   // the sign band (1 m), lit from below
-    for (const [x, w] of [[298, 24], [330, 26], [364, 24], [396, 26]]) { rect(L, x - 1, 95, w + 2, 20, hx('#c8d8e8')); rect(L, x, 96, w, 18, T('signInk2')); rect(L, x + 4, 99, w - 8, 3, T('signBand')); rect(L, x + 4, 106, w - 8, 3, T('signBand')); rect(L, x + 4, 100, 2, 10, T('signBand')); rect(L, x + w - 8, 102, 2, 8, T('signBand')); }   // four big characters
+    const stroke = (x0, y0, x1, y1, c) => { for (const o of [-1, 0, 1]) line(L, x0 + o, y0, x1 + o, y1, c); };   // a 3-px brush
+    const glyphs = [(c) => { rect(L, 298, 97, 24, 3, c); rect(L, 298, 97, 3, 18, c); rect(L, 319, 97, 3, 18, c); rect(L, 298, 112, 24, 3, c); },   // ロ
+      (c) => { rect(L, 331, 97, 3, 12, c); rect(L, 352, 97, 3, 17, c); stroke(353, 113, 345, 120, c); },   // リ
+      (c) => { stroke(366, 99, 372, 107, c); stroke(387, 97, 372, 120, c); },   // ソ
+      (c) => { stroke(398, 100, 404, 106, c); stroke(421, 100, 404, 120, c); }];   // ン
+    for (const g of glyphs) { for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { /* a light outline */ } }
+    for (const g of glyphs) g(hx('#c8d8e8')); for (const g of glyphs) g(T('signInk2'));   // (the outline: the light pass under a slightly thinner ink pass reads as an edge glow)
     if (!TH.day) glow(L, 360, 105, 120, 20, TH.signBand, 26, 1.4);
     rect(L, 230, 120, 260, 1, hx('#e8f0f8')); rect(L, 230, 121, 260, 6, hx('#f4f0e8')); rect(L, 234, 121, 90, 6, hx('#ffffff')); rect(L, 235, 122, 88, 4, T('lintelA')); rect(L, 396, 121, 90, 6, hx('#ffffff')); rect(L, 397, 122, 88, 4, T('lintelB'));   // the tube; the lintel as two framed coral boxes
-    for (let x = 236; x < 322; x += 9) rect(L, x, 122, 5, 4, hx('#fff0e0')); for (let x = 400; x < 486; x += 9) rect(L, x, 122, 5, 4, hx('#fff0e0')); for (let x = 332; x < 390; x += 7) rect(L, x, 123, 4, 2, hx('#d84a3a'));   // its text
+    const tiny = (x, y, c, k) => { if (k & 1) { rect(L, x, y, 5, 1, c); rect(L, x, y + 2, 5, 1, c); rect(L, x + 4, y, 1, 4, c); } else { rect(L, x, y, 5, 1, c); rect(L, x, y, 1, 4, c); rect(L, x, y + 3, 5, 1, c); } };   // ヨ / コ-like marks
+    for (let x = 236, k = 0; x < 322; x += 9, k++) tiny(x, 122, hx('#fff0e0'), k); for (let x = 400, k = 0; x < 486; x += 9, k++) tiny(x, 122, hx('#fff0e0'), k + 1); for (let x = 332; x < 390; x += 7) rect(L, x, 123, 4, 2, hx('#d84a3a'));   // their text
     for (let x = 236; x < 488; x += 18) { rect(L, x, 120, 4, 1, hx('#fff8e8')); if (!TH.day) glow(L, x + 2, 123, 8, 6, '#ffe8b0', 50, 1.5); }   // downlights
     rect(L, 230, 127, 260, B - 127, T('storeEdge'));
     for (let y = 129; y < B - 1; y++) for (let x = 232; x < 488; x++) L.set(x, y, dith(x, y, (y - 127) / 84) ? T('konbiniGlass') : T('konbiniGlassTop'));   // the glass (2.6 m), warm light
-    for (const tx of [244, 300, 396, 444]) rect(L, tx, 131, 36, 2, hx('#fffaf0')); rect(L, 359, 131, 1, 7, hx('#3a3a5a')); rect(L, 356, 138, 7, 3, hx('#fff0d0'));   // tube lamps, a pendant
-    for (const y of [152, 174, 196]) { rect(L, 234, y, 252, 1, T('shelf')); rect(L, 234, y + 1, 252, 1, hx(mixc(TH.konbiniGlass, '#000000', 0.22))); for (let x = 235; x < 485; x += 4) rect(L, x, y - 10, 3, 10, [hx('#ff9ad0'), hx('#8ae0c0'), hx('#8ad0ff'), hx('#c8a8ff'), hx('#fff0d0'), hx('#ff8a7a'), hx('#f4f4f8')][(x * 7 + y) % 7]); }   // packed shelves
+    const GD = hx(mixc(TH.konbiniGlass, '#000000', 0.22)), GDD = hx(mixc(TH.konbiniGlass, '#000000', 0.45)), TAG = hx('#fff8d0'), TAG2 = hx('#ffd24a');
+    rect(L, 232, 136, 256, 1, GD); for (let x = 248; x < 488; x += 16) rect(L, x, 129, 1, 7, hx(mixc(TH.konbiniGlassTop, '#ffffff', 0.4)));   // the ceiling: tile joints and its edge
+    for (const tx of [244, 300, 396, 444]) { rect(L, tx - 1, 130, 38, 4, GD); rect(L, tx, 131, 36, 2, hx('#fffaf0')); } rect(L, 359, 131, 1, 7, hx('#3a3a5a')); rect(L, 356, 138, 7, 3, hx('#fff0d0'));   // tube lamps in housings, a pendant
+    const GOODS = ['#ff9ad0', '#8ae0c0', '#8ad0ff', '#c8a8ff', '#ffe08a', '#ff8a7a', '#f4f4f8', '#7ab8ff', '#ffb070', '#a0e07a'];
+    for (let x = 236; x < 486; x += 3) { const c = hx(GOODS[Math.floor(HS(x >> 3, 1, 91) * GOODS.length)]); rect(L, x, 141, 2, 6, hx(mixc(GOODS[Math.floor(HS(x >> 3, 1, 91) * GOODS.length)], '#000000', 0.35))); L.set(x, 141, c); } rect(L, 234, 147, 252, 1, GDD);   // the deeper back shelf, dimmer
+    for (const y of [158, 180, 202]) {   // the front shelves: 12-px sections of one product each (a lit top pixel, a dark side), price tags under the shelf
+      rect(L, 234, y, 252, 1, T('shelf')); rect(L, 234, y + 1, 252, 1, GD);
+      for (let sx = 236; sx < 486; sx += 12) { const g = GOODS[Math.floor(HS(sx, y, 93) * GOODS.length)], c = hx(g), lo = hx(mixc(g, '#000000', 0.35)), hi = hx(mixc(g, '#ffffff', 0.45)), n = 2 + Math.floor(HS(sx, y, 94) * 2), w = n === 2 ? 4 : 3;
+        for (let i = 0; i < n; i++) { const ix = sx + i * (w + 1); rect(L, ix, y - 9, w, 9, c); rect(L, ix + w - 1, y - 9, 1, 9, lo); L.set(ix, y - 9, hi); if (HS(ix, y, 95) < 0.5) rect(L, ix + 1, y - 6, w - 2, 2, hx('#ffffff')); }
+        if (y < 202) { rect(L, sx + 1, y + 2, 4, 2, HS(sx, y, 96) < 0.3 ? TAG2 : TAG); } }
+    }
+    rect(L, 430, 178, 56, 30, hx('#e8dcc8')); rect(L, 430, 178, 56, 1, hx('#fff8f0')); rect(L, 430, 179, 56, 1, GD); rect(L, 440, 168, 12, 10, hx('#2a2a3a')); rect(L, 441, 169, 10, 5, hx('#7ad0ff')); rect(L, 462, 170, 16, 8, hx('#ff9a50')); rect(L, 463, 171, 14, 6, hx('#ffd8a0'));   // the counter, a register, the hot-snack case
     rect(L, 340, 129, 40, B - 131, hx('#d8c8a8')); for (let y = 133; y < B - 2; y += 5) rect(L, 340, y, 40, 1, hx('#c8b898')); for (let x = 346; x < 380; x += 7) rect(L, x, 131, 1, B - 133, hx('#c8b898'));   // the open door (1.3 m): the tiled floor
     rect(L, 338, 129, 2, B - 131, hx('#2a2a3a')); rect(L, 380, 129, 2, B - 131, hx('#2a2a3a')); rect(L, 338, 129, 44, 1, hx('#2a2a3a')); rect(L, 340, 130, 40, 1, hx(mixc('#d8c8a8', '#000000', 0.3))); rect(L, 340, 130, 1, B - 132, hx(mixc('#d8c8a8', '#000000', 0.3)));   // the door frame and its recess
+    rect(L, 356, 130, 8, 3, hx('#1a1a2a')); L.set(358, 131, hx('#5ad0ff')); rect(L, 344, 204, 32, 3, hx('#4a4a5a')); rect(L, 346, 205, 28, 1, hx('#5a5a6a'));   // the sensor, the mat
     for (const mx of [300, 420, 456]) rect(L, mx, 129, 2, B - 131, hx('#2a2a3a'));   // the glass mullions
-    rect(L, 343, 156, 10, 48, hx('#3a3a5a')); for (let y = 159; y < 200; y += 6) rect(L, 344, y, 8, 3, [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a')][(y / 6 | 0) & 3]);   // the magazine rack
-    rect(L, 364, 176, 12, 22, hx('#f4f0e8')); for (let y = 180; y < 195; y += 4) rect(L, 366, y, 8, 1, hx('#8a8aa0')); rect(L, 362, 198, 16, 2, hx('#3a3a5a'));   // the A-frame board
-    rect(L, 384, 138, 10, 12, hx('#f0e8e0')); rect(L, 385, 139, 8, 2, hx('#d84a3a')); rect(L, 385, 143, 8, 4, hx('#3a7ae0'));   // a poster
-    rect(L, 230, B - 4, 260, 4, hx('#c8b898')); rect(L, 336, B - 6, 48, 6, hx('#d8c8a8'));   // the entrance step
-    const vm = (x, col, col2) => { rect(L, x, 151, 26, 57, col); rect(L, x, 151, 26, 1, hx('#ffffff')); rect(L, x + 2, 154, 22, 24, hx('#dce8f8')); for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) rect(L, x + 3 + i * 4, 156 + r * 8, 3, 6, [hx('#ff8a7a'), hx('#8ad0ff'), hx('#ffd0a0'), hx('#8ae0c0')][(i + r) & 3]); rect(L, x + 2, 180, 22, 24, col2); rect(L, x + 5, 183, 16, 3, hx('#1a1a2a')); rect(L, x + 5, 194, 16, 7, hx('#1a1a2a')); rect(L, x, 204, 26, 4, hx('#1a1a2a')); if (!TH.day) glow(L, x + 13, 166, 20, 16, '#e8f4ff', 40, 1.4); };   // a vending machine (183 × 80 cm)
-    vm(240, hx('#2a8a4a'), hx('#1e6a38')); rect(L, 244, 184, 8, 8, hx('#ff9ad0')); vm(272, hx('#dce4ec'), hx('#3a7ae0'));
+    rect(L, 343, 156, 10, 48, hx('#3a3a5a')); for (let y = 159; y < 200; y += 7) { const c = [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a'), hx('#8ae0c0')][(y / 7 | 0) % 5]; rect(L, 344, y, 8, 4, c); rect(L, 345, y + 1, 3, 2, hx(mixc('#000000', '#ffffff', 0.2))); L.set(350, y, hx('#ffffff')); }   // the magazine rack: covers
+    rect(L, 364, 176, 12, 22, hx('#f4f0e8')); for (let y = 180; y < 195; y += 4) rect(L, 366, y, 8, 1, hx('#8a8aa0')); rect(L, 366, 180, 8, 1, hx('#d84a3a')); rect(L, 362, 198, 16, 2, hx('#3a3a5a'));   // the A-frame board
+    rect(L, 384, 138, 10, 12, hx('#f0e8e0')); rect(L, 385, 139, 8, 2, hx('#d84a3a')); rect(L, 385, 143, 8, 4, hx('#3a7ae0')); rect(L, 304, 140, 12, 16, hx('#f0e8e0')); rect(L, 305, 141, 10, 3, hx('#3a7ae0')); rect(L, 305, 146, 10, 2, hx('#d84a3a')); rect(L, 305, 150, 6, 4, hx('#ff9ad0'));   // posters on the glass
+    rect(L, 230, B - 4, 260, 4, hx('#c8b898')); rect(L, 230, B - 4, 260, 1, hx('#e8dcc8')); rect(L, 336, B - 6, 48, 6, hx('#d8c8a8')); rect(L, 336, B - 6, 48, 1, hx('#ece0cc'));   // the entrance step with its lit edge
+    const vm = (x, col, col2, brand) => {   // a vending machine (183 × 80 cm): brand strip, three rows of cans with highlights, price labels, a coin panel, the hatch, a shadow
+      rect(L, x, 151, 26, 57, hx(col)); rect(L, x, 151, 26, 1, hx('#ffffff')); rect(L, x + 2, 152, 22, 1, hx(brand)); rect(L, x + 2, 154, 22, 24, hx('#dce8f8')); rect(L, x + 2, 154, 22, 1, hx('#f4f8ff'));
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) { const g = ['#ff8a7a', '#8ad0ff', '#ffd0a0', '#8ae0c0', '#c8a8ff', '#ffe08a'][(i + r * 2) % 6], ix = x + 3 + i * 4, iy = 156 + r * 8; rect(L, ix, iy, 3, 6, hx(g)); rect(L, ix + 2, iy, 1, 6, hx(mixc(g, '#000000', 0.35))); L.set(ix, iy, hx(mixc(g, '#ffffff', 0.5))); }
+      for (let i = 0; i < 5; i++) rect(L, x + 3 + i * 4, 179, 3, 1, hx('#fff8d0'));   // the price labels
+      rect(L, x + 2, 181, 22, 11, hx(col2)); rect(L, x + 4, 183, 6, 3, hx('#0a0f2a')); rect(L, x + 5, 184, 4, 1, hx('#7ad4ff')); for (let i = 0; i < 3; i++) rect(L, x + 12 + i * 4, 183, 2, 2, hx('#9aa0b0')); rect(L, x + 20, 183, 1, 4, hx('#0a0f2a')); rect(L, x + 4, 188, 16, 2, hx(mixc(col2, '#ffffff', 0.15)));   // the coin panel: display, buttons, slot
+      rect(L, x + 4, 195, 18, 7, hx('#1a1a2a')); rect(L, x + 5, 196, 16, 1, hx('#4a4a5a')); rect(L, x, 204, 26, 4, hx('#1a1a2a'));   // the hatch, the base
+      if (!TH.day) glow(L, x + 13, 166, 20, 16, '#e8f4ff', 40, 1.4);
+    };
+    vm(240, '#2a8a4a', '#1e6a38', '#ffffff'); rect(L, 244, 184, 8, 8, hx('#ff9ad0')); rect(L, 245, 186, 6, 1, hx('#ffffff')); vm(272, '#dce4ec', '#3a7ae0', '#3a7ae0');
     rect(L, 263, 152, 3, 56, hx(mixc('#2a8a4a', '#000000', 0.45))); rect(L, 295, 152, 3, 56, hx(mixc('#dce4ec', '#000000', 0.4))); rect(L, 479, 157, 3, 51, hx(mixc('#dce4ec', '#000000', 0.4)));   // the machines' dark side faces
-    rect(L, 456, 156, 26, 52, hx('#dce4ec')); rect(L, 456, 156, 26, 3, hx('#3a7ae0')); rect(L, 460, 164, 18, 14, hx('#c8e8ff')); rect(L, 460, 184, 18, 8, hx('#8a90a0')); rect(L, 456, 204, 26, 4, hx('#1a1a2a'));   // the ATM
+    rect(L, 456, 156, 26, 52, hx('#dce4ec')); rect(L, 456, 156, 26, 3, hx('#3a7ae0')); rect(L, 460, 164, 18, 12, hx('#1a2a4a')); rect(L, 461, 165, 16, 10, hx('#8ad8ff')); rect(L, 463, 167, 10, 1, hx('#ffffff')); rect(L, 463, 170, 7, 1, hx('#ffffff')); for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) rect(L, 461 + i * 4, 180 + r * 3, 2, 2, hx('#6a7080')); rect(L, 474, 181, 6, 1, hx('#1a1a2a')); rect(L, 474, 186, 6, 1, hx('#1a1a2a')); rect(L, 460, 194, 18, 6, hx('#c8d0dc')); rect(L, 456, 204, 26, 4, hx('#1a1a2a'));   // the ATM: screen with text, keypad, card and receipt slots
     rect(L, 497, 120, 3, B - 120, T('poleDark')); ellipse(L, 498, 114, 8, 8, hx('#2a5ad0')); ellipse(L, 498, 114, 6, 6, hx('#e8f0ff')); rect(L, 493, 113, 11, 3, hx('#2a5ad0'));   // the blue road sign on its pole
     // ---- the right: the dark neighbour house (two storeys, tiled roof), one warm window, a mint board, bushes
     wall(506, MID_W, 22, 'apt', 'aptEdge'); roof(506, MID_W, 14, 8);
@@ -1396,7 +1424,9 @@
     rect(L, 300, 226, 12, 4, hx('#1a1a2a')); for (let i = 0; i < 12; i += 2) rect(L, 301 + i, 227, 1, 2, hx('#4a4a6a'));   // a drain grate
     // ---- the great tree on the pavement: shadow, trunk 0.5 m with bark, the crown filling the top-left, branches over the store
     ellipse(L, 222, 236, 26, 4, hx('#0c0a1a'));
-    sakuraOn(L, 220, 24, 300, 150, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.2, lace: true, grain: true, skeleton: [[222, 124, 470, 30, 14], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [218, 128, 110, 20, 11], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]] });   // the pin's tree: the trunk forks into three thick limbs, the long one over the store
+    sakuraOn(L, 220, 24, 440, 170, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.2, lace: true, grain: true,
+      skeleton: [[222, 124, 470, 30, 14], [470, 30, 610, 66, 8], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [400, 60, 440, 108, 6], [218, 128, 110, 20, 11], [120, 60, 60, 112, 6], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]],
+      canopy: { x0: -60, x1: 660, ytop: -34, n: 1000, ylow: (x) => 84 + 28 * Math.max(0, Math.min(1, (200 - x) / 80)) + (x < 200 ? 16 : 8) * Math.sin(x / 23) + 6 * Math.sin(x / 11 + 1) - Math.max(0, x - 420) * 0.08 } });   // the pin's tree: one canopy across the top, hanging lowest by the trunk, the long limb over the store to the right edge
     for (let i = 0; i < 5; i++) rect(L, 220 - 22 + i, 233 + i, 44 - 2 * i, 1, T('bark2'));   // the root flare
     // ---- the utility pole in front of it: the crossarm at the top, wires sagging across the sky, the transformer, signs, the drop cable
     { const PL = [hx(mixc(TH.poleDark, '#000000', 0.4)), hx(mixc(TH.poleLight, '#ffffff', 0.35)), T('poleLight'), T('poleLight'), T('poleLight'), T('pole'), T('pole'), T('pole'), T('pole'), T('poleDark'), T('poleDark'), T('poleDark'), hx(mixc(TH.poleDark, '#000000', 0.3)), hx(mixc(TH.poleDark, '#000000', 0.55))];   // a cylinder: edge, bright rim, light, mid, dark, edge
