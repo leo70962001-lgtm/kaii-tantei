@@ -172,4 +172,4 @@ def main():
             d.text((x - 300, 4), 'raw 164 | plain 82 | clean 82' if MODE == 'half' else 'raw | clean', fill=(255, 230, 120)); x += 8
         name = 'pixelclean_review_%s%s.png' % (MODE, '_crisp' if CRISP else '')
         pic.save(os.path.join('art', name)); print('review', name, pic.size)
-main()
+if __name__ == '__main__': main()
