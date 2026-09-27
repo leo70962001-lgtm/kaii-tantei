@@ -331,25 +331,26 @@
     wall(266, 400, 80, 'storeWall', 'storeEdge'); roofbits(266, 400, 80, false);
     for (let x = 276; x < 390; x += 30) win(x, 90, 18, 22, HS(x, 90, 41) < 0.5);
     rect(L, 267, 73, 1, B - 73, hx('#5a5a7a')); rect(L, 398, 73, 1, B - 73, hx('#5a5a7a'));   // downpipes
-    rect(L, 266, 126, 134, 20, T('signBand')); rect(L, 266, 126, 134, 1, hx('#c8d8e8')); rect(L, 266, 145, 134, 1, T('signInk2')); rect(L, 266, 146, 134, 1, hx('#e8f0f8'));   // the sign band (1.1 m)
-    for (const [x, w] of [[298, 8], [309, 9], [321, 8], [332, 10], [345, 8], [356, 9]]) { rect(L, x, 130, w, 12, T('signInk2')); rect(L, x + 2, 132, w - 4, 3, T('signBand')); rect(L, x + 2, 137, w - 4, 2, T('signBand')); }   // the lettering
-    if (!TH.day) glow(L, 333, 136, 70, 14, TH.signBand, 30, 1.4);
-    rect(L, 266, 147, 134, 9, hx('#f4f0e8')); rect(L, 266, 147, 46, 9, T('lintelA')); rect(L, 354, 147, 46, 9, T('lintelB'));   // the lintel strips
-    for (let x = 270; x < 308; x += 6) rect(L, x, 149, 3, 5, hx('#fff0e0')); for (let x = 358; x < 396; x += 6) rect(L, x, 149, 3, 5, hx('#fff0e0')); for (let x = 318; x < 350; x += 5) rect(L, x, 150, 2, 4, hx('#d84a3a'));   // their text
-    for (let x = 270; x < 398; x += 14) { rect(L, x, 146, 3, 1, hx('#fff8e8')); if (!TH.day) glow(L, x + 1, 149, 6, 5, '#ffe8b0', 50, 1.5); }   // downlights under the sign
-    rect(L, 266, 156, 134, B - 156, T('storeEdge'));   // the glass front (1.8 m): warm light, the ceiling lamps, shelves packed with goods
-    for (let y = 158; y < B - 1; y++) for (let x = 268; x < 398; x++) L.set(x, y, dith(x, y, (y - 156) / 34) ? T('konbiniGlass') : T('konbiniGlassTop'));
-    rect(L, 276, 159, 26, 2, hx('#fffaf0')); rect(L, 350, 159, 26, 2, hx('#fffaf0')); rect(L, 337, 159, 1, 3, hx('#3a3a5a')); rect(L, 335, 162, 5, 3, hx('#fff0d0'));   // two tube lamps and a pendant
-    for (const y of [168, 177, 186]) { rect(L, 270, y, 128, 1, T('shelf')); for (let x = 271; x < 397; x += 3) rect(L, x, y - 6, 2, 6, [hx('#ff9ad0'), hx('#8ae0c0'), hx('#8ad0ff'), hx('#c8a8ff'), hx('#fff0d0'), hx('#ff8a7a'), hx('#f4f4f8')][(x * 7 + y) % 7]); }
-    rect(L, 324, 158, 20, B - 160, hx('#d8c8a8')); for (let y = 160; y < B - 2; y += 4) rect(L, 324, y, 20, 1, hx('#c8b898')); for (let x = 328; x < 344; x += 5) rect(L, x, 160, 1, B - 162, hx('#c8b898'));   // the open door: the tiled floor
-    rect(L, 323, 158, 1, B - 160, T('storeDoor')); rect(L, 344, 158, 1, B - 160, T('storeDoor')); rect(L, 323, 158, 22, 1, T('storeDoor'));
-    rect(L, 326, 164, 6, 22, hx('#3a3a5a')); for (let y = 166; y < 184; y += 4) rect(L, 327, y, 4, 2, [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a')][(y >> 2) & 3]);   // the magazine rack
-    rect(L, 336, 166, 6, 6, hx('#f0e8e0')); rect(L, 337, 167, 4, 1, hx('#d84a3a')); rect(L, 337, 169, 4, 2, hx('#3a7ae0'));   // a poster on the door
+    rect(L, 266, 134, 134, 10, T('signBand')); rect(L, 266, 134, 134, 1, hx('#c8d8e8')); rect(L, 266, 143, 134, 1, T('signInk2'));   // the sign band (0.55 m, a quarter of the glass as measured)
+    for (const [x, w] of [[298, 8], [309, 9], [321, 8], [332, 10], [345, 8], [356, 9]]) { rect(L, x, 136, w, 6, T('signInk2')); rect(L, x + 2, 137, w - 4, 1, T('signBand')); rect(L, x + 2, 140, w - 4, 1, T('signBand')); }   // the lettering
+    if (!TH.day) glow(L, 333, 139, 70, 10, TH.signBand, 30, 1.4);
+    rect(L, 266, 144, 134, 1, hx('#e8f0f8')); rect(L, 266, 145, 134, 3, hx('#f4f0e8')); rect(L, 266, 145, 46, 3, T('lintelA')); rect(L, 354, 145, 46, 3, T('lintelB'));   // the tube and the lintel strips
+    for (let x = 270; x < 308; x += 6) rect(L, x, 146, 3, 1, hx('#fff0e0')); for (let x = 358; x < 396; x += 6) rect(L, x, 146, 3, 1, hx('#fff0e0')); for (let x = 318; x < 350; x += 5) rect(L, x, 146, 2, 1, hx('#d84a3a'));   // their text
+    for (let x = 270; x < 398; x += 14) { rect(L, x, 144, 3, 1, hx('#fff8e8')); if (!TH.day) glow(L, x + 1, 147, 6, 5, '#ffe8b0', 50, 1.5); }   // downlights under the sign
+    rect(L, 266, 148, 134, B - 148, T('storeEdge'));   // the glass front (2.2 m): warm light, the ceiling lamps, shelves packed with goods
+    for (let y = 150; y < B - 1; y++) for (let x = 268; x < 398; x++) L.set(x, y, dith(x, y, (y - 148) / 42) ? T('konbiniGlass') : T('konbiniGlassTop'));
+    rect(L, 276, 151, 26, 2, hx('#fffaf0')); rect(L, 350, 151, 26, 2, hx('#fffaf0')); rect(L, 337, 151, 1, 4, hx('#3a3a5a')); rect(L, 335, 155, 5, 3, hx('#fff0d0'));   // two tube lamps and a pendant
+    for (const y of [164, 175, 186]) { rect(L, 270, y, 128, 1, T('shelf')); for (let x = 271; x < 397; x += 3) rect(L, x, y - 6, 2, 6, [hx('#ff9ad0'), hx('#8ae0c0'), hx('#8ad0ff'), hx('#c8a8ff'), hx('#fff0d0'), hx('#ff8a7a'), hx('#f4f4f8')][(x * 7 + y) % 7]); }
+    rect(L, 324, 150, 20, B - 152, hx('#d8c8a8')); for (let y = 152; y < B - 2; y += 4) rect(L, 324, y, 20, 1, hx('#c8b898')); for (let x = 328; x < 344; x += 5) rect(L, x, 152, 1, B - 154, hx('#c8b898'));   // the open door (2.2 m): the tiled floor
+    rect(L, 323, 150, 1, B - 152, T('storeDoor')); rect(L, 344, 150, 1, B - 152, T('storeDoor')); rect(L, 323, 150, 22, 1, T('storeDoor'));
+    rect(L, 326, 160, 6, 26, hx('#3a3a5a')); for (let y = 162; y < 184; y += 4) rect(L, 327, y, 4, 2, [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a')][(y >> 2) & 3]);   // the magazine rack
+    rect(L, 336, 160, 6, 6, hx('#f0e8e0')); rect(L, 337, 161, 4, 1, hx('#d84a3a')); rect(L, 337, 163, 4, 2, hx('#3a7ae0'));   // a poster on the door
     rect(L, 337, 174, 7, 12, hx('#f4f0e8')); for (let y = 176; y < 184; y += 3) rect(L, 338, y, 5, 1, hx('#8a8aa0')); rect(L, 336, 186, 9, 1, hx('#3a3a5a'));   // the A-frame board in the doorway
     const vm = (x, col, col2) => { rect(L, x, 155, 14, 33, col); rect(L, x, 155, 14, 1, hx('#ffffff')); rect(L, x + 1, 157, 12, 12, hx('#dce8f8')); for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) rect(L, x + 2 + i * 3, 158 + r * 6, 2, 4, [hx('#ff8a7a'), hx('#8ad0ff'), hx('#ffd0a0'), hx('#8ae0c0')][(i + r) & 3]); rect(L, x + 1, 171, 12, 15, col2); rect(L, x + 3, 173, 8, 2, hx('#1a1a2a')); rect(L, x + 3, 180, 8, 4, hx('#1a1a2a')); rect(L, x, 186, 14, 2, hx('#1a1a2a')); if (!TH.day) glow(L, x + 7, 163, 12, 10, '#e8f4ff', 40, 1.4); };   // a vending machine (183 × 78 cm)
     vm(272, hx('#2a8a4a'), hx('#1e6a38')); rect(L, 274, 174, 4, 5, hx('#ff9ad0')); vm(288, hx('#dce4ec'), hx('#3a7ae0'));
     rect(L, 372, 172, 18, 16, hx('#dce4f0')); rect(L, 372, 172, 18, 2, hx('#3a7ae0')); rect(L, 374, 176, 14, 8, hx('#c8e8ff')); rect(L, 372, 186, 18, 2, hx('#1a1a2a'));   // the ice-cream freezer
     rect(L, 268, 186, 130, 2, hx('#c8b898')); rect(L, 320, 185, 28, 3, hx('#d8c8a8'));   // the entrance step
+    if (!TH.day) for (let y = B - 6; y < B; y++) for (let x = 300; x < 372; x++) mixPx(L, x, y, hx('#ffd8a0'), Math.round(90 * (1 - Math.abs(x - 336) / 36) * (B - y) / 6));   // the store's light on the pavement
     rect(L, 394, 150, 2, 38, T('poleDark')); ellipse(L, 395, 146, 5, 5, hx('#2a5ad0')); rect(L, 392, 145, 7, 2, hx('#ffffff'));   // the parking sign
     rect(L, 350, 182, 8, 3, hx('#2a2a3a')); rect(L, 351, 183, 6, 1, hx('#5a5a7a'));   // the drain grate by the step
     rect(L, 362, 179, 7, 9, hx('#2a3a6a')); rect(L, 362, 179, 7, 2, hx('#4a5a9a'));   // a bin by the door
@@ -479,7 +480,7 @@
     }
     if (!TH.day) {   // the shopfronts' light and the neon hum across the road (mid), the vending machine's (near)
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (Hh(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
-      for (const [x0, y0, w, h, key] of [[4, 152, 118, 36, 'storeGlow'], [268, 156, 130, 32, 'konbiniGlow'], [414, 150, 62, 38, 'konbiniGlow'], [494, 148, 46, 40, 'storeGlow'], [610, 144, 30, 44, 'storeGlow']]) out.push({ mid: true, x: x0, y: y0, w, h, col: TH[key], a: 0.035 * f });
+      for (const [x0, y0, w, h, key] of [[4, 152, 118, 36, 'storeGlow'], [268, 148, 130, 40, 'konbiniGlow'], [414, 150, 62, 38, 'konbiniGlow'], [494, 148, 46, 40, 'storeGlow'], [610, 144, 30, 44, 'storeGlow']]) out.push({ mid: true, x: x0, y: y0, w, h, col: TH[key], a: 0.035 * f });
       out.push({ mid: true, x: 0, y: 38, w: 20, h: 94, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) }); out.push({ mid: true, x: 462, y: 38, w: 20, h: 76, col: TH.neon2, a: 0.03 + 0.03 * Math.sin(s * 9 + 1) }); out.push({ mid: true, x: 594, y: 0, w: 70, h: 26, col: TH.neon2, a: 0.025 + 0.025 * Math.sin(s * 7 + 2) });
       if (!broken.has('vend')) out.push({ x: 198, y: 148, w: 48, h: 92, col: '#c0e8ff', a: 0.03 * f });
     }
