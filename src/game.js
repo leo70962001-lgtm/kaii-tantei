@@ -1210,12 +1210,12 @@
     uiHeader('STAGE SELECT', '1P', ROSTER[0].color);
     ctx.fillStyle = 'rgba(5,6,15,0.55)'; ctx.fillRect(0, 74 * scale, cv.width, 112 * scale); ctx.fillStyle = 'rgba(255,210,74,0.35)'; ctx.fillRect(0, 74 * scale, cv.width, scale); ctx.fillRect(0, 185 * scale, cv.width, scale);
     STAGES.forEach((id, i) => {
-      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 116, y = 120, chosen = i === sim.stageSel;   // four 120-px thumbnails fit the 480-px screen
+      const th = STAGE.THEMES[id], x = VW / 2 + (i - (STAGES.length - 1) / 2) * 94, y = 120, chosen = i === sim.stageSel;   // five 90-px thumbnails fit the 480-px screen
       const tb = stageThumb(id);
-      if (chosen) { ctx.fillStyle = 'rgba(255,210,74,0.25)'; ctx.fillRect((x - 66) * scale, (y - 40) * scale, 132 * scale, 80 * scale); }
-      ctx.fillStyle = chosen ? '#ffd24a' : '#2c3060'; ctx.fillRect((x - 62) * scale, (y - 36) * scale, 124 * scale, 72 * scale);
-      ctx.drawImage(tb, (x - 60) * scale, (y - 34) * scale, 120 * scale, 68 * scale);
-      text(th.name, x, y + 50, 12, chosen ? '#ffd24a' : '#b9c2ea'); text(th.en, x, y + 63, 8, '#8f97b8');
+      if (chosen) { ctx.fillStyle = 'rgba(255,210,74,0.25)'; ctx.fillRect((x - 50) * scale, (y - 32) * scale, 100 * scale, 64 * scale); }
+      ctx.fillStyle = chosen ? '#ffd24a' : '#2c3060'; ctx.fillRect((x - 47) * scale, (y - 29) * scale, 94 * scale, 58 * scale);
+      ctx.drawImage(tb, (x - 45) * scale, (y - 27) * scale, 90 * scale, 54 * scale);
+      text(th.name, x, y + 42, 10, chosen ? '#ffd24a' : '#b9c2ea'); text(th.en, x, y + 54, 7, '#8f97b8');
     });
     text(STAGE.name, VW / 2, 236, 10, '#8f97b8');
     uiPrompt('◀ ▶ 選擇　Z 決定　ESC 返回');
