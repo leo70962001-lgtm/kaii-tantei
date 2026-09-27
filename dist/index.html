@@ -1131,10 +1131,10 @@
     konbiniDay: derive(NIGHT, (c) => lift(c, 0.5, '#d8d0e0'), { id: 'konbiniDay', layout: 'konbini', name: '桜のコンビニ・昼', en: 'KONBINI NOON', day: true, moon: false, sun: null, stars: 0, cloudSpeed: 4,   // the daytime pink-shop pin
       sky: ['#2a6ac8', '#3a7ad4', '#4c8cdc', '#62a0e4', '#7ab4ec', '#92c6f0', '#aad6f4', '#c0e2f6', '#d8ecf8'],
       cloud: { body: '#f4f8fc', shade: '#c8d8e8', lit: '#ffffff', rim: '#ffffff', warm: '#f8e8ec' }, cum: ['#ffffff', '#f4f8fc', '#e0eaf4', '#a8bcd4', '#c8d8e8', '#b8cce0'], haze: ['#c0dcf0', '#e8dce8'],
-      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, dense: false, sakura: ['#c86888', '#e890a8', '#f4b0c0', '#f8c8d4', '#fce4ea'], petals: ['#f8c8d4', '#f4b0c0', '#fce4ea', '#e890a8'],
+      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, dense: false, sakura: ['#b87898', '#d898b0', '#eeb4c4', '#f8d0d8', '#ffe8ee'], petals: ['#f8d0d8', '#eeb4c4', '#ffe8ee', '#d898b0'],
       aptLit: ['#fff4e0', '#f0e0c0'], schoolLit: '#fff4e0', schoolLit2: '#f0e0c0', winLit: ['#fff4e0', '#f0e0c0'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
-      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#e4e8ec', konbiniGlassTop: '#dce4ec', signBand: '#9ec0dc', bark: '#4a3a3a', bark2: '#7a6060', bark3: '#2a1e1e',
-      sidewalk: '#d0c4b4', sidewalk2: '#d8ccbc', joint: '#b0a494', top: '#f0e8dc', kerb: '#e0d8cc', kerb2: '#b8ac9c', road: ['#c8bcb0', '#c0b4a8', '#b8aca0', '#b0a498', '#a89c90'] }),
+      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#cfc6cc', konbiniGlassTop: '#c4bcc8', signBand: '#9ec0dc', bark: '#4a3038', bark2: '#8a5a48', bark3: '#2a1c24',
+      sidewalk: '#ecd8d0', sidewalk2: '#f0dcd4', joint: '#c8b4b0', top: '#fbeee8', kerb: '#e0d8cc', kerb2: '#b8ac9c', road: ['#c8bcb0', '#c0b4a8', '#b8aca0', '#b0a498', '#a89c90'] }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
       sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'],
       cloud: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0', warm: '#4a2a5a' }, cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
@@ -1291,9 +1291,9 @@
       if (opts.grain) {   // the pin's blossom: a scatter of tiny flowers, dense in the middle and lacy at the edge, lit top-right, a rose shade underneath, white glints
         for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
           const d = Math.hypot(x - fx, y - fy) / r; if (d > 1) continue;
-          const n = HS(x, y, seed + 6 + k), pfill = 0.92 * Math.pow(1 - d, 0.55); if (n > pfill) continue;
+          const n = HS(x, y, seed + 6 + k), pfill = TH.day ? 0.98 * Math.pow(1 - d, 0.3) : 0.92 * Math.pow(1 - d, 0.55); if (n > pfill) continue;
           const l = ((x - fx) / r) * 0.5 * light - ((y - fy) / r) * 0.8 + (HS(x, y, seed + 7) - 0.5) * 0.7, under = (y - fy) / r > 0.45 && HS(x, y, seed + 8) < 0.5;
-          L.set(x, y, HS(x, y, seed + 9) < 0.06 ? WHITE : under ? TONES[HS(x, y, seed + 10) < 0.5 ? 0 : 1] : l > 0.45 ? TONES[4] : l > 0.05 ? TONES[3] : l > -0.35 ? TONES[2] : TONES[1]); mark(x, y);
+          L.set(x, y, HS(x, y, seed + 9) < (TH.day ? 0.1 : 0.06) ? WHITE : under ? TONES[HS(x, y, seed + 10) < 0.5 ? 0 : 1] : l > 0.45 ? TONES[4] : l > 0.05 ? TONES[3] : l > -0.35 ? TONES[2] : TONES[1]); mark(x, y);
         }
         return;
       }
@@ -1382,7 +1382,8 @@
     rect(L, 232, 140, 256, 1, GD); for (let x = 248; x < 488; x += 16) rect(L, x, 135, 1, 5, hx(mixc(TH.konbiniGlassTop, '#ffffff', 0.4)));   // the ceiling: tile joints and its edge
     for (const tx of [244, 300, 396, 444]) { rect(L, tx - 1, 135, 38, 4, GD); rect(L, tx, 136, 36, 2, hx('#fffaf0')); }   // tube lamps in housings
     rect(L, 228, 127, 264, 7, hx('#3a6ad0')); for (let x = 228; x < 492; x += 8) rect(L, x, 127, 4, 7, hx('#5a8ae8')); rect(L, 228, 127, 264, 1, hx('#8ab0f0')); for (let x = 230; x < 492; x += 8) rect(L, x, 134, 4, 1, hx('#3a6ad0')); rect(L, 232, 135, 256, 1, GD);   // the blue awning: stripes, a lit top edge, a scalloped hem, its shadow on the glass
-    if (TH.day) { for (let y = 127; y < 135; y++) for (let x = 228; x < 492; x++) if (Math.sin(x / 5.3 + y) + Math.sin(x / 11 - y / 2) + HS(x, y, 73) * 0.8 > 1.4) mixPx(L, x, y, hx('#000000'), 70); for (let y = 90; y < 96; y++) for (let x = 230; x < 490; x++) mixPx(L, x, y, hx('#000000'), 44 - (y - 90) * 6); }   // by day: the blossoms' dappled shadow on the awning, the roof's shadow on the sign band
+    if (TH.day) { for (let y = 127; y < 135; y++) for (let x = 228; x < 492; x++) { const lit = Math.sin(x / 5.3 + y) + Math.sin(x / 11 - y / 2) + HS(x, y, 73) * 0.8 > 1.3; mixPx(L, x, y, lit ? hx('#a8d8ff') : hx('#102850'), lit ? 70 : 60); }   // the awning sits in the canopy's shadow with sunlit spots
+      for (let y = 76; y < 120; y++) for (let x = 226; x < 494; x++) { const v = Math.sin(x / 9 + y / 5) + Math.sin(x / 21 - y / 8) + HS(x, y, 77) * 0.6; if (v > 0.9) mixPx(L, x, y, hx('#5a3a68'), 40); } for (let y = 90; y < 96; y++) for (let x = 230; x < 490; x++) mixPx(L, x, y, hx('#000000'), 30 - (y - 90) * 4); }   // dappled blossom shadows over the roof and sign band, the eave's shadow line
     const GOODS = ['#ff9ad0', '#8ae0c0', '#8ad0ff', '#c8a8ff', '#ffe08a', '#ff8a7a', '#f4f4f8', '#7ab8ff', '#ffb070', '#a0e07a'];
     for (let x = 236; x < 486; x += 3) { const c = hx(GOODS[Math.floor(HS(x >> 3, 1, 91) * GOODS.length)]); rect(L, x, 141, 2, 6, hx(mixc(GOODS[Math.floor(HS(x >> 3, 1, 91) * GOODS.length)], '#000000', 0.35))); L.set(x, 141, c); } rect(L, 234, 147, 252, 1, GDD);   // the deeper back shelf, dimmer
     for (const y of [158, 180, 202]) {   // the front shelves: 12-px sections of one product each (a lit top pixel, a dark side), price tags under the shelf
@@ -1404,7 +1405,8 @@
       const w = big ? 14 : 10, h = big ? 11 : 8; rect(L, x, y - h, w, h, hx('#b86a48')); rect(L, x - 1, y - h, w + 2, 2, hx('#d08860')); rect(L, x + w - 3, y - h + 2, 2, h - 2, hx('#8a4a30'));
       ellipse(L, x + w / 2, y - h - 3, w / 2 + 1, big ? 5 : 4, hx('#2e6a3a')); ellipse(L, x + w / 2 - 2, y - h - 4, w / 2 - 2, big ? 4 : 3, hx('#4a9a58')); for (let i = 0; i < (big ? 6 : 4); i++) { const fx = x + 1 + Math.floor(HS(i, x, 81) * (w - 2)), fy = y - h - 2 - Math.floor(HS(i, y, 82) * (big ? 7 : 5)); L.set(fx, fy, hx(i & 1 ? '#ff6a8a' : '#ffd0e0')); L.set(fx + 1, fy, hx('#ff9ab0')); }
     };
-    pot(318, B, true); pot(388, B, false); pot(404, B, true);
+    pot(318, B, true); pot(388, B, false);
+    rect(L, 404, B - 16, 18, 16, hx('#b8b0b8')); rect(L, 403, B - 16, 20, 2, hx('#d8d0d8')); rect(L, 419, B - 14, 3, 14, hx('#8a8290')); rect(L, 412, B - 24, 2, 8, hx('#6a4a3a')); for (const [cx, cy, r] of [[413, B - 28, 5], [408, B - 24, 4], [418, B - 23, 4]]) { ellipse(L, cx, cy, r, r - 1, hx('#5a9a48')); ellipse(L, cx - 1, cy - 1, r - 2, r - 2, hx('#8ac860')); } for (const [fx, fy, c] of [[409, B - 27, '#ffd040'], [416, B - 30, '#ff5050'], [420, B - 24, '#ffd040'], [406, B - 22, '#ff8ab0']]) { L.set(fx, fy, hx(c)); L.set(fx + 1, fy, hx(c)); }   // the grey planter with a little tree and flowers
     const vm = (x, col, col2, brand) => {   // a vending machine (183 × 80 cm): brand strip, three rows of cans with highlights, price labels, a coin panel, the hatch, a shadow
       rect(L, x, 151, 26, 57, hx(col)); rect(L, x, 151, 26, 1, hx('#ffffff')); rect(L, x + 2, 152, 22, 1, hx(brand)); rect(L, x + 2, 154, 22, 24, hx('#dce8f8')); rect(L, x + 2, 154, 22, 1, hx('#f4f8ff'));
       for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) { const g = ['#ff8a7a', '#8ad0ff', '#ffd0a0', '#8ae0c0', '#c8a8ff', '#ffe08a'][(i + r * 2) % 6], ix = x + 3 + i * 4, iy = 156 + r * 8; rect(L, ix, iy, 3, 6, hx(g)); rect(L, ix + 2, iy, 1, 6, hx(mixc(g, '#000000', 0.35))); L.set(ix, iy, hx(mixc(g, '#ffffff', 0.5))); }
@@ -1438,7 +1440,7 @@
     for (let y = 252; y < H; y++) for (let x = 0; x < W; x++) if (dith(x, y, (y - 252) / 30)) mixPx(L, x, y, hx('#000000'), 60);
     rect(L, 300, 226, 12, 4, hx('#1a1a2a')); for (let i = 0; i < 12; i += 2) rect(L, 301 + i, 227, 1, 2, hx('#4a4a6a'));   // a drain grate
     if (TH.day) {   // the canopy's dappled shadow on the pavement, the pole's and the trunk's cast shadows (the sun from the upper left)
-      for (let y = 208; y < H; y++) for (let x = 0; x < 600; x++) { const v = Math.sin(x / 13 + y / 7) + Math.sin(x / 29 - y / 11) + Math.sin((x + y) / 17) + HS(x, y, 75) * 0.5, edge = Math.min(1, (600 - x) / 120); if (v > 1.0 * (2 - edge)) mixPx(L, x, y, hx('#2a2040'), Math.round(70 * edge)); }
+      for (let y = 208; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.sin(x / 13 + y / 7) + Math.sin(x / 29 - y / 11) + Math.sin((x + y) / 17) + HS(x, y, 75) * 0.6, cover = Math.min(1, Math.max(0, (640 - x) / 140)), lit = v > 1.15 && y < 252 && x > 60; if (!lit) mixPx(L, x, y, hx('#6a4a78'), Math.round(46 * cover + (y >= 252 ? 26 : 0))); else mixPx(L, x, y, hx('#fff0e0'), 30); }   // the pin's ground: mostly in the canopy's mauve shadow, sunlit cream patches, the front band shaded
       for (let t = 0; t <= 1; t += 0.004) { const x = Math.round(204 + 136 * t), y = Math.round(238 + 24 * t); for (let i = 0; i < 4; i++) mixPx(L, x + i, y, hx('#2a2040'), 90); }   // the pole's shadow
       for (let t = 0; t <= 1; t += 0.004) { const x = Math.round(222 + 178 * t), y = Math.round(238 + 30 * t); for (let i = -8; i < 8; i++) mixPx(L, x + i, y, hx('#2a2040'), 60); }   // the trunk's shadow
     }
