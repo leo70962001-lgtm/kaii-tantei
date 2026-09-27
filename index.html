@@ -41,14 +41,17 @@
   #touch { display: none; position: absolute; inset: 6px; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; font: 400 clamp(13px, 2.6vw, 20px)/1 "DotGothic16", "Noto Sans TC", monospace; color: #fff; }
   @media (pointer: coarse) { #touch { display: block; } }
   #touch.show { display: block; }
-  #touch .stick { position: absolute; left: 4%; bottom: 6%; width: 27%; max-width: 220px; aspect-ratio: 1; border-radius: 50%; pointer-events: auto; touch-action: none;
-    background: radial-gradient(circle, rgba(14,18,46,.55) 0 58%, rgba(14,18,46,.25) 100%); border: 2px solid rgba(255,255,255,.28); box-shadow: 0 0 0 4px rgba(0,0,0,.12); }
-  #touch .stick span { position: absolute; width: 22%; height: 22%; display: grid; place-items: center; color: rgba(255,255,255,.55); font-size: 1.3em; }
-  #touch .stick .u { left: 39%; top: 3%; } #touch .stick .d { left: 39%; bottom: 3%; } #touch .stick .l { left: 3%; top: 39%; } #touch .stick .r { right: 3%; top: 39%; }
-  #touch .stick[data-dir~="up"] .u, #touch .stick[data-dir~="down"] .d, #touch .stick[data-dir~="left"] .l, #touch .stick[data-dir~="right"] .r { color: var(--kin); text-shadow: 0 0 8px var(--kin); }
-  #touch .knob { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; background: rgba(255,255,255,.28); border: 2px solid rgba(255,255,255,.5); box-sizing: border-box; transition: transform .04s linear; }
-  #touch .keys { position: absolute; right: 3%; bottom: 6%; width: 40%; max-width: 330px; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-areas: "sp su jump" "a b jump"; gap: 4%; pointer-events: auto; touch-action: none; }
-  #touch .keys button { aspect-ratio: 1; min-height: 0; padding: 0; border-radius: 50%; background: rgba(27,33,80,.6); border: 2px solid rgba(255,255,255,.35); color: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.12); font: inherit; pointer-events: none; }
+  /* the d-pad: a cross in the bottom-left corner (the layout the user drew); the finger's offset from the centre is read
+     as one of 8 directions, so sliding across it gives the diagonals and quarter-circles, no lifting needed */
+  #touch .pad { position: absolute; left: 3%; bottom: 5%; width: 22%; min-width: 120px; max-width: 190px; aspect-ratio: 1; pointer-events: auto; touch-action: none; filter: drop-shadow(0 0 2px rgba(255,255,255,.5)) drop-shadow(0 0 4px rgba(0,0,0,.4)); }
+  #touch .pad .plate { position: absolute; inset: 0; background: rgba(14,18,46,.66); clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%); }
+  #touch .pad span { position: absolute; width: 32%; height: 32%; display: grid; place-items: center; color: rgba(255,255,255,.7); font-size: 1.25em; }
+  #touch .pad .u { left: 34%; top: 0; } #touch .pad .d { left: 34%; bottom: 0; } #touch .pad .l { left: 0; top: 34%; } #touch .pad .r { right: 0; top: 34%; }
+  #touch .pad .c { left: 42%; top: 42%; width: 16%; height: 16%; border-radius: 50%; background: rgba(255,255,255,.22); }
+  #touch .pad[data-dir~="up"] .u, #touch .pad[data-dir~="down"] .d, #touch .pad[data-dir~="left"] .l, #touch .pad[data-dir~="right"] .r { background: var(--kin); color: #1a0610; }
+  #touch .keys { position: absolute; right: 3%; bottom: 5%; width: 38%; max-width: 320px; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-areas: "sp su jump" "a b jump"; gap: 4%; pointer-events: auto; touch-action: none; }
+  #touch .keys button { aspect-ratio: 1; min-height: 0; padding: 0; border-radius: 50%; background: rgba(27,33,80,.6); border: 2px solid rgba(255,255,255,.35); color: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,.12); font: inherit; pointer-events: none; display: grid; place-content: center; gap: 2px; text-align: center; }
+  #touch .keys button b { font-weight: 400; font-size: 1.5em; line-height: 1; } #touch .keys button small { font-size: .62em; opacity: .8; line-height: 1; }
   #touch .keys button.on { background: var(--kin); color: #1a0610; border-color: #fff; }
   #touch .keys .a { grid-area: a; } #touch .keys .b { grid-area: b; } #touch .keys .sp { grid-area: sp; } #touch .keys .su { grid-area: su; }
   #touch .keys .jump { grid-area: jump; aspect-ratio: auto; border-radius: 40px; }
@@ -79,10 +82,10 @@
       <div class="stage" id="stage" tabindex="0" aria-label="格鬥遊戲畫面，用鍵盤操作">
         <div class="screen"><canvas id="gl" width="480" height="270" aria-hidden="true"></canvas><canvas id="cv" width="960" height="540"></canvas></div>
         <div id="touch" aria-label="觸控操作">
-          <div class="stick" aria-label="方向"><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><div class="knob"></div></div>
+          <div class="pad" aria-label="方向"><div class="plate"></div><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><span class="c"></span></div>
           <div class="keys" aria-label="攻擊鍵">
             <button type="button" class="sp" data-hold="special">必殺</button><button type="button" class="su" data-hold="sup">超必殺</button><button type="button" class="jump" data-hold="up">跳</button>
-            <button type="button" class="a" data-hold="light">小</button><button type="button" class="b" data-hold="heavy">大</button>
+            <button type="button" class="a" data-hold="light"><b>A</b><small>小</small></button><button type="button" class="b" data-hold="heavy"><b>B</b><small>大</small></button>
           </div>
           <div class="top"><button type="button" data-press="start">START</button><button type="button" data-fs aria-label="全螢幕">⛶ 全螢幕</button></div>
         </div>

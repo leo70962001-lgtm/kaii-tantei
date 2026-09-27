@@ -665,22 +665,20 @@
   window.addEventListener('keyup', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; const m = KEYS[k]; if (m) held[m[0]][m[1]] = false; });
   window.addEventListener('blur', () => { for (const h of held) for (const k of Object.keys(h)) h[k] = false; });
   // ------------------------------------------------------------ touch: a pad laid over the picture (「把方向跟 AB 鍵加在上面」)
-  // The stick on the left reads the finger's offset from its centre as one of 8 directions (slide, no lifting; up =
-  // jump); the keys on the right are held and can be slid between (a light→heavy roll). Every finger is tracked by
-  // its pointerId so directions and attacks work at the same time.
+  // The d-pad on the left reads the finger's offset from its centre as one of 8 directions (slide, no lifting; up =
+  // jump); the keys on the right (A 小 / B 大, 必殺, 超必殺, 跳) are held and can be slid between (a light→heavy roll).
+  // Every finger is tracked by its pointerId so directions and attacks work at the same time.
   const pressKey = (k) => { ensureAudio(); if (!held[0][k]) { uiPress = uiPress || { slot: 0, key: k }; stick[0][k] = true; } held[0][k] = true; };
   const releaseKey = (k) => { held[0][k] = false; };
   const touch = document.getElementById('touch');
   if (touch) {
-    const stickEl = touch.querySelector('.stick'), knob = touch.querySelector('.knob'), DIRS = ['left', 'right', 'up', 'down'];
+    const stickEl = touch.querySelector('.pad'), DIRS = ['left', 'right', 'up', 'down'];
     let stickId = null, cx = 0, cy = 0, R = 40;
     const setDir = (dx, dy) => {
       const d = Math.hypot(dx, dy), want = {};
       if (d > R * 0.22) { const ax = Math.abs(dx), ay = Math.abs(dy); if (ax > ay * 0.45) want[dx < 0 ? 'left' : 'right'] = true; if (ay > ax * 0.45) want[dy < 0 ? 'up' : 'down'] = true; }
       for (const k of DIRS) { if (want[k] && !held[0][k]) pressKey(k); else if (!want[k] && held[0][k]) releaseKey(k); }
       stickEl.dataset.dir = DIRS.filter((k) => want[k]).join(' ');
-      const m = Math.min(1, d / R) * R * 0.55, a = Math.atan2(dy, dx);
-      knob.style.transform = d > 0 ? `translate(${Math.cos(a) * m}px, ${Math.sin(a) * m}px)` : '';
     };
     const capture = (el, id) => { try { el.setPointerCapture(id); } catch (_) { /* synthetic pointers have no capture */ } };
     stickEl.addEventListener('pointerdown', (e) => { e.preventDefault(); if (stickId !== null) return; stickId = e.pointerId; capture(stickEl, e.pointerId); const r = stickEl.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width / 2; setDir(e.clientX - cx, e.clientY - cy); });
