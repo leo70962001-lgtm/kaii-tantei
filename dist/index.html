@@ -1125,9 +1125,9 @@
     konbini: derive(NIGHT, (c) => mixc(lift(c, 0.12), '#3a6a8a', 0.2), { id: 'konbini', layout: 'konbini', name: '桜のコンビニ前', en: 'SAKURA KONBINI', moon: false, sun: null, stars: 40,
       sky: ['#101c34', '#162840', '#1e3650', '#264660', '#2e5670', '#38667e', '#44768c', '#52869a', '#6296a8'],
       cloud: { body: '#4a5a78', shade: '#324058', lit: '#c8a0a8', rim: '#f0c8c0', warm: '#a86878' }, cum: ['#f0d0c8', '#c8a0a8', '#8a6a80', '#3a3a58', '#5a5a78', '#4a4a68'], haze: ['#4a6a88', '#7a6a80'],
-      farWin: ['#ffd8a0', '#ffe8c0'], farLit: 0.08, midLit: 0.12, dense: false, sakura: ['#8a4a60', '#b86878', '#d88898', '#eca8b0', '#f8c8cc'], petals: ['#eca8b0', '#d88898', '#f8c8cc', '#b86878'],
+      farWin: ['#ffd8a0', '#ffe8c0'], farLit: 0.08, midLit: 0.12, dense: false, sakura: ['#8a5060', '#c07888', '#e09aa4', '#f0b8c0', '#f8d4d8'], petals: ['#f0b8c0', '#e09aa4', '#f8d4d8', '#c07888'],
       aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
-      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#f2e6d6', konbiniGlassTop: '#ece0cc', road: ['#4a4a58', '#3c3c4c', '#323244', '#2a2a3c', '#222234'], sidewalk: '#4a4652', sidewalk2: '#524e5a', joint: '#36323e', top: '#8a8290', kerb: '#9a929e', kerb2: '#3a3640' }),
+      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#f2e6d6', konbiniGlassTop: '#ece0cc', signBand: '#8ab0d0', bark: '#3a2e34', bark2: '#6e505b', bark3: '#241a20', road: ['#4a4a58', '#3c3c4c', '#323244', '#2a2a3c', '#222234'], sidewalk: '#4a4652', sidewalk2: '#524e5a', joint: '#36323e', top: '#8a8290', kerb: '#9a929e', kerb2: '#3a3640' }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
       sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'],
       cloud: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0', warm: '#4a2a5a' }, cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
@@ -1271,10 +1271,11 @@
     };
     if (opts.trunk !== false) {
       const base = cy + ry * 0.38, bottom = opts.bottom || 190, tw = opts.trunkW || 6;
-      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); const crack = opts.puff > 1.5 && ((xx + seed) % 7 === 0) && HS(xx, y >> 3, seed + 44) < 0.6, ridge = opts.puff > 1.5 && ((xx + seed) % 7 === 3) && HS(xx, y >> 2, seed + 46) < 0.35; L.set(xx, y, crack ? BARK3 : ridge ? hx(mixc(TH.bark2, '#ffffff', 0.18)) : HS(xx, y, seed + 43) < 0.08 ? BARK2 : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }
-      grow(cx, base, -Math.PI / 2 + (HS(1, 1, seed) - 0.5) * 0.5, ry * 0.42, tw - 1, 3, 1);
+      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); const crack = opts.puff > 1.5 && ((xx + seed) % 7 === 0) && HS(xx, y >> 3, seed + 44) < 0.6, ridge = opts.puff > 1.5 && ((xx + seed) % 7 === 3) && HS(xx, y >> 2, seed + 46) < 0.35; const tt = (i + w / 2) / w; L.set(xx, y, crack ? BARK3 : ridge ? hx(mixc(TH.bark2, '#ffffff', 0.18)) : HS(xx, y, seed + 43) < 0.08 ? BARK2 : opts.puff > 1.5 ? (tt < 0.1 ? hx(mixc(TH.bark2, '#ffffff', 0.3)) : tt < 0.34 ? BARK2 : tt < 0.68 ? BARK : tt < 0.9 ? BARK3 : hx(mixc(TH.bark3, '#000000', 0.5))) : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }   // a cylinder: bright rim, light, mid, dark, edge
+      if (opts.skeleton) opts.skeleton.forEach(([x0, y0, x1, y1, w], k) => { limbs.push([x0, y0, x1, y1, w, 3]); grow(x1, y1, Math.atan2(y1 - y0, x1 - x0), Math.hypot(x1 - x0, y1 - y0) * 0.42, Math.max(2, w * 0.55), 2, 31 + k * 5); });   // the pin's limbs: given, then twigs grown from their ends
+      else { grow(cx, base, -Math.PI / 2 + (HS(1, 1, seed) - 0.5) * 0.5, ry * 0.42, tw - 1, 3, 1);
       grow(cx, base + 6, -Math.PI / 2 - 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.32, 3, 2, 9);
-      if (opts.big) grow(cx, base + 12, -Math.PI / 2 + 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.3, 3, 2, 17);
+      if (opts.big) grow(cx, base + 12, -Math.PI / 2 + 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.3, 3, 2, 17); }
     } else grow(cx, cy, opts.ang || Math.PI / 2, opts.len || ry * 0.45, 5, 3, 1);
     limbs.sort((p, q) => q[4] - p[4]);
     for (const [x0, y0, x1, y1, w] of limbs) limbLine(x0, y0, x1, y1, w);
@@ -1282,14 +1283,14 @@
     const cluster = (fx, fy, r, k) => {
       for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
         const d = Math.hypot(x - fx, y - fy) / r + HS(x, y, seed + 5) * 0.25; if (d > 1) continue;
-        const n = HS(x, y, seed + 6 + k); if (n < (opts.sparse ? 0.24 : opts.puff > 1.5 ? 0.2 : 0.13)) continue;
+        const n = HS(x, y, seed + 6 + k); if (n < (opts.lace ? 0.34 : opts.sparse ? 0.24 : opts.puff > 1.5 ? 0.2 : 0.13)) continue;
         const l = ((x - fx) / r) * 0.55 * light - ((y - fy) / r) * 0.75 + (HS(x, y, seed + 7) - 0.5) * (opts.puff > 1.5 ? 0.25 : 0.5);
         L.set(x, y, n > (opts.puff > 1.5 ? 0.93 : 0.96) ? WHITE : l > 0.55 ? TONES[4] : l > 0.15 ? TONES[3] : l > -0.25 ? TONES[2] : l > -0.6 ? TONES[1] : TONES[0]); mark(x, y);
       }
     };
     let k = 0;
     for (const [x0, y0, x1, y1, w, depth] of limbs) {
-      const len = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(2, Math.round(len / 3.5)), per = opts.sparse || opts.puff > 1.5 ? (depth === 0 ? 2 : 1) : depth === 0 ? 3 : depth === 1 ? 2 : 1;
+      const len = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(2, Math.round(len / 3.5)), per = opts.lace ? 1 : opts.sparse || opts.puff > 1.5 ? (depth === 0 ? 2 : 1) : depth === 0 ? 3 : depth === 1 ? 2 : 1;
       for (let i = 0; i <= steps; i++) {
         const t = i / steps, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t;
         for (let c = 0; c < per; c++) {
@@ -1338,37 +1339,40 @@
     for (let x = 140; x < 168; x += 5) rect(L, x, 148, 2, B - 4 - 148, T('gateLight')); rect(L, 138, 147, 30, 1, T('gateLight')); rect(L, 138, B - 5, 30, 1, T('gateDark'));   // the gate bars
     rect(L, 0, B - 4, MID_W, 4, T('sidewalk2')); rect(L, 0, B - 4, MID_W, 1, T('top'));   // the store's front line / the pavement's far edge
     bushes(4, 126, 6); bushes(178, 198, 5);
-    // ---- the konbini (x 200–520, single storey, base 208): parapet, sign band, tube + downlights, lintel, the glass front
-    wall(200, 520, 104, 'storeWall', 'storeEdge'); roof(200, 520, 98, 6);
-    for (let x = 204; x < 518; x += 4) rect(L, x, 104, 2, 1, hx(mixc(TH.storeEdge, '#ffffff', 0.2)));   // the gutter
-    rect(L, 200, 118, 320, 18, T('signBand')); rect(L, 200, 118, 320, 1, hx('#c8d8e8')); for (let y = 128; y < 135; y++) for (let x = 200; x < 520; x++) mixPx(L, x, y, hx('#ffffff'), Math.round(6 + (y - 128) * 5)); rect(L, 200, 135, 320, 1, T('signInk2'));   // the sign band (0.58 m), lit from below by the tube
-    for (const [x, w] of [[300, 14], [318, 16], [338, 14], [356, 18], [378, 14], [396, 16]]) { rect(L, x, 121, w, 12, T('signInk2')); rect(L, x + 3, 123, w - 6, 2, T('signBand')); rect(L, x + 3, 128, w - 6, 2, T('signBand')); rect(L, x + 3, 124, 1, 6, T('signBand')); }   // the lettering
-    if (!TH.day) glow(L, 360, 127, 130, 16, TH.signBand, 30, 1.4);
-    rect(L, 200, 136, 320, 1, hx('#e8f0f8')); rect(L, 200, 137, 320, 3, hx('#f4f0e8')); rect(L, 200, 137, 110, 3, T('lintelA')); rect(L, 410, 137, 110, 3, T('lintelB'));   // the tube and the lintel strips
-    for (let x = 206; x < 306; x += 8) rect(L, x, 138, 4, 1, hx('#fff0e0')); for (let x = 416; x < 516; x += 8) rect(L, x, 138, 4, 1, hx('#fff0e0')); for (let x = 320; x < 400; x += 6) rect(L, x, 138, 3, 1, hx('#d84a3a'));
-    for (let x = 206; x < 518; x += 20) { rect(L, x, 136, 4, 1, hx('#fff8e8')); if (!TH.day) glow(L, x + 2, 139, 8, 6, '#ffe8b0', 50, 1.5); }   // downlights
-    rect(L, 200, 140, 320, B - 140, T('storeEdge'));
-    for (let y = 142; y < B - 1; y++) for (let x = 202; x < 518; x++) L.set(x, y, dith(x, y, (y - 140) / 70) ? T('konbiniGlass') : T('konbiniGlassTop'));   // the glass (2.2 m), warm light
-    for (const tx of [216, 292, 404, 470]) rect(L, tx, 144, 40, 2, hx('#fffaf0')); rect(L, 359, 144, 1, 6, hx('#3a3a5a')); rect(L, 356, 150, 7, 3, hx('#fff0d0'));   // tube lamps, a pendant
-    for (const y of [162, 180, 198]) { rect(L, 204, y, 312, 1, T('shelf')); for (let x = 205; x < 515; x += 4) rect(L, x, y - 8, 3, 8, [hx('#ff9ad0'), hx('#8ae0c0'), hx('#8ad0ff'), hx('#c8a8ff'), hx('#fff0d0'), hx('#ff8a7a'), hx('#f4f4f8')][(x * 7 + y) % 7]); }   // packed shelves
-    rect(L, 340, 142, 40, B - 144, hx('#d8c8a8')); for (let y = 146; y < B - 2; y += 5) rect(L, 340, y, 40, 1, hx('#c8b898')); for (let x = 346; x < 380; x += 7) rect(L, x, 144, 1, B - 146, hx('#c8b898'));   // the open door (1.3 m): the tiled floor
-    rect(L, 339, 142, 1, B - 144, T('storeDoor')); rect(L, 380, 142, 1, B - 144, T('storeDoor')); rect(L, 339, 142, 42, 1, T('storeDoor'));
-    rect(L, 343, 160, 10, 44, hx('#3a3a5a')); for (let y = 163; y < 200; y += 6) rect(L, 344, y, 8, 3, [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a')][(y / 6 | 0) & 3]);   // the magazine rack
+    // ---- the konbini (x 230–490 = 8.4 m, base 208), proportioned like the pin's: a tiled roof, a 1 m sign band with big
+    // lettering, the tube and downlights, a wide coral lintel with large text, the 2.6 m glass front, the open door
+    rect(L, 200, 88, 30, B - 92, hx(mixc(TH.storeWall, '#000000', 0.35))); rect(L, 214, 96, 1, B - 100, hx('#5a5a7a'));   // the store's dark side wall and a downpipe
+    wall(230, 490, 88, 'storeWall', 'storeEdge'); roof(230, 490, 76, 14);
+    rect(L, 230, 90, 260, 30, T('signBand')); rect(L, 230, 90, 260, 1, hx('#c8d8e8')); for (let y = 112; y < 119; y++) for (let x = 230; x < 490; x++) mixPx(L, x, y, hx('#ffffff'), Math.round(6 + (y - 112) * 5)); rect(L, 230, 119, 260, 1, T('signInk2'));   // the sign band (1 m), lit from below
+    for (const [x, w] of [[298, 24], [330, 26], [364, 24], [396, 26]]) { rect(L, x - 1, 95, w + 2, 20, hx('#c8d8e8')); rect(L, x, 96, w, 18, T('signInk2')); rect(L, x + 4, 99, w - 8, 3, T('signBand')); rect(L, x + 4, 106, w - 8, 3, T('signBand')); rect(L, x + 4, 100, 2, 10, T('signBand')); rect(L, x + w - 8, 102, 2, 8, T('signBand')); }   // four big characters
+    if (!TH.day) glow(L, 360, 105, 120, 20, TH.signBand, 26, 1.4);
+    rect(L, 230, 120, 260, 1, hx('#e8f0f8')); rect(L, 230, 121, 260, 6, hx('#f4f0e8')); rect(L, 234, 121, 90, 6, hx('#ffffff')); rect(L, 235, 122, 88, 4, T('lintelA')); rect(L, 396, 121, 90, 6, hx('#ffffff')); rect(L, 397, 122, 88, 4, T('lintelB'));   // the tube; the lintel as two framed coral boxes
+    for (let x = 236; x < 322; x += 9) rect(L, x, 122, 5, 4, hx('#fff0e0')); for (let x = 400; x < 486; x += 9) rect(L, x, 122, 5, 4, hx('#fff0e0')); for (let x = 332; x < 390; x += 7) rect(L, x, 123, 4, 2, hx('#d84a3a'));   // its text
+    for (let x = 236; x < 488; x += 18) { rect(L, x, 120, 4, 1, hx('#fff8e8')); if (!TH.day) glow(L, x + 2, 123, 8, 6, '#ffe8b0', 50, 1.5); }   // downlights
+    rect(L, 230, 127, 260, B - 127, T('storeEdge'));
+    for (let y = 129; y < B - 1; y++) for (let x = 232; x < 488; x++) L.set(x, y, dith(x, y, (y - 127) / 84) ? T('konbiniGlass') : T('konbiniGlassTop'));   // the glass (2.6 m), warm light
+    for (const tx of [244, 300, 396, 444]) rect(L, tx, 131, 36, 2, hx('#fffaf0')); rect(L, 359, 131, 1, 7, hx('#3a3a5a')); rect(L, 356, 138, 7, 3, hx('#fff0d0'));   // tube lamps, a pendant
+    for (const y of [152, 174, 196]) { rect(L, 234, y, 252, 1, T('shelf')); rect(L, 234, y + 1, 252, 1, hx(mixc(TH.konbiniGlass, '#000000', 0.22))); for (let x = 235; x < 485; x += 4) rect(L, x, y - 10, 3, 10, [hx('#ff9ad0'), hx('#8ae0c0'), hx('#8ad0ff'), hx('#c8a8ff'), hx('#fff0d0'), hx('#ff8a7a'), hx('#f4f4f8')][(x * 7 + y) % 7]); }   // packed shelves
+    rect(L, 340, 129, 40, B - 131, hx('#d8c8a8')); for (let y = 133; y < B - 2; y += 5) rect(L, 340, y, 40, 1, hx('#c8b898')); for (let x = 346; x < 380; x += 7) rect(L, x, 131, 1, B - 133, hx('#c8b898'));   // the open door (1.3 m): the tiled floor
+    rect(L, 338, 129, 2, B - 131, hx('#2a2a3a')); rect(L, 380, 129, 2, B - 131, hx('#2a2a3a')); rect(L, 338, 129, 44, 1, hx('#2a2a3a')); rect(L, 340, 130, 40, 1, hx(mixc('#d8c8a8', '#000000', 0.3))); rect(L, 340, 130, 1, B - 132, hx(mixc('#d8c8a8', '#000000', 0.3)));   // the door frame and its recess
+    for (const mx of [300, 420, 456]) rect(L, mx, 129, 2, B - 131, hx('#2a2a3a'));   // the glass mullions
+    rect(L, 343, 156, 10, 48, hx('#3a3a5a')); for (let y = 159; y < 200; y += 6) rect(L, 344, y, 8, 3, [hx('#ff8ad0'), hx('#ffffff'), hx('#5ad0ff'), hx('#ffd24a')][(y / 6 | 0) & 3]);   // the magazine rack
     rect(L, 364, 176, 12, 22, hx('#f4f0e8')); for (let y = 180; y < 195; y += 4) rect(L, 366, y, 8, 1, hx('#8a8aa0')); rect(L, 362, 198, 16, 2, hx('#3a3a5a'));   // the A-frame board
-    rect(L, 384, 150, 10, 10, hx('#f0e8e0')); rect(L, 385, 151, 8, 2, hx('#d84a3a')); rect(L, 385, 155, 8, 3, hx('#3a7ae0'));   // a poster
-    rect(L, 200, B - 4, 320, 4, hx('#c8b898')); rect(L, 336, B - 6, 48, 6, hx('#d8c8a8'));   // the entrance step
+    rect(L, 384, 138, 10, 12, hx('#f0e8e0')); rect(L, 385, 139, 8, 2, hx('#d84a3a')); rect(L, 385, 143, 8, 4, hx('#3a7ae0'));   // a poster
+    rect(L, 230, B - 4, 260, 4, hx('#c8b898')); rect(L, 336, B - 6, 48, 6, hx('#d8c8a8'));   // the entrance step
     const vm = (x, col, col2) => { rect(L, x, 151, 26, 57, col); rect(L, x, 151, 26, 1, hx('#ffffff')); rect(L, x + 2, 154, 22, 24, hx('#dce8f8')); for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) rect(L, x + 3 + i * 4, 156 + r * 8, 3, 6, [hx('#ff8a7a'), hx('#8ad0ff'), hx('#ffd0a0'), hx('#8ae0c0')][(i + r) & 3]); rect(L, x + 2, 180, 22, 24, col2); rect(L, x + 5, 183, 16, 3, hx('#1a1a2a')); rect(L, x + 5, 194, 16, 7, hx('#1a1a2a')); rect(L, x, 204, 26, 4, hx('#1a1a2a')); if (!TH.day) glow(L, x + 13, 166, 20, 16, '#e8f4ff', 40, 1.4); };   // a vending machine (183 × 80 cm)
-    vm(214, hx('#2a8a4a'), hx('#1e6a38')); rect(L, 218, 184, 8, 8, hx('#ff9ad0')); vm(246, hx('#dce4ec'), hx('#3a7ae0'));
-    rect(L, 486, 156, 26, 52, hx('#dce4ec')); rect(L, 486, 156, 26, 3, hx('#3a7ae0')); rect(L, 490, 164, 18, 14, hx('#c8e8ff')); rect(L, 490, 184, 18, 8, hx('#8a90a0')); rect(L, 486, 204, 26, 4, hx('#1a1a2a'));   // the ATM
-    rect(L, 527, 120, 3, B - 120, T('poleDark')); ellipse(L, 528, 114, 8, 8, hx('#2a5ad0')); ellipse(L, 528, 114, 6, 6, hx('#e8f0ff')); rect(L, 523, 113, 11, 3, hx('#2a5ad0'));   // the blue road sign on its pole
+    vm(240, hx('#2a8a4a'), hx('#1e6a38')); rect(L, 244, 184, 8, 8, hx('#ff9ad0')); vm(272, hx('#dce4ec'), hx('#3a7ae0'));
+    rect(L, 263, 152, 3, 56, hx(mixc('#2a8a4a', '#000000', 0.45))); rect(L, 295, 152, 3, 56, hx(mixc('#dce4ec', '#000000', 0.4))); rect(L, 479, 157, 3, 51, hx(mixc('#dce4ec', '#000000', 0.4)));   // the machines' dark side faces
+    rect(L, 456, 156, 26, 52, hx('#dce4ec')); rect(L, 456, 156, 26, 3, hx('#3a7ae0')); rect(L, 460, 164, 18, 14, hx('#c8e8ff')); rect(L, 460, 184, 18, 8, hx('#8a90a0')); rect(L, 456, 204, 26, 4, hx('#1a1a2a'));   // the ATM
+    rect(L, 497, 120, 3, B - 120, T('poleDark')); ellipse(L, 498, 114, 8, 8, hx('#2a5ad0')); ellipse(L, 498, 114, 6, 6, hx('#e8f0ff')); rect(L, 493, 113, 11, 3, hx('#2a5ad0'));   // the blue road sign on its pole
     // ---- the right: the dark neighbour house (two storeys, tiled roof), one warm window, a mint board, bushes
-    wall(536, MID_W, 22, 'apt', 'aptEdge'); roof(536, MID_W, 14, 8);
-    win(562, 46, 20, 26, false); win(614, 46, 20, 26, false); win(562, 102, 20, 26, true); win(614, 102, 20, 26, false);
-    rect(L, 540, 130, 40, 16, hx('#8ad0b8')); rect(L, 541, 131, 38, 14, hx('#a8e0c8')); rect(L, 544, 134, 32, 8, hx('#8ad0b8')); for (let x = 547; x < 573; x += 6) rect(L, x, 136, 3, 4, hx('#fff8f0'));   // the mint board
-    rect(L, 538, 22, 1, B - 22, hx('#5a5a7a')); acunit(620, 150);
-    bushes(540, 650, 6);
-    rect(L, 600, 160, 30, B - 160, T('door')); rect(L, 603, 163, 24, 30, T('doorLit')); rect(L, 614, 163, 2, 30, T('door'));   // its door
-    if (!TH.day) { for (let y = 190; y < B; y++) for (let x = 200; x < 520; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 22); for (let y = 130; y < B - 4; y++) for (let x = 527; x < 531; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 50); }   // the store's light on its step and the sign pole
+    wall(506, MID_W, 22, 'apt', 'aptEdge'); roof(506, MID_W, 14, 8);
+    win(532, 46, 20, 26, false); win(584, 46, 20, 26, false); win(532, 102, 20, 26, true); win(584, 102, 20, 26, false); win(636, 102, 20, 26, false);
+    rect(L, 512, 130, 40, 16, hx('#8ad0b8')); rect(L, 513, 131, 38, 14, hx('#a8e0c8')); rect(L, 516, 134, 32, 8, hx('#8ad0b8')); for (let x = 519; x < 545; x += 6) rect(L, x, 136, 3, 4, hx('#fff8f0'));   // the mint board
+    rect(L, 508, 22, 1, B - 22, hx('#5a5a7a')); acunit(600, 150);
+    bushes(510, 650, 6);
+    rect(L, 570, 160, 30, B - 160, T('door')); rect(L, 573, 163, 24, 30, T('doorLit')); rect(L, 584, 163, 2, 30, T('door'));   // its door
+    if (!TH.day) { for (let y = 190; y < B; y++) for (let x = 230; x < 490; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 22); for (let y = 130; y < B - 4; y++) for (let x = 497; x < 501; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 50); }   // the store's light on its step and the sign pole
     windowSpans();
     return L;
   }
@@ -1377,24 +1381,29 @@
     // ---- the pavement from the store's line (y 208) to the bottom: slabs growing toward the camera, lighter joints, three tones
     for (let y = 208; y < H; y++) for (let x = 0; x < W; x++) { const band = y < 232 ? 6 : 8, base = y < 232 ? 208 : 232, row = Math.floor((y - base) / band) + (y < 232 ? 0 : 4), xx = x + (row & 1) * 13, col = Math.floor(xx / 26), joint = xx % 26 === 0 || (y - base) % band === 0, v = HS(col, row, 77); const bevel = (y - base) % band === 1 && xx % 26 !== 0; L.set(x, y, joint ? T('joint') : bevel ? hx(mixc(TH.sidewalk, '#ffffff', 0.12)) : v < 0.3 ? T('sidewalk2') : v < 0.85 ? T('sidewalk') : hx(mixc(TH.sidewalk, TH.joint, 0.4))); }
     rect(L, 0, 208, W, 1, T('top'));
-    if (!TH.day) { for (let y = 208; y < 250; y++) for (let x = 300; x < 520; x++) { const t = 1 - Math.hypot((x - 408) / 110, (y - 208) / 34); if (t > 0) mixPx(L, x, y, hx(TH.konbiniGlow), Math.round(64 * t)); } for (let y = 208; y < 236; y++) for (let x = 130; x < 260; x++) { const t = 1 - Math.hypot((x - 195) / 70, (y - 208) / 24); if (t > 0) mixPx(L, x, y, hx('#c8e8ff'), Math.round(30 * t)); } }   // the store's light and the vending machines' glow on the pavement
+    if (!TH.day) { for (let y = 208; y < 256; y++) for (let x = 170; x < 560; x++) { const fy = 1 - (y - 208) / 48, fx = 1 - 0.7 * Math.abs(x - 365) / 195, t = fy * fy * Math.max(0, fx); if (t > 0) mixPx(L, x, y, hx('#c8907a'), Math.round(120 * t)); }   // the pin's warm peach-brown pavement, fading away from the store
+      for (let y = 208; y < 250; y++) for (let x = 300; x < 520; x++) { const t = 1 - Math.hypot((x - 408) / 110, (y - 208) / 34); if (t > 0) mixPx(L, x, y, hx(TH.konbiniGlow), Math.round(50 * t)); } for (let y = 208; y < 236; y++) for (let x = 130; x < 260; x++) { const t = 1 - Math.hypot((x - 195) / 70, (y - 208) / 24); if (t > 0) mixPx(L, x, y, hx('#c8e8ff'), Math.round(30 * t)); } }   // the store's light and the vending machines' glow on the pavement
     for (let y = 252; y < H; y++) for (let x = 0; x < W; x++) if (dith(x, y, (y - 252) / 30)) mixPx(L, x, y, hx('#000000'), 60);
     rect(L, 300, 226, 12, 4, hx('#1a1a2a')); for (let i = 0; i < 12; i += 2) rect(L, 301 + i, 227, 1, 2, hx('#4a4a6a'));   // a drain grate
     // ---- the great tree on the pavement: shadow, trunk 0.5 m with bark, the crown filling the top-left, branches over the store
-    ellipse(L, 170, 236, 22, 4, hx('#0c0a1a'));
-    sakuraOn(L, 220, 24, 270, 124, 37, { big: true, trunkW: 22, bottom: 237, light: 1, puff: 2.4 });   // the trunk against the store's left corner, the crown over the store
-    for (let i = 0; i < 5; i++) rect(L, 170 - 18 + i, 233 + i, 36 - 2 * i, 1, T('bark2'));   // the root flare
+    ellipse(L, 222, 236, 26, 4, hx('#0c0a1a'));
+    sakuraOn(L, 220, 24, 300, 150, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.0, lace: true, skeleton: [[222, 124, 470, 30, 14], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [218, 128, 110, 20, 11], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]] });   // the pin's tree: the trunk forks into three thick limbs, the long one over the store
+    for (let i = 0; i < 5; i++) rect(L, 220 - 22 + i, 233 + i, 44 - 2 * i, 1, T('bark2'));   // the root flare
     // ---- the utility pole in front of it: the crossarm at the top, wires sagging across the sky, the transformer, signs, the drop cable
-    for (let y = 0; y < 238; y++) for (let x = 150; x < 164; x++) L.set(x, y, x < 152 ? T('poleLight') : x > 161 ? T('poleDark') : dith(x, y, 0.5 + HS(x, y, 33) * 0.2) ? T('pole') : T('poleLight'));   // the pole right in front of the trunk
-    for (let y = 0; y < 238; y += 30) rect(L, 150, y, 14, 1, T('poleDark'));
-    rect(L, 124, 4, 66, 3, T('poleDark')); rect(L, 124, 4, 66, 1, T('poleLight')); for (const ix of [128, 142, 172, 186]) { rect(L, ix, 0, 3, 4, T('insulator')); }
-    rect(L, 164, 30, 14, 22, T('aptDark')); rect(L, 164, 30, 14, 2, T('pole')); rect(L, 166, 34, 10, 14, T('storeWall')); rect(L, 164, 52, 14, 2, T('poleDark'));   // the transformer
+    { const PL = [hx(mixc(TH.poleDark, '#000000', 0.4)), hx(mixc(TH.poleLight, '#ffffff', 0.35)), T('poleLight'), T('poleLight'), T('poleLight'), T('pole'), T('pole'), T('pole'), T('pole'), T('poleDark'), T('poleDark'), T('poleDark'), hx(mixc(TH.poleDark, '#000000', 0.3)), hx(mixc(TH.poleDark, '#000000', 0.55))];   // a cylinder: edge, bright rim, light, mid, dark, edge
+      for (let y = 0; y < 238; y++) for (let x = 196; x < 210; x++) L.set(x, y, PL[x - 196]);
+      for (let y = 22; y < 238; y += 30) { rect(L, 196, y, 14, 1, PL[13]); rect(L, 197, y + 1, 12, 1, PL[1]); }   // the concrete rings
+      for (let y = 160; y < 238; y++) for (let x = 196; x < 210; x++) mixPx(L, x, y, hx('#000000'), Math.round((y - 160) * 0.5));   // darker toward the ground
+      rect(L, 192, 226, 22, 12, T('poleDark')); rect(L, 192, 226, 22, 1, PL[1]); rect(L, 192, 226, 1, 12, PL[2]); rect(L, 213, 226, 1, 12, PL[13]); }   // the concrete footing
+    // the pole over the trunk's left edge, as in the pin
+    rect(L, 170, 4, 66, 3, T('poleDark')); rect(L, 170, 4, 66, 1, T('poleLight')); for (const ix of [174, 188, 218, 232]) { rect(L, ix, 0, 3, 4, T('insulator')); }
+    rect(L, 182, 30, 14, 22, T('aptDark')); rect(L, 182, 30, 14, 2, T('pole')); rect(L, 184, 34, 10, 14, T('storeWall')); rect(L, 182, 52, 14, 2, T('poleDark'));   // the transformer
     const wire = (x0, y0, x1, y1, sag) => { for (let x = x0; x <= x1; x++) { const t = (x - x0) / (x1 - x0), y = y0 + (y1 - y0) * t + sag * 4 * t * (1 - t); L.set(x, Math.round(y), T('wire')); } };
-    wire(188, 2, W, 14, 10); wire(188, 6, W, 22, 12); wire(174, 12, W, 30, 9); wire(0, 8, 126, 4, 3); wire(0, 14, 126, 8, 3); line(L, 170, 7, 172, 30, T('wire'));
-    ellipse(L, 157, 120, 6, 6, hx('#2a5ad0')); ellipse(L, 157, 120, 4, 4, hx('#e8f0ff')); rect(L, 154, 119, 6, 2, hx('#2a5ad0')); rect(L, 152, 150, 10, 14, hx('#e8e8f0')); rect(L, 154, 153, 6, 1, hx('#d84a3a')); rect(L, 154, 156, 6, 1, hx('#2a2a4a')); rect(L, 154, 159, 6, 1, hx('#2a2a4a'));   // a round sign, a notice
-    for (const [gx, gy] of [[144, 236], [148, 238], [166, 237], [190, 235], [200, 238], [80, 250], [420, 246], [640, 258]]) { rect(L, gx, gy, 2, 2, hx('#3a7a4a')); L.set(gx + 1, gy - 1, hx('#5aa060')); L.set(gx, gy + 1, hx('#2a5a38')); }   // grass tufts
+    wire(234, 2, W, 14, 10); wire(234, 6, W, 22, 12); wire(220, 12, W, 30, 9); wire(0, 8, 172, 4, 3); wire(0, 14, 172, 8, 3); line(L, 190, 7, 189, 30, T('wire'));
+    ellipse(L, 203, 120, 6, 6, hx('#2a5ad0')); ellipse(L, 203, 120, 4, 4, hx('#e8f0ff')); rect(L, 200, 119, 6, 2, hx('#2a5ad0')); rect(L, 198, 150, 10, 14, hx('#e8e8f0')); rect(L, 200, 153, 6, 1, hx('#d84a3a')); rect(L, 200, 156, 6, 1, hx('#2a2a4a')); rect(L, 200, 159, 6, 1, hx('#2a2a4a'));   // a round sign, a notice
+    for (const [gx, gy] of [[190, 236], [194, 238], [212, 237], [238, 235], [246, 238], [80, 250], [420, 246], [640, 258]]) { rect(L, gx, gy, 2, 2, hx('#3a7a4a')); L.set(gx + 1, gy - 1, hx('#5aa060')); L.set(gx, gy + 1, hx('#2a5a38')); }   // grass tufts
     const PET = TH.petals.map(hx);   // fallen petals: thickest under the tree and at the store's door
-    for (let y = 209; y < H; y++) for (let x = 0; x < W; x++) { const dens = 0.014 + 0.1 * Math.max(0, 1 - Math.abs(x - 170) / 170) + 0.05 * Math.max(0, 1 - Math.abs(x - 408) / 120); if (HS(x, y, 61) < dens) { const c = PET[Math.floor(HS(x, y, 62) * 4)]; L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); if (y >= 232 && HS(x, y, 64) < 0.12) { L.set(x, y + 1, c); L.set(x + 1, y + 1, c); L.set(x, y, hx('#fff0f8')); } } }
+    for (let y = 209; y < H; y++) for (let x = 0; x < W; x++) { const dens = 0.014 + 0.1 * Math.max(0, 1 - Math.abs(x - 220) / 170) + 0.05 * Math.max(0, 1 - Math.abs(x - 408) / 120); if (HS(x, y, 61) < dens) { const c = PET[Math.floor(HS(x, y, 62) * 4)]; L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); if (y >= 232 && HS(x, y, 64) < 0.12) { L.set(x, y + 1, c); L.set(x + 1, y + 1, c); L.set(x, y, hx('#fff0f8')); } } }
     SAKURA = sakuraOn;
     return L;
   }
@@ -1655,8 +1664,8 @@
     }
     if (!TH.day) {   // the shopfronts' light and the neon hum across the road (mid), the vending machine's (near)
       const f = 0.85 + 0.15 * Math.sin(s * 7.3) + (Hh(Math.floor(s * 9), 13, 21) > 0.94 ? -0.5 : 0);
-      for (const [x0, y0, w, h, key] of (TH.layout === 'konbini' ? [[202, 142, 316, 66, 'konbiniGlow']] : [[4, 152, 118, 36, 'storeGlow'], [268, 148, 130, 40, 'konbiniGlow'], [414, 150, 62, 38, 'konbiniGlow'], [494, 148, 46, 40, 'storeGlow'], [610, 144, 30, 44, 'storeGlow']])) out.push({ mid: true, x: x0, y: y0, w, h, col: TH[key], a: 0.035 * f });
-      if (TH.layout === 'konbini') out.push({ mid: true, x: 200, y: 118, w: 320, h: 18, col: TH.signBand, a: 0.02 + 0.02 * Math.sin(s * 9) }); else out.push({ mid: true, x: 0, y: 38, w: 20, h: 94, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) }); if (TH.layout !== 'konbini') out.push({ mid: true, x: 462, y: 38, w: 20, h: 76, col: TH.neon2, a: 0.03 + 0.03 * Math.sin(s * 9 + 1) }); if (TH.layout !== 'konbini') out.push({ mid: true, x: 594, y: 0, w: 70, h: 26, col: TH.neon2, a: 0.025 + 0.025 * Math.sin(s * 7 + 2) });
+      for (const [x0, y0, w, h, key] of (TH.layout === 'konbini' ? [[232, 129, 256, 79, 'konbiniGlow']] : [[4, 152, 118, 36, 'storeGlow'], [268, 148, 130, 40, 'konbiniGlow'], [414, 150, 62, 38, 'konbiniGlow'], [494, 148, 46, 40, 'storeGlow'], [610, 144, 30, 44, 'storeGlow']])) out.push({ mid: true, x: x0, y: y0, w, h, col: TH[key], a: 0.035 * f });
+      if (TH.layout === 'konbini') out.push({ mid: true, x: 230, y: 90, w: 260, h: 30, col: TH.signBand, a: 0.02 + 0.02 * Math.sin(s * 9) }); else out.push({ mid: true, x: 0, y: 38, w: 20, h: 94, col: TH.neon, a: 0.03 + 0.03 * Math.sin(s * 11) }); if (TH.layout !== 'konbini') out.push({ mid: true, x: 462, y: 38, w: 20, h: 76, col: TH.neon2, a: 0.03 + 0.03 * Math.sin(s * 9 + 1) }); if (TH.layout !== 'konbini') out.push({ mid: true, x: 594, y: 0, w: 70, h: 26, col: TH.neon2, a: 0.025 + 0.025 * Math.sin(s * 7 + 2) });
       if (!broken.has('vend')) out.push({ x: 198, y: 148, w: 48, h: 92, col: '#c0e8ff', a: 0.03 * f });
     }
     if (!TH.day) for (let k = 0; k < 5; k++) {   // the block's windows switching, only where no canopy covers the pane (mid)
