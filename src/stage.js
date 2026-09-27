@@ -96,10 +96,12 @@
   };
   const THEMES = {
     night: NIGHT,
-    dusk: derive(NIGHT, (c) => mixc(lift(c, 0.2), '#ff9a60', 0.14), { id: 'dusk', name: '夕暮れの校門前', en: 'DUSK GATE', moon: false, sun: [470, 158], stars: 30,
-      sky: ['#1a1440', '#2c1c58', '#48286a', '#6a3a72', '#8c4a6e', '#b06062', '#d08262', '#eaa472', '#f8c484'],
-      cloud: { body: '#5a3a70', shade: '#3a2450', lit: '#c07890', rim: '#ffd0b0', warm: '#c06a60' }, cum: ['#ffd8c0', '#e09aa0', '#a06080', '#4a2e60', '#7c4a7c', '#603a68'], haze: ['#8a5a78', '#c07a70'],
-      farWin: ['#ffc890', '#ffd0a0'], farLit: 0.06, midLit: 0.1, dense: false, sakura: ['#a03a80', '#d0509c', '#f078b8', '#ffa0d0', '#ffd0e6'], petals: ['#ffa0d0', '#f078b8', '#ffd0e6', '#d0509c'], aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff5ad0', neon2: '#5ad0ff', signA: '#ff5ad0', signB: '#ff9a3a' }),
+    dusk: derive(NIGHT, (c) => mixc(lift(c, 0.12), '#3a6a8a', 0.2), { id: 'dusk', name: '夕暮れの校門前', en: 'DUSK GATE', moon: false, sun: null, stars: 40,   // the konbini pin's blue hour
+      sky: ['#101c34', '#162840', '#1e3650', '#264660', '#2e5670', '#38667e', '#44768c', '#52869a', '#6296a8'],
+      cloud: { body: '#4a5a78', shade: '#324058', lit: '#c8a0a8', rim: '#f0c8c0', warm: '#a86878' }, cum: ['#f0d0c8', '#c8a0a8', '#8a6a80', '#3a3a58', '#5a5a78', '#4a4a68'], haze: ['#4a6a88', '#7a6a80'],
+      farWin: ['#ffd8a0', '#ffe8c0'], farLit: 0.08, midLit: 0.12, dense: false, sakura: ['#8a4a60', '#b86878', '#d88898', '#eca8b0', '#f8c8cc'], petals: ['#eca8b0', '#d88898', '#f8c8cc', '#b86878'],
+      aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
+      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', road: ['#4a4a58', '#3c3c4c', '#323244', '#2a2a3c', '#222234'], sidewalk: '#4a4652', sidewalk2: '#524e5a', joint: '#36323e', top: '#8a8290', kerb: '#9a929e', kerb2: '#3a3640' }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
       sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'],
       cloud: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0', warm: '#4a2a5a' }, cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
@@ -242,7 +244,7 @@
     };
     if (opts.trunk !== false) {
       const base = cy + ry * 0.38, bottom = opts.bottom || 190, tw = opts.trunkW || 6;
-      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); L.set(xx, y, HS(xx, y, seed + 43) < 0.08 ? BARK2 : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }
+      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); const crack = opts.puff > 1.5 && ((xx + seed) % 7 === 0) && HS(xx, y >> 3, seed + 44) < 0.6, ridge = opts.puff > 1.5 && ((xx + seed) % 7 === 3) && HS(xx, y >> 2, seed + 46) < 0.35; L.set(xx, y, crack ? BARK3 : ridge ? hx(mixc(TH.bark2, '#ffffff', 0.18)) : HS(xx, y, seed + 43) < 0.08 ? BARK2 : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }
       grow(cx, base, -Math.PI / 2 + (HS(1, 1, seed) - 0.5) * 0.5, ry * 0.42, tw - 1, 3, 1);
       grow(cx, base + 6, -Math.PI / 2 - 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.32, 3, 2, 9);
       if (opts.big) grow(cx, base + 12, -Math.PI / 2 + 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.3, 3, 2, 17);
@@ -271,6 +273,7 @@
       }
       k++;
     }
+    for (const [x0, y0, x1, y1, w, depth] of limbs) if (depth === 0 && HS(x0 + x1, y0 + y1, seed + 45) < 0.35) line(L, x0, y0, x1, y1, BARK3);   // twigs threading through the blossoms
     for (let g = 0; g < 8; g++) { const gx = cx + (HS(g, 31, seed) - 0.5) * rx * 1.4, gy = cy + (HS(g, 32, seed) - 0.5) * ry * 1.2; for (let y = gy - 2; y <= gy + 2; y++) for (let x = gx - 3; x <= gx + 3; x++) if (L.get(x, y) && HS(x, y, seed + 33) < 0.5) L.set(x, y, GAP); }
   }
   const WINDOWS = [];   // switching panes [x, y, w, h] in mid-layer coordinates
@@ -388,6 +391,7 @@
     rect(L, 644, 140, 14, B - 140, T('deckTile')); rect(L, 646, 142, 10, B - 144, hx(mixc(TH.deckTile, '#ffffff', 0.15))); rect(L, 647, 152, 8, B - 152, T('pillarLit')); rect(L, 648, 154, 6, B - 156, hx('#ff8ad8'));   // the lavender panel with a pink door
     // the far-side cherry trees (crowns 6–7 m) in front of the shops, their tops reaching the viaduct
     sakuraOn(L, 60, 62, 66, 46, 21, { trunkW: 7, bottom: B - 4, sparse: true }); sakuraOn(L, 520, 62, 60, 44, 17, { trunkW: 7, bottom: B - 4, light: -1, sparse: true }); sakuraOn(L, 650, 60, 56, 42, 19, { trunkW: 7, bottom: B - 4, sparse: true }); sakuraOn(L, 262, 60, 66, 56, 27, { trunkW: 8, bottom: B - 4, sparse: true, light: -1 });
+    if (!TH.day) { for (let y = 116; y < B - 4; y++) for (let x = 262; x < 268; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 70); for (let y = 146; y < B - 6; y++) for (let x = 236; x < 240; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 40); for (let y = 176; y < B; y++) for (let x = 268; x < 400; x++) mixPx(L, x, y, hx(TH.konbiniGlow), 26); }   // the store's light on the tree trunk, the gate pillar and the sidewalk beside it
     windowSpans();
     return L;
   }
@@ -401,6 +405,7 @@
     for (let x = 300; x < 470; x += 22) for (let y = R0 + 3; y < R1 - 2; y++) for (let i = 0; i < 14; i++) { const e = (i === 0 || i === 13 || y === R0 + 3 || y === R1 - 3); if (!e || dith(x + i, y, 0.5)) mixPx(L, x + i, y, T('zebra'), 150); }
     for (let y = R0; y < R1; y++) for (let x = 0; x < W; x++) if (HS(x, y, 47) < 0.08 + (R1 - 1 - y) / 80) mixPx(L, x, y, T('sheen'), 18 + Math.round((R1 - 1 - y) * 0.9 * (TH.rain ? 1.6 : 1)));
     if (!TH.day) for (const [x0, x1, key, a] of [[4, 122, 'storeGlow', 40], [270, 396, 'konbiniGlow', 40], [414, 476, 'storeGlow', 30], [464, 478, 'neon2', 55], [610, 640, 'storeGlow', 30]]) streak(L, Math.round(x0 / 0.6 - 20), Math.round(x1 / 0.6 - 20), R0 + 1, R1, TH[key], a);
+    if (!TH.day) for (let y = R0; y < R1; y++) for (let x = 320; x < 470; x++) { const t = 1 - Math.hypot((x - 395) / 78, (y - R0 - 4) / 16); if (t > 0) mixPx(L, x, y, hx(TH.konbiniGlow), Math.round(46 * t)); }   // the konbini's light washing the road in front of it
     // ---- the near sidewalk (tiles, the tactile strip) down to the bottom; the guardrail along its kerb (0.8 m = 42 px, open at the crossing)
     rect(L, 0, 230, W, 2, T('kerb2')); rect(L, 0, 232, W, 1, T('top'));
     for (let y = 233; y < H; y++) for (let x = 0; x < W; x++) { const row = Math.floor((y - 233) / 8), xx = x + (row & 1) * 13, col = Math.floor(xx / 26), joint = xx % 26 === 0 || (y - 233) % 8 === 0, v = HS(col, row, 77); L.set(x, y, joint ? T('joint') : v < 0.3 ? T('sidewalk2') : v < 0.85 ? T('sidewalk') : hx(mixc(TH.sidewalk, TH.joint, 0.4))); }   // 50 cm slabs
