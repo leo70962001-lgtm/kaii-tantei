@@ -2648,29 +2648,55 @@
     lx.fillStyle = col;
     rows.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] === '#') lx.fillRect(x + i * s, y + j * s, s, s); });
   }
+  function hbar(x, y, w, h, frac, ghost, col, back, right) {   // a life bar with an angled inner end, a glossy top, a red trail of the damage just taken
+    const row = (xx, yy, ww, c) => { if (ww > 0) { lx.fillStyle = c; lx.fillRect(xx, yy, ww, 1); } };
+    for (let j = -1; j <= h; j++) { const cut = Math.max(0, h - 1 - j), ww = w + 2 - cut; row(right ? x - 1 + cut : x - 1, y + j, ww, '#05060f'); }   // the outline
+    for (let j = 0; j < h; j++) {
+      const cut = h - 1 - j, ww = w - cut, fw = Math.min(ww, Math.round(w * clamp(frac, 0, 1))), gw = Math.min(ww, Math.round(w * clamp(ghost, 0, 1)));
+      row(right ? x + cut : x, y + j, ww, back);
+      row(right ? x + w - gw : x, y + j, gw, '#ff6a4a');
+      row(right ? x + w - fw : x, y + j, fw, j === 0 ? 'rgba(255,255,255,0.55)' : j === h - 1 ? 'rgba(0,0,0,0.25)' : col);
+      if (j === 0) row(right ? x + w - fw : x, y + j, fw, 'rgba(255,255,255,0.35)');
+    }
+  }
+  function badge(x, y, w, h, border, fill) {   // a plate with cut corners (the timer, the stock counters)
+    for (let j = -1; j <= h; j++) { const cut = j < 2 ? 2 - j : j > h - 3 ? j - (h - 3) : 0; lx.fillStyle = border; lx.fillRect(x - 1 + cut, y + j, w + 2 - cut * 2, 1); }
+    for (let j = 0; j < h; j++) { const cut = j < 2 ? 2 - j : j > h - 3 ? j - (h - 3) : 0; lx.fillStyle = fill; lx.fillRect(x + cut, y + j, w - cut * 2, 1); }
+  }
   function hudPixels() {
     const [a, b] = sim.fighters;
     if (!a) return;
-    const BW = 178;
+    const BW = 170, BH = 10;   // the bars stop 4 px short of the timer badge
     for (const f of [a, b]) {
       const right = f.slot === 1;
       const x0 = right ? VW - 12 - 42 - BW : 12 + 42;
-      bar(x0, 10, BW, 9, f.hp / f.maxhp, f.hp / f.maxhp > 0.3 ? '#ffd24a' : '#ff5a5a', '#5a1a24', right);
-      const full = (f.meter || 0) >= 100;
-      bar(right ? x0 + BW - 70 : x0, 20, 70, 2, (f.meter || 0) / 100, full && (sim.t >> 7) % 2 ? '#ffffff' : '#7dffef', '#22304a', right);
-      const pr = portrait(f);
-      lx.drawImage(pr, right ? VW - 12 - 38 : 12, 4);
-      f.C.R.PARTS.forEach((P, i) => {
+      if (f.hpShown === undefined || f.hpShown < f.hp || sim.phase === 'intro') f.hpShown = f.hp; else f.hpShown += (f.hp - f.hpShown) * 0.05;   // the red trail eases down
+      const low = f.hp / f.maxhp <= 0.3, col = low ? ((sim.t >> 6) % 2 ? '#ff5a5a' : '#ff9a6a') : f.slot === 0 ? '#ffd24a' : '#ffd24a';
+      hbar(x0, 8, BW, BH, f.hp / f.maxhp, f.hpShown / f.maxhp, col, '#3a1420', right);
+      const pr = portrait(f), px0 = right ? VW - 12 - 38 : 12;   // the framed portrait at the outer end
+      lx.fillStyle = '#05060f'; lx.fillRect(px0 - 2, 2, 42, 38); lx.fillStyle = f.C.color; lx.fillRect(px0 - 2, 2, 42, 1); lx.fillRect(px0 - 2, 39, 42, 1); lx.fillRect(px0 - 2, 2, 1, 38); lx.fillRect(px0 + 39, 2, 1, 38);
+      lx.drawImage(pr, px0, 4);
+      lx.fillStyle = 'rgba(5,6,15,0.6)'; lx.fillRect(right ? VW - 12 - 124 : 12, 44, 124, 13); lx.fillStyle = f.C.color; lx.fillRect(right ? VW - 12 - 124 : 12, 56, 124, 1);   // the name plate
+      f.C.R.PARTS.forEach((P, i) => {   // the part-break icons under the bar (this game's own gauge)
         const st = f.parts[P.id];
         const ix = right ? x0 + BW - 15 - i * 18 : x0 + i * 18;
-        const col = st.broken ? '#ff4a4a' : st.hp / st.max < 0.5 ? '#ffb040' : '#cfe0ff';
-        lx.fillStyle = 'rgba(5,6,15,0.7)'; lx.fillRect(ix - 1, 23, 16, 16);
-        icon(P.icon, ix, 24, st.broken ? '#6a2a2a' : col, 2);
-        if (st.broken) { lx.strokeStyle = '#ff4a4a'; lx.lineWidth = 2; lx.beginPath(); lx.moveTo(ix + 1, 25); lx.lineTo(ix + 13, 37); lx.moveTo(ix + 13, 25); lx.lineTo(ix + 1, 37); lx.stroke(); }
-        else { lx.fillStyle = '#05060f'; lx.fillRect(ix - 1, 40, 16, 3); lx.fillStyle = col; lx.fillRect(ix - 1, 40, Math.round(16 * st.hp / st.max), 2); }
+        const col2 = st.broken ? '#ff4a4a' : st.hp / st.max < 0.5 ? '#ffb040' : '#cfe0ff';
+        lx.fillStyle = 'rgba(5,6,15,0.7)'; lx.fillRect(ix - 1, 22, 16, 16); lx.fillStyle = 'rgba(207,224,255,0.25)'; lx.fillRect(ix - 1, 22, 16, 1);
+        icon(P.icon, ix, 23, st.broken ? '#6a2a2a' : col2, 2);
+        if (st.broken) { lx.strokeStyle = '#ff4a4a'; lx.lineWidth = 2; lx.beginPath(); lx.moveTo(ix + 1, 24); lx.lineTo(ix + 13, 36); lx.moveTo(ix + 13, 24); lx.lineTo(ix + 1, 36); lx.stroke(); }
+        else { lx.fillStyle = '#05060f'; lx.fillRect(ix - 1, 39, 16, 3); lx.fillStyle = col2; lx.fillRect(ix - 1, 39, Math.round(16 * st.hp / st.max), 2); }
       });
-      for (let i = 0; i < 2; i++) { lx.fillStyle = i < f.wins ? f.C.color : '#2a2e52'; lx.fillRect(right ? VW - 12 - 38 - 8 - i * 9 : 12 + 42 + i * 9, 46, 6, 4); }
+      for (let i = 0; i < 2; i++) {   // the round-win markers near the centre
+        const mx = right ? x0 + 6 + i * 9 : x0 + BW - 11 - i * 9;
+        lx.fillStyle = '#05060f'; lx.fillRect(mx - 1, 20, 7, 7); lx.fillStyle = i < f.wins ? f.C.color : '#2a2e52'; lx.fillRect(mx, 21, 5, 5); if (i < f.wins) { lx.fillStyle = 'rgba(255,255,255,0.6)'; lx.fillRect(mx, 21, 2, 1); }
+      }
+      const full = (f.meter || 0) >= 100, gx = right ? VW - 12 - 96 : 12, gy = 252;   // the power gauge at the bottom corner: ticks, a stock badge, MAX blinking
+      bar(gx, gy, 96, 6, (f.meter || 0) / 100, full && (sim.t >> 7) % 2 ? '#ffffff' : '#7dffef', '#1a2238', right);
+      lx.fillStyle = 'rgba(5,6,15,0.6)'; for (let k = 1; k < 4; k++) lx.fillRect(gx + k * 24, gy, 1, 6);
+      badge(right ? VW - 12 - 96 - 16 : 12 + 96 + 4, gy - 4, 12, 14, full ? '#ffffff' : '#7dffef', '#05060f');
     }
+    badge(VW / 2 - 20, 5, 40, 24, '#ffd24a', '#05060f');   // the timer badge and the round plate
+    lx.fillStyle = 'rgba(5,6,15,0.6)'; lx.fillRect(VW / 2 - 24, 32, 48, 11);
   }
 
   // the living background (src/stage.js anim): stage-coordinate rects → screen rects (far items with the far layer's
@@ -2769,10 +2795,15 @@
   function drawHudText() {
     const [a, b] = sim.fighters;
     if (!a) return;
-    text(a.C.R.name + (a.form === 'wolf' ? '（狼）' : '') + ' 1P', 54, 56, 12, '#e8ebf8', 'left');
-    text(b.C.R.name + (b.form === 'wolf' ? '（狼）' : '') + (sim.mode === '2p' ? ' 2P' : sim.mode === 'practice' ? ' 木人' : ' CPU'), VW - 54, 56, 12, '#e8ebf8', 'right');
-    text(sim.mode === 'practice' ? '∞' : Math.ceil(sim.timer / 1000).toString().padStart(2, '0'), VW / 2, 20, 22, sim.timer < 10000 && sim.mode !== 'practice' ? '#ff5a5a' : '#ffffff');
+    text(a.C.R.name + (a.form === 'wolf' ? '（狼）' : '') + ' 1P', 16, 54, 12, '#e8ebf8', 'left');
+    text(b.C.R.name + (b.form === 'wolf' ? '（狼）' : '') + (sim.mode === '2p' ? ' 2P' : sim.mode === 'practice' ? ' 木人' : ' CPU'), VW - 16, 54, 12, '#e8ebf8', 'right');
+    text(sim.mode === 'practice' ? '∞' : Math.ceil(sim.timer / 1000).toString().padStart(2, '0'), VW / 2, 21, 22, sim.timer < 10000 && sim.mode !== 'practice' ? '#ff5a5a' : '#ffffff');
     text('ROUND ' + sim.round, VW / 2, 40, 10, '#b9c2ea');
+    for (const f of [a, b]) {   // the power stocks and MAX at the bottom corners
+      const right = f.slot === 1, full = (f.meter || 0) >= 100;
+      text(full ? '1' : '0', right ? VW - 12 - 96 - 10 : 12 + 96 + 10, 259, 10, full ? '#ffffff' : '#7dffef');
+      if (full && (sim.t >> 7) % 2) text('MAX', right ? VW - 12 - 48 : 12 + 48, 258, 8, '#ffffff');
+    }
     for (const t of sim.texts) {
       const k = t.t / t.life;
       if (t.kind === 'combo') { const f = t.f; text(t.text, f.slot === 0 ? 60 : VW - 60, 90 + (1 - k) * 6, 15, t.color, f.slot === 0 ? 'left' : 'right'); continue; }
