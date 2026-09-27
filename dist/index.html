@@ -1125,7 +1125,7 @@
     konbini: derive(NIGHT, (c) => mixc(lift(c, 0.12), '#3a6a8a', 0.2), { id: 'konbini', layout: 'konbini', name: '桜のコンビニ前', en: 'SAKURA KONBINI', moon: false, sun: null, stars: 40,
       sky: ['#101c34', '#162840', '#1e3650', '#264660', '#2e5670', '#38667e', '#44768c', '#52869a', '#6296a8'],
       cloud: { body: '#4a5a78', shade: '#324058', lit: '#c8a0a8', rim: '#f0c8c0', warm: '#a86878' }, cum: ['#f0d0c8', '#c8a0a8', '#8a6a80', '#3a3a58', '#5a5a78', '#4a4a68'], haze: ['#4a6a88', '#7a6a80'],
-      farWin: ['#ffd8a0', '#ffe8c0'], farLit: 0.08, midLit: 0.12, dense: false, sakura: ['#8a5060', '#c07888', '#e09aa4', '#f0b8c0', '#f8d4d8'], petals: ['#f0b8c0', '#e09aa4', '#f8d4d8', '#c07888'],
+      farWin: ['#ffd8a0', '#ffe8c0'], farLit: 0.08, midLit: 0.12, dense: false, sakura: ['#8a5060', '#c07888', '#e09aa4', '#f0b8c0', '#f8d4d8'], petals: ['#f4c0c8', '#e8a0ac', '#fbd8dc', '#d08898'],
       aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
       storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#f2e6d6', konbiniGlassTop: '#ece0cc', signBand: '#8ab0d0', bark: '#3a2e34', bark2: '#6e505b', bark3: '#241a20', road: ['#4a4a58', '#3c3c4c', '#323244', '#2a2a3c', '#222234'], sidewalk: '#4a4652', sidewalk2: '#524e5a', joint: '#36323e', top: '#8a8290', kerb: '#9a929e', kerb2: '#3a3640' }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
@@ -1281,6 +1281,15 @@
     for (const [x0, y0, x1, y1, w] of limbs) limbLine(x0, y0, x1, y1, w);
     const TONES = TH.sakura.map(hx), WHITE = hx('#fff2f8'), GAP = T('gap');
     const cluster = (fx, fy, r, k) => {
+      if (opts.grain) {   // the pin's blossom: a scatter of tiny flowers, dense in the middle and lacy at the edge, lit top-right, a rose shade underneath, white glints
+        for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
+          const d = Math.hypot(x - fx, y - fy) / r; if (d > 1) continue;
+          const n = HS(x, y, seed + 6 + k), pfill = 0.92 * Math.pow(1 - d, 0.55); if (n > pfill) continue;
+          const l = ((x - fx) / r) * 0.5 * light - ((y - fy) / r) * 0.8 + (HS(x, y, seed + 7) - 0.5) * 0.7, under = (y - fy) / r > 0.45 && HS(x, y, seed + 8) < 0.5;
+          L.set(x, y, HS(x, y, seed + 9) < 0.06 ? WHITE : under ? TONES[HS(x, y, seed + 10) < 0.5 ? 0 : 1] : l > 0.45 ? TONES[4] : l > 0.05 ? TONES[3] : l > -0.35 ? TONES[2] : TONES[1]); mark(x, y);
+        }
+        return;
+      }
       for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
         const d = Math.hypot(x - fx, y - fy) / r + HS(x, y, seed + 5) * 0.25; if (d > 1) continue;
         const n = HS(x, y, seed + 6 + k); if (n < (opts.lace ? 0.34 : opts.sparse ? 0.24 : opts.puff > 1.5 ? 0.2 : 0.13)) continue;
@@ -1332,7 +1341,7 @@
     wall(0, 200, 40, 'apt', 'aptEdge'); roof(0, 200, 32, 8);
     for (const y of [62, 112]) for (let x = 22; x < 190; x += 50) win(x, y, 18, 24, x === 72 && y === 112);   // one window lit (0.6 × 0.8 m)
     acunit(150, 96); rect(L, 197, 40, 1, B - 40, hx('#5a5a7a'));
-    sakuraOn(L, 60, 60, 70, 46, 21, { trunkW: 7, bottom: 156, sparse: true, light: -1 });
+    sakuraOn(L, 60, 60, 70, 46, 21, { trunkW: 7, bottom: 156, sparse: true, light: -1, grain: true });
     chain(0, 130, 136, 152); chain(176, 200, 136, 152);
     for (let x = 0; x < 200; x++) for (let y = 152; y < B - 4; y++) if (x < 130 || x >= 176) L.set(x, y, y === 152 ? T('cap') : dith(x, y, 0.5) ? T('pillar') : T('pillarDark'));   // the wall
     for (const px0 of [130, 168]) { rect(L, px0, 142, 8, B - 4 - 142, T('pillar')); rect(L, px0, 142, 1, B - 4 - 142, T('pillarLight')); rect(L, px0 - 1, 141, 10, 2, T('cap')); }   // the gate pillars
@@ -1387,7 +1396,7 @@
     rect(L, 300, 226, 12, 4, hx('#1a1a2a')); for (let i = 0; i < 12; i += 2) rect(L, 301 + i, 227, 1, 2, hx('#4a4a6a'));   // a drain grate
     // ---- the great tree on the pavement: shadow, trunk 0.5 m with bark, the crown filling the top-left, branches over the store
     ellipse(L, 222, 236, 26, 4, hx('#0c0a1a'));
-    sakuraOn(L, 220, 24, 300, 150, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.0, lace: true, skeleton: [[222, 124, 470, 30, 14], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [218, 128, 110, 20, 11], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]] });   // the pin's tree: the trunk forks into three thick limbs, the long one over the store
+    sakuraOn(L, 220, 24, 300, 150, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.2, lace: true, grain: true, skeleton: [[222, 124, 470, 30, 14], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [218, 128, 110, 20, 11], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]] });   // the pin's tree: the trunk forks into three thick limbs, the long one over the store
     for (let i = 0; i < 5; i++) rect(L, 220 - 22 + i, 233 + i, 44 - 2 * i, 1, T('bark2'));   // the root flare
     // ---- the utility pole in front of it: the crossarm at the top, wires sagging across the sky, the transformer, signs, the drop cable
     { const PL = [hx(mixc(TH.poleDark, '#000000', 0.4)), hx(mixc(TH.poleLight, '#ffffff', 0.35)), T('poleLight'), T('poleLight'), T('poleLight'), T('pole'), T('pole'), T('pole'), T('pole'), T('poleDark'), T('poleDark'), T('poleDark'), hx(mixc(TH.poleDark, '#000000', 0.3)), hx(mixc(TH.poleDark, '#000000', 0.55))];   // a cylinder: edge, bright rim, light, mid, dark, edge
@@ -1403,7 +1412,13 @@
     ellipse(L, 203, 120, 6, 6, hx('#2a5ad0')); ellipse(L, 203, 120, 4, 4, hx('#e8f0ff')); rect(L, 200, 119, 6, 2, hx('#2a5ad0')); rect(L, 198, 150, 10, 14, hx('#e8e8f0')); rect(L, 200, 153, 6, 1, hx('#d84a3a')); rect(L, 200, 156, 6, 1, hx('#2a2a4a')); rect(L, 200, 159, 6, 1, hx('#2a2a4a'));   // a round sign, a notice
     for (const [gx, gy] of [[190, 236], [194, 238], [212, 237], [238, 235], [246, 238], [80, 250], [420, 246], [640, 258]]) { rect(L, gx, gy, 2, 2, hx('#3a7a4a')); L.set(gx + 1, gy - 1, hx('#5aa060')); L.set(gx, gy + 1, hx('#2a5a38')); }   // grass tufts
     const PET = TH.petals.map(hx);   // fallen petals: thickest under the tree and at the store's door
-    for (let y = 209; y < H; y++) for (let x = 0; x < W; x++) { const dens = 0.014 + 0.1 * Math.max(0, 1 - Math.abs(x - 220) / 170) + 0.05 * Math.max(0, 1 - Math.abs(x - 408) / 120); if (HS(x, y, 61) < dens) { const c = PET[Math.floor(HS(x, y, 62) * 4)]; L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); if (y >= 232 && HS(x, y, 64) < 0.12) { L.set(x, y + 1, c); L.set(x + 1, y + 1, c); L.set(x, y, hx('#fff0f8')); } } }
+    for (let y = 209; y < H; y++) for (let x = 0; x < W; x++) {
+      const dens = (y < 232 ? 0.022 : y < 250 ? 0.014 : 0.009) + 0.06 * Math.max(0, 1 - Math.abs(x - 220) / 170) + 0.04 * Math.max(0, 1 - Math.abs(x - 408) / 120); if (HS(x, y, 61) >= dens) continue;
+      const c = PET[Math.floor(HS(x, y, 62) * 4)], e = PET[3], hi = hx('#fff0f4'), tilt = HS(x, y, 65) < 0.5;
+      if (y < 232) { L.set(x, y, c); if (HS(x, y, 63) < 0.4) L.set(x + 1, y, c); }   // far: specks
+      else if (y < 250) { rect(L, x, y, 3, 1, c); rect(L, x + (tilt ? 1 : 0), y + 1, 2, 1, e); }   // mid: 3×2 ovals
+      else { rect(L, x, y, 4, 2, c); rect(L, x + (tilt ? 1 : 2), y + 2, 2, 1, e); L.set(x + 1 + (tilt ? 1 : 0), y, hi); if (HS(x, y, 66) < 0.3) { rect(L, x - 1, y + 1, 1, 1, e); rect(L, x + 4, y, 1, 1, c); } }   // near: 4×2 / 5×3 ovals with a lit centre
+    }
     SAKURA = sakuraOn;
     return L;
   }
@@ -1651,9 +1666,10 @@
     for (let k = 0; k < 34; k++) {   // petals in the wind (one in five in front of the fighters)
       const vy = 14 + Hh(k, 1, 21) * 16, per = 1.4 + Hh(k, 2, 21) * 2.2, amp = 5 + Hh(k, 3, 21) * 10;
       const y = ((Hh(k, 4, 21) * 300 + s * vy) % (GROUND + 30)) - 12, x = ((Hh(k, 5, 21) * W + s * (10 + Hh(k, 6, 21) * 12) + Math.sin(s / per * Math.PI * 2 + k) * amp) % W + W) % W;
-      const big = Hh(k, 7, 21) > 0.6, front = k % 5 === 0;
-      out.push({ x: Math.round(x), y: Math.round(y), w: front ? (big ? 4 : 3) : big ? 3 : 2, h: front ? 3 : 2, col: PK[k & 3], a: front ? 0.9 : 0.75, front });
-      if (big) out.push({ x: Math.round(x) + 1, y: Math.round(y) - 1, w: 1, h: 1, col: PK[(k + 1) & 3], a: 0.6, front });
+      const big = Hh(k, 7, 21) > 0.6, front = k % 5 === 0, px0 = Math.round(x), py0 = Math.round(y), col = PK[k & 3], edge = PK[(k + 3) & 3], tilt = (k + Math.floor(s * 2 + Hh(k, 8, 21) * 4)) & 1, fast = vy > 24;   // a petal: an oval or a teardrop, tilting as it tumbles
+      if (front) { out.push({ x: px0, y: py0, w: 4, h: 2, col, a: 0.95, front: true }); out.push({ x: px0 + (tilt ? 1 : 2), y: py0 + 2, w: 2, h: 1, col: edge, a: 0.9, front: true }); out.push({ x: px0 + (tilt ? 3 : -1), y: py0 - 1, w: 1, h: 1, col: PK[2], a: 0.8, front: true }); }
+      else if (big) { out.push({ x: px0, y: py0, w: 3, h: 1, col, a: 0.8 }); out.push({ x: px0 + (tilt ? 1 : 0), y: py0 + 1, w: 2, h: 1, col: edge, a: 0.75 }); if (fast) out.push({ x: px0 - 2, y: py0, w: 2, h: 1, col, a: 0.35 }); }
+      else { out.push({ x: px0, y: py0, w: 2, h: 1, col, a: 0.75 }); out.push({ x: px0 + tilt, y: py0 + 1, w: 1, h: 1, col: edge, a: 0.6 }); }
     }
     for (let k = 0; k < 24; k++) { const y = ((Hh(k, 14, 21) * 300 + s * (10 + Hh(k, 15, 21) * 10)) % (GROUND + 30)) - 12, x = ((Hh(k, 16, 21) * W + s * (8 + Hh(k, 17, 21) * 10) + Math.sin(s * 1.3 + k) * 6) % W + W) % W; out.push({ x: Math.round(x), y: Math.round(y), w: 1, h: 1, col: PK[(k + 2) & 3], a: 0.7 }); }   // tiny petals
     for (const [k, lx0, ly0, lw, lh, r, id] of (TH.layout === 'konbini' ? [[0, 80, 88, 16, 16, 20, 'lampL']] : [[0, 265, 88, 16, 16, 20, 'lampL'], [1, 499, 88, 16, 16, 20, 'lampR']])) {   // the street lamps' flicker
