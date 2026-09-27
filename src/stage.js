@@ -109,12 +109,12 @@
       aptLit: ['#ffd8a0', '#e8b070'], schoolLit: '#ffd8a0', schoolLit2: '#e8b070', winLit: ['#ffd8a0', '#e8b070'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
       storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#f2e6d6', konbiniGlassTop: '#ece0cc', signBand: '#8ab0d0', bark: '#3a2e34', bark2: '#6e505b', bark3: '#241a20', road: ['#4a4a58', '#3c3c4c', '#323244', '#2a2a3c', '#222234'], sidewalk: '#4a4652', sidewalk2: '#524e5a', joint: '#36323e', top: '#8a8290', kerb: '#9a929e', kerb2: '#3a3640' }),
     konbiniDay: derive(NIGHT, (c) => lift(c, 0.5, '#d8d0e0'), { id: 'konbiniDay', layout: 'konbini', name: '桜のコンビニ・昼', en: 'KONBINI NOON', day: true, moon: false, sun: null, stars: 0, cloudSpeed: 4,   // the daytime pink-shop pin
-      sky: ['#2a6ac8', '#3a7ad4', '#4c8cdc', '#62a0e4', '#7ab4ec', '#92c6f0', '#aad6f4', '#c0e2f6', '#d8ecf8'],
+      sky: ['#2058bc', '#2c6cc8', '#3e80d2', '#5294dc', '#68a8e4', '#80bcec', '#98ccf0', '#b0daf4', '#c8e4f6'],
       cloud: { body: '#f4f8fc', shade: '#c8d8e8', lit: '#ffffff', rim: '#ffffff', warm: '#f8e8ec' }, cum: ['#ffffff', '#f4f8fc', '#e0eaf4', '#a8bcd4', '#c8d8e8', '#b8cce0'], haze: ['#c0dcf0', '#e8dce8'],
-      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, dense: false, sakura: ['#b87898', '#d898b0', '#eeb4c4', '#f8d0d8', '#ffe8ee'], petals: ['#f8d0d8', '#eeb4c4', '#ffe8ee', '#d898b0'],
+      farWin: ['#ffffff'], farLit: 0.02, midLit: 0.04, dense: false, sakura: ['#a85878', '#c87890', '#e09aae', '#f0bcc8', '#f8d8e0'], petals: ['#f0bcc8', '#e09aae', '#f8d8e0', '#c87890'],
       aptLit: ['#fff4e0', '#f0e0c0'], schoolLit: '#fff4e0', schoolLit2: '#f0e0c0', winLit: ['#fff4e0', '#f0e0c0'], neon: '#ff8ab0', neon2: '#7ad0e0', signA: '#ff8ab0', signB: '#ffb070',
-      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#cfc6cc', konbiniGlassTop: '#c4bcc8', signBand: '#9ec0dc', bark: '#4a3038', bark2: '#8a5a48', bark3: '#2a1c24',
-      sidewalk: '#ecd8d0', sidewalk2: '#f0dcd4', joint: '#c8b4b0', top: '#fbeee8', kerb: '#e0d8cc', kerb2: '#b8ac9c', road: ['#c8bcb0', '#c0b4a8', '#b8aca0', '#b0a498', '#a89c90'] }),
+      storeGlow: '#ffc890', konbiniGlow: '#ffd0a0', konbiniGlass: '#b4a8b4', konbiniGlassTop: '#a89cac', signBand: '#82a4cc', storeWall: '#8a6486', storeEdge: '#a884a0', apt: '#76668a', aptEdge: '#9686aa', bark: '#4a3038', bark2: '#8a5a48', bark3: '#2a1c24',
+      sidewalk: '#d8c0b8', sidewalk2: '#dec6be', joint: '#b09892', top: '#f2e0d8', kerb: '#e0d8cc', kerb2: '#b8ac9c', road: ['#c8bcb0', '#c0b4a8', '#b8aca0', '#b0a498', '#a89c90'] }),
     cyber: derive(NIGHT, (c) => mixc(c, '#1a5060', 0.16), { id: 'cyber', name: '雨のネオン街', en: 'NEON RAIN', moon: false, stars: 60, dense: true, rain: true, cloudSpeed: 3,
       sky: ['#04080e', '#061018', '#081622', '#0a1c2a', '#0c2232', '#0e2838', '#123040', '#163848', '#1a4050'],
       cloud: { body: '#123040', shade: '#0a1c2a', lit: '#2a5a6a', rim: '#5aa0b0', warm: '#4a2a5a' }, cum: ['#7ac0d0', '#3a7080', '#1e4a58', '#0a1c2a', '#163848', '#123040'], haze: ['#1a4a5a', '#3a2a5a'],
@@ -243,32 +243,44 @@
   let TREES = null, SAKURA = null, MASKL = null;
   // a cherry tree: a dark trunk and twisting limbs (recursive), the crown = small clusters of flowers hung along the twigs
   function sakuraOn(L, cx, cy, rx, ry, seed, opts) {
+    // a cherry tree. Limbs are curved (a quadratic bend), taper from base to tip and fork along their length; the blossoms
+    // are clusters hung along the twigs (classic / grain / lace), a scattered or SOLID canopy above a lower-edge curve;
+    // the thick limbs and some twigs are redrawn in front of the blossoms. Options: trunk, trunkW, bottom, big, sparse,
+    // puff, lace, grain, light, ang / len (trunkless), skeleton [[x0,y0,x1,y1,w,bend?]…], canopy { x0,x1,ytop,ylow,n,solid }
     opts = opts || {}; const near = L === MASKL, light = opts.light === undefined ? 1 : opts.light;
-    const BARK = T('bark'), BARK2 = T('bark2'), BARK3 = T('bark3');
+    const BARK = T('bark'), BARK2 = T('bark2'), BARK3 = T('bark3'), BARKHI = hx(mixc(TH.bark2, '#ffffff', 0.3)), BARKLO = hx(mixc(TH.bark3, '#000000', 0.5));
     const mark = (x, y) => { if (near) TREES.set(x, y, 1); };
-    const limbLine = (x0, y0, x1, y1, w) => { for (let o = -w / 2; o < w / 2; o++) { const c = o < -w / 4 - 0.5 ? BARK2 : o > w / 4 ? BARK3 : BARK; line(L, x0 + o, y0, x1 + o, y1, c); if (near) line(TREES, x0 + o, y0, x1 + o, y1, 1); }
-      if (opts.puff > 1.5) { const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / 2)); for (let i = 0; i <= n; i++) { const t = i / n, px = Math.round(x0 + (x1 - x0) * t - w / 2), py = Math.round(y0 + (y1 - y0) * t); if (HS(px, py, seed + 41) < 0.3) L.set(px, py - 1, hx(TH.sakura[3])); else if (HS(px, py, seed + 42) < 0.25) L.set(px + 1, py, BARK2); } } };   // petals lodged on the upper edge, flecks of bark
-    const limbs = [];
+    const limbs = [];   // [x0, y0, x1, y1, w, depth, bend]
+    const limbPt = (l, t) => { const [x0, y0, x1, y1, , , bend] = l, mx = (x0 + x1) / 2, my = (y0 + y1) / 2, len = Math.hypot(x1 - x0, y1 - y0) || 1, nx = -(y1 - y0) / len, ny = (x1 - x0) / len, px = mx + nx * bend, py = my + ny * bend, u = 1 - t; return [u * u * x0 + 2 * u * t * px + t * t * x1, u * u * y0 + 2 * u * t * py + t * t * y1]; };
+    const limbLine = (l, wmul) => {   // discs along the curve, tapering, lit on top, dark beneath; petals lodged on the upper edge of big trees
+      const w0 = l[4] * (wmul || 1), len = Math.hypot(l[2] - l[0], l[3] - l[1]) + Math.abs(l[6]) * 0.5, n = Math.max(2, Math.round(len));
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, [px, py] = limbPt(l, t), r = Math.max(0.5, (w0 * (1 - 0.55 * t)) / 2), R = Math.ceil(r);
+        for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { if (dx * dx + dy * dy > r * r + 0.5) continue; const x = Math.round(px + dx), y = Math.round(py + dy); L.set(x, y, dy < -r / 3 ? BARK2 : dy > r / 3 ? BARK3 : BARK); mark(x, y); }
+        if (opts.puff > 1.5 && i % 2 === 0) { const x = Math.round(px), y = Math.round(py - r); if (HS(x, y, seed + 41) < 0.3) L.set(x, y - 1, hx(TH.sakura[3])); else if (HS(x, y, seed + 42) < 0.25) L.set(x + 1, y + 1, BARK2); }
+      }
+    };
     const grow = (x, y, ang, len, w, depth, k) => {
-      const x1 = x + Math.cos(ang) * len, y1 = y + Math.sin(ang) * len;
-      limbs.push([x, y, x1, y1, w, depth]);
+      const x1 = x + Math.cos(ang) * len, y1 = y + Math.sin(ang) * len, bend = (HS(k, depth + 5, seed) - 0.5) * len * 0.7;
+      const l = [x, y, x1, y1, w, depth, bend]; limbs.push(l);
       if (depth <= 0) return;
       const n = 2 + (HS(k, depth, seed) > 0.45 ? 1 : 0);
       for (let i = 0; i < n; i++) { const spread = 0.45 + HS(k * 7 + i, depth, seed) * 0.5, a = ang + (i - (n - 1) / 2) * spread + (HS(k * 3 + i, depth + 9, seed) - 0.5) * 0.5; grow(x1, y1, a, len * (0.6 + HS(k + i, depth + 3, seed) * 0.25), Math.max(1, w * 0.62), depth - 1, k * 4 + i + 1); }
+      if (depth >= 2 && HS(k, depth + 11, seed) < 0.7) { const t = 0.4 + HS(k, depth + 12, seed) * 0.3, [mx, my] = limbPt(l, t), side = HS(k, depth + 13, seed) > 0.5 ? 1 : -1; grow(mx, my, ang + side * (0.7 + HS(k, depth + 14, seed) * 0.5), len * 0.5, Math.max(1, w * 0.45), depth - 2, k * 4 + 3); }   // a branch forking mid-limb
     };
     if (opts.trunk !== false) {
       const base = cy + ry * 0.38, bottom = opts.bottom || 190, tw = opts.trunkW || 6;
-      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); const crack = opts.puff > 1.5 && ((xx + seed) % 7 === 0) && HS(xx, y >> 3, seed + 44) < 0.6, ridge = opts.puff > 1.5 && ((xx + seed) % 7 === 3) && HS(xx, y >> 2, seed + 46) < 0.35; const tt = (i + w / 2) / w; L.set(xx, y, crack ? BARK3 : ridge ? hx(mixc(TH.bark2, '#ffffff', 0.18)) : HS(xx, y, seed + 43) < 0.08 ? BARK2 : opts.puff > 1.5 ? (tt < 0.1 ? hx(mixc(TH.bark2, '#ffffff', 0.3)) : tt < 0.34 ? BARK2 : tt < 0.68 ? BARK : tt < 0.9 ? BARK3 : hx(mixc(TH.bark3, '#000000', 0.5))) : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }   // a cylinder: bright rim, light, mid, dark, edge
-      if (opts.skeleton) opts.skeleton.forEach(([x0, y0, x1, y1, w], k) => { limbs.push([x0, y0, x1, y1, w, 3]); grow(x1, y1, Math.atan2(y1 - y0, x1 - x0), Math.hypot(x1 - x0, y1 - y0) * 0.42, Math.max(2, w * 0.55), 2, 31 + k * 5); });   // the pin's limbs: given, then twigs grown from their ends
+      for (let y = base; y < bottom; y++) { const w = tw + (y - base) / 40; for (let i = -w / 2; i < w / 2; i++) { const xx = cx + i + Math.round(Math.sin(y * 0.15 + seed) * 1.2); const crack = opts.puff > 1.5 && ((xx + seed) % 7 === 0) && HS(xx, y >> 3, seed + 44) < 0.6, ridge = opts.puff > 1.5 && ((xx + seed) % 7 === 3) && HS(xx, y >> 2, seed + 46) < 0.35; const tt = (i + w / 2) / w; L.set(xx, y, crack ? BARK3 : ridge ? hx(mixc(TH.bark2, '#ffffff', 0.18)) : HS(xx, y, seed + 43) < 0.08 ? BARK2 : opts.puff > 1.5 ? (tt < 0.1 ? BARKHI : tt < 0.34 ? BARK2 : tt < 0.68 ? BARK : tt < 0.9 ? BARK3 : BARKLO) : i < -w / 4 ? BARK2 : i > w / 4 ? BARK3 : BARK); mark(xx, y); } }   // a cylinder: bright rim, light, mid, dark, edge
+      if (opts.skeleton) opts.skeleton.forEach(([x0, y0, x1, y1, w, bend], k) => { const l = [x0, y0, x1, y1, w, 3, bend === undefined ? (HS(k, 77, seed) - 0.5) * Math.hypot(x1 - x0, y1 - y0) * 0.5 : bend]; limbs.push(l); grow(x1, y1, Math.atan2(y1 - y0, x1 - x0), Math.hypot(x1 - x0, y1 - y0) * 0.42, Math.max(2, w * 0.55), 2, 31 + k * 5); const [mx, my] = limbPt(l, 0.55); grow(mx, my, Math.atan2(y1 - y0, x1 - x0) - 0.9, Math.hypot(x1 - x0, y1 - y0) * 0.3, Math.max(2, w * 0.4), 1, 91 + k * 5); });   // given curved limbs, twigs grown from their ends and a fork mid-way
       else { grow(cx, base, -Math.PI / 2 + (HS(1, 1, seed) - 0.5) * 0.5, ry * 0.42, tw - 1, 3, 1);
       grow(cx, base + 6, -Math.PI / 2 - 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.32, 3, 2, 9);
       if (opts.big) grow(cx, base + 12, -Math.PI / 2 + 0.9 * (HS(2, 1, seed) > 0.5 ? 1 : -1), ry * 0.3, 3, 2, 17); }
     } else grow(cx, cy, opts.ang || Math.PI / 2, opts.len || ry * 0.45, 5, 3, 1);
     limbs.sort((p, q) => q[4] - p[4]);
-    for (const [x0, y0, x1, y1, w] of limbs) limbLine(x0, y0, x1, y1, w);
+    for (const l of limbs) limbLine(l, 1);
     const TONES = TH.sakura.map(hx), WHITE = hx('#fff2f8'), GAP = T('gap');
     const cluster = (fx, fy, r, k) => {
-      if (opts.grain) {   // the pin's blossom: a scatter of tiny flowers, dense in the middle and lacy at the edge, lit top-right, a rose shade underneath, white glints
+      if (opts.grain) {   // a scatter of tiny flowers, dense in the middle and lacy at the edge, lit top-right, a rose shade underneath, white glints
         for (let y = Math.floor(fy - r); y <= fy + r; y++) for (let x = Math.floor(fx - r); x <= fx + r; x++) {
           const d = Math.hypot(x - fx, y - fy) / r; if (d > 1) continue;
           const n = HS(x, y, seed + 6 + k), pfill = TH.day ? 0.98 * Math.pow(1 - d, 0.3) : 0.92 * Math.pow(1 - d, 0.55); if (n > pfill) continue;
@@ -284,11 +296,12 @@
         L.set(x, y, n > (opts.puff > 1.5 ? 0.93 : 0.96) ? WHITE : l > 0.55 ? TONES[4] : l > 0.15 ? TONES[3] : l > -0.25 ? TONES[2] : l > -0.6 ? TONES[1] : TONES[0]); mark(x, y);
       }
     };
+    const solid = opts.canopy && opts.canopy.solid;
     let k = 0;
-    for (const [x0, y0, x1, y1, w, depth] of limbs) {
-      const len = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(2, Math.round(len / 3.5)), per = opts.lace ? 1 : opts.sparse || opts.puff > 1.5 ? (depth === 0 ? 2 : 1) : depth === 0 ? 3 : depth === 1 ? 2 : 1;
+    if (!solid) for (const l of limbs) {   // clusters hung along the curved twigs
+      const [x0, y0, x1, y1, w, depth] = l, len = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(2, Math.round(len / 3.5)), per = opts.lace ? 1 : opts.sparse || opts.puff > 1.5 ? (depth === 0 ? 2 : 1) : depth === 0 ? 3 : depth === 1 ? 2 : 1;
       for (let i = 0; i <= steps; i++) {
-        const t = i / steps, bx = x0 + (x1 - x0) * t, by = y0 + (y1 - y0) * t;
+        const t = i / steps, [bx, by] = limbPt(l, t);
         for (let c = 0; c < per; c++) {
           const ox = (HS(i * 13 + c, 21, seed + k) - 0.5) * (10 + w * 2), oy = (HS(i * 13 + c, 22, seed + k) - 0.5) * 12, fx = bx + ox, fy = by + oy;
           if (((fx - cx) / rx) ** 2 + ((fy - cy) / ry) ** 2 > 1.05) continue;
@@ -297,9 +310,19 @@
       }
       k++;
     }
-    if (opts.canopy) { const { x0, x1, ytop, ylow, n } = opts.canopy; for (let i = 0; i < n; i++) { const x = x0 + HS(i, 61, seed) * (x1 - x0), yl = ylow(x), y = ytop + HS(i, 62, seed) * (yl - ytop), r = (2.5 + HS(i, 63, seed) * 3) * (opts.puff || 1); if (y + r * 0.5 > yl) continue; cluster(x, y, r, 200 + (i % 37)); } }   // the canopy: one mass above an undulating lower edge
-    for (const [x0, y0, x1, y1, w, depth] of limbs) if (depth === 0 && HS(x0 + x1, y0 + y1, seed + 45) < 0.35) line(L, x0, y0, x1, y1, BARK3);   // twigs threading through the blossoms
-    if (opts.puff > 1.5) { for (const [x0, y0, x1, y1, w, depth] of limbs) if (depth >= 2 && HS(x0 * 3 + x1, y0 + y1 * 3, seed + 47) < 0.6) limbLine(x0, y0, x1, y1, Math.max(2, w * 0.8)); let kk = 0; for (const [x0, y0, x1, y1, w, depth] of limbs) { if (depth >= 2 && HS(x0 + y1, y0 + x1, seed + 48) < 0.5) { const t = HS(kk, 49, seed), fx = x0 + (x1 - x0) * t, fy = y0 + (y1 - y0) * t; cluster(fx + (HS(kk, 50, seed) - 0.5) * 8, fy - 2, 5 * (opts.puff || 1) * 0.9, kk); } kk++; } }   // the pin's thick branches in front of the blossoms, a few clusters over them again
+    if (opts.canopy) {
+      const { x0, x1, ytop, ylow, n } = opts.canopy;
+      if (solid) {   // 「可以一大片去做」: one solid mass of blossom above the lower-edge curve — big lobes of light and shade, fine grain, a ragged hem, glints; the sky only where the canopy ends
+        for (let x = Math.floor(x0); x < x1; x++) { const yl = ylow(x); for (let y = Math.floor(ytop); y < yl; y++) {
+          const edge = yl - y; if (edge < 9 && HS(x, y, seed + 91) > edge / 9 + 0.1) continue;
+          const xr = (opts.canopy.xr || 1e9) + 40 * Math.sin(y / 21 + seed) + 18 * Math.sin(y / 7); if (x > xr - 6 && (x > xr || HS(x, y, seed + 95) > (xr - x) / 6)) continue;   // a ragged right edge: sky beyond it
+          const lobe = 0.8 * Math.sin(x / 37 + y / 23 + seed) + 0.6 * Math.sin(x / 17 - y / 29) + 0.5 * Math.sin((x - y) / 13) + (HS(x, y, seed + 92) - 0.5) * 0.9 + (y < ytop + 70 ? 0.35 : 0) - (edge < 16 ? 0.6 : 0) + light * 0.15 * Math.sin(x / 53);
+          L.set(x, y, HS(x, y, seed + 93) < 0.05 ? WHITE : lobe > 0.95 ? TONES[4] : lobe > 0.3 ? TONES[3] : lobe > -0.4 ? TONES[2] : lobe > -1.0 ? TONES[1] : TONES[0]); mark(x, y);
+        } }
+      } else for (let i = 0; i < n; i++) { const x = x0 + HS(i, 61, seed) * (x1 - x0), yl = ylow(x), y = ytop + HS(i, 62, seed) * (yl - ytop), r = (2.5 + HS(i, 63, seed) * 3) * (opts.puff || 1); if (y + r * 0.5 > yl) continue; cluster(x, y, r, 200 + (i % 37)); }   // the canopy: a mass of clusters above an undulating lower edge
+    }
+    for (const l of limbs) if (l[5] === 0 && HS(l[0] + l[2], l[1] + l[3], seed + 45) < 0.35) { const n = Math.max(2, Math.round(Math.hypot(l[2] - l[0], l[3] - l[1]))); for (let i = 0; i <= n; i++) { const [px, py] = limbPt(l, i / n); L.set(Math.round(px), Math.round(py), BARK3); } }   // twigs threading through the blossoms
+    if (opts.puff > 1.5) { for (const l of limbs) if (l[5] >= 2 && HS(l[0] * 3 + l[2], l[1] + l[3] * 3, seed + 47) < 0.6) limbLine(l, 0.8); let kk = 0; for (const l of limbs) { if (l[5] >= 2 && HS(l[0] + l[3], l[1] + l[2], seed + 48) < 0.5) { const [fx, fy] = limbPt(l, HS(kk, 49, seed)); cluster(fx + (HS(kk, 50, seed) - 0.5) * 8, fy - 2, 5 * (opts.puff || 1) * 0.9, kk); } kk++; } }   // the thick branches in front of the blossoms, a few clusters over them again
     for (let g = 0; g < 8; g++) { const gx = cx + (HS(g, 31, seed) - 0.5) * rx * 1.4, gy = cy + (HS(g, 32, seed) - 0.5) * ry * 1.2; for (let y = gy - 2; y <= gy + 2; y++) for (let x = gx - 3; x <= gx + 3; x++) if (L.get(x, y) && HS(x, y, seed + 33) < 0.5) L.set(x, y, GAP); }
   }
   const WINDOWS = [];   // switching panes [x, y, w, h] in mid-layer coordinates
@@ -420,15 +443,15 @@
     for (let y = 252; y < H; y++) for (let x = 0; x < W; x++) if (dith(x, y, (y - 252) / 30)) mixPx(L, x, y, hx('#000000'), 60);
     rect(L, 300, 226, 12, 4, hx('#1a1a2a')); for (let i = 0; i < 12; i += 2) rect(L, 301 + i, 227, 1, 2, hx('#4a4a6a'));   // a drain grate
     if (TH.day) {   // the canopy's dappled shadow on the pavement, the pole's and the trunk's cast shadows (the sun from the upper left)
-      for (let y = 208; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.sin(x / 13 + y / 7) + Math.sin(x / 29 - y / 11) + Math.sin((x + y) / 17) + HS(x, y, 75) * 0.6, cover = Math.min(1, Math.max(0, (640 - x) / 140)), lit = v > 1.15 && y < 252 && x > 60; if (!lit) mixPx(L, x, y, hx('#6a4a78'), Math.round(46 * cover + (y >= 252 ? 26 : 0))); else mixPx(L, x, y, hx('#fff0e0'), 30); }   // the pin's ground: mostly in the canopy's mauve shadow, sunlit cream patches, the front band shaded
+      for (let y = 208; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.sin(x / 13 + y / 7) + Math.sin(x / 29 - y / 11) + Math.sin((x + y) / 17) + HS(x, y, 75) * 0.6, cover = Math.min(1, Math.max(0, (640 - x) / 140)), lit = v > 1.15 && y < 252 && x > 60; if (!lit) mixPx(L, x, y, hx('#5a3e70'), Math.round(62 * cover + (y >= 252 ? 30 : 0))); else mixPx(L, x, y, hx('#fff0e0'), 34); }   // the pin's ground: mostly in the canopy's mauve shadow, sunlit cream patches, the front band shaded
       for (let t = 0; t <= 1; t += 0.004) { const x = Math.round(204 + 136 * t), y = Math.round(238 + 24 * t); for (let i = 0; i < 4; i++) mixPx(L, x + i, y, hx('#2a2040'), 90); }   // the pole's shadow
       for (let t = 0; t <= 1; t += 0.004) { const x = Math.round(222 + 178 * t), y = Math.round(238 + 30 * t); for (let i = -8; i < 8; i++) mixPx(L, x + i, y, hx('#2a2040'), 60); }   // the trunk's shadow
     }
     // ---- the great tree on the pavement: shadow, trunk 0.5 m with bark, the crown filling the top-left, branches over the store
     ellipse(L, 222, 236, 26, 4, hx('#0c0a1a'));
     sakuraOn(L, 220, 24, 440, 170, 37, { big: true, trunkW: 30, bottom: 237, light: 1, puff: 2.2, lace: true, grain: true,
-      skeleton: [[222, 124, 470, 30, 14], [470, 30, 610, 66, 8], [330, 86, 300, 8, 8], [400, 60, 520, 96, 7], [400, 60, 440, 108, 6], [218, 128, 110, 20, 11], [120, 60, 60, 112, 6], [160, 74, 60, 40, 6], [222, 116, 236, -10, 9], [228, 60, 300, 24, 6]],
-      canopy: { x0: -60, x1: 660, ytop: -34, n: 1000, ylow: (x) => 84 + 28 * Math.max(0, Math.min(1, (200 - x) / 80)) + (x < 200 ? 16 : 8) * Math.sin(x / 23) + 6 * Math.sin(x / 11 + 1) - Math.max(0, x - 420) * 0.08 } });   // the pin's tree: one canopy across the top, hanging lowest by the trunk, the long limb over the store to the right edge
+      skeleton: [[222, 124, 470, 30, 14, 34], [470, 30, 610, 66, 8, -18], [330, 86, 300, 8, 8, 16], [400, 60, 520, 96, 7, -14], [400, 60, 440, 108, 6, 10], [218, 128, 110, 20, 11, -26], [120, 60, 60, 112, 6, 12], [160, 74, 60, 40, 6, -9], [222, 116, 236, -10, 9, 14], [228, 60, 300, 24, 6, -10]],
+      canopy: { x0: -60, x1: 660, xr: 520, ytop: -34, n: 1000, solid: !!TH.day, ylow: (x) => 84 + 28 * Math.max(0, Math.min(1, (200 - x) / 80)) + (x < 200 ? 16 : 8) * Math.sin(x / 23) + 6 * Math.sin(x / 11 + 1) - Math.max(0, x - 420) * 0.08 } });   // the pin's tree: curved limbs (the long one over the store to the right edge), one canopy hanging lowest by the trunk; by day a solid mass
     for (let i = 0; i < 5; i++) rect(L, 220 - 22 + i, 233 + i, 44 - 2 * i, 1, T('bark2'));   // the root flare
     // ---- the utility pole in front of it: the crossarm at the top, wires sagging across the sky, the transformer, signs, the drop cable
     { const PL = [hx(mixc(TH.poleDark, '#000000', 0.4)), hx(mixc(TH.poleLight, '#ffffff', 0.35)), T('poleLight'), T('poleLight'), T('poleLight'), T('pole'), T('pole'), T('pole'), T('pole'), T('poleDark'), T('poleDark'), T('poleDark'), hx(mixc(TH.poleDark, '#000000', 0.3)), hx(mixc(TH.poleDark, '#000000', 0.55))];   // a cylinder: edge, bright rim, light, mid, dark, edge
