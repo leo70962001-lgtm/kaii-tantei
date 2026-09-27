@@ -202,5 +202,6 @@ export function createGL(o) {
     camera.layers.set(GLOW); bloomComposer.render();
     camera.layers.set(0); finalComposer.render();
   }
-  return { render, renderer, scene, camera, THREE, setLayers };
+  function setBloom(strength) { bloomPass.strength = strength; }   // day themes turn the glow down: their whites are sunlight, not neon
+  return { render, renderer, scene, camera, THREE, setLayers, setBloom };
 }

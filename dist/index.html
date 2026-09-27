@@ -2746,6 +2746,7 @@
     if (gl || !wantGL || !window.createGL) return;
     try { gl = window.createGL({ canvas: glc, VW, VH, G, sky: SKY, clouds: CLOUDS, city: CITY, near: NEAR, farRate: 0.35, mid: MID, midRate: MID_RATE, front: FRONT, frontRate: FRONT_RATE, RS }); }
     catch (e) { console.warn('WebGL renderer unavailable, staying on the 2D canvas', e); wantGL = false; glc.style.display = 'none'; }
+    window.__gl = gl;   // for tests (bloom strength, layers)
   }
   function koZoom() { return sim.phase === 'ko' ? 1 + 0.12 * Math.min(1, sim.koT / 500) : sim.phase === 'result' ? 1.12 : 1; }
   const RS = 2;  // render scale: the low canvas / WebGL target are 2× the world so the puppet's finer parts show
@@ -2770,6 +2771,7 @@
     BG = STAGE.paint(id);
     SKY = cvs(BG.sky); CLOUDS = cvs(BG.clouds); CITY = cvs(BG.city); NEAR = cvs(BG.near); RAIL = BG.rail ? cvs(BG.rail) : null; MID = BG.mid ? cvs(BG.mid) : null; FRONT = BG.front ? cvs(BG.front) : null; CLOUD_SPEED = BG.cloudSpeed || 2.5;
     sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ sky: SKY, clouds: CLOUDS, city: CITY, mid: MID, near: NEAR, front: FRONT });
+    if (gl && gl.setBloom) gl.setBloom(STAGE.theme().day ? 0.12 : 0.7);   // sunlight is not neon
   }
   // the clouds drift very slowly (「雲會很緩慢的飄動」): a few far-pixels a second, wrapping — the layer tiles
   const cloudDrift = (w) => Math.round((performance.now() / 1000 * CLOUD_SPEED) % w);
