@@ -39,6 +39,7 @@
   function ellipse(L, cx, cy, rx, ry, col, inner) { for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) { const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2; if (d <= 1 && (inner === undefined || d > inner)) L.set(x, y, col); } }
   function blit(L, S, ox, oy) { for (let y = 0; y < S.h; y++) for (let x = 0; x < S.w; x++) { const c = S.c[y * S.w + x]; if (c) L.set(ox + x, oy + y, c); } }
   function rot90cw(S) { const R = layer(S.h, S.w); for (let y = 0; y < S.h; y++) for (let x = 0; x < S.w; x++) R.set(S.h - 1 - y, x, S.c[y * S.w + x]); return R; }     // the top goes to the right
+  function flipX(S) { const R = layer(S.w, S.h); for (let y = 0; y < S.h; y++) for (let x = 0; x < S.w; x++) R.c[y * S.w + (S.w - 1 - x)] = S.c[y * S.w + x]; return R; }
   function rot90ccw(S) { const R = layer(S.h, S.w); for (let y = 0; y < S.h; y++) for (let x = 0; x < S.w; x++) R.set(y, S.w - 1 - x, S.c[y * S.w + x]); return R; }    // the top goes to the left
   // a translucent colour over whatever is there: mixed into an opaque pixel, kept translucent over nothing
   function mixPx(L, x, y, col, a) {
@@ -405,12 +406,6 @@
     for (let y = 233; y < H; y++) for (let x = 0; x < W; x++) { const row = Math.floor((y - 233) / 8), xx = x + (row & 1) * 13, col = Math.floor(xx / 26), joint = xx % 26 === 0 || (y - 233) % 8 === 0, v = HS(col, row, 77); L.set(x, y, joint ? T('joint') : v < 0.3 ? T('sidewalk2') : v < 0.85 ? T('sidewalk') : hx(mixc(TH.sidewalk, TH.joint, 0.4))); }   // 50 cm slabs
     for (let x = 0; x < W; x++) for (let y = 244; y < 248; y++) L.set(x, y, ((x % 4 === 1 || x % 4 === 2) && (y === 245 || y === 246)) ? T('tactile2') : T('tactile'));
     for (let y = 252; y < H; y++) for (let x = 0; x < W; x++) if (dith(x, y, (y - 252) / 30)) mixPx(L, x, y, hx('#000000'), 60);
-    const rail = (x0, x1) => {
-      for (let x = x0; x < x1; x += 40) { rect(L, x, 190, 3, 42, T('poleLight')); rect(L, x, 190, 1, 42, hx('#ffffff')); rect(L, x - 1, 230, 5, 2, T('poleDark')); }
-      rect(L, x0, 190, x1 - x0, 3, hx('#e8ecf4')); rect(L, x0, 193, x1 - x0, 1, T('poleDark')); rect(L, x0, 212, x1 - x0, 2, hx('#d8dce8')); rect(L, x0, 214, x1 - x0, 1, T('poleDark'));
-      for (let x = x0 + 20; x < x1; x += 40) rect(L, x, 191, 2, 1, hx('#ff8a3a'));
-    };
-    rail(0, 292); rail(484, W);
     // ---- the near-side great tree (trunk 0.4 m, its crown mostly above the picture), the utility pole with its wires
     ellipse(L, 96, GROUND - 1, 18, 3, hx('#0c0a1a'));
     sakuraOn(L, 96, 24, 170, 96, 31, { big: true, trunkW: 18, bottom: GROUND, light: 1, puff: 2.4 });
@@ -436,6 +431,42 @@
     SAKURA = sakuraOn;
     return L;
   }
+  function paintRail() {   // the guardrail along the near kerb (0.8 m, open at the crossing) in its own layer: over the traffic, under the props and fighters
+    const L = layer(W, H);
+    const rail = (x0, x1) => {
+      for (let x = x0; x < x1; x += 40) { rect(L, x, 190, 3, 42, T('poleLight')); rect(L, x, 190, 1, 42, hx('#ffffff')); rect(L, x - 1, 230, 5, 2, T('poleDark')); }
+      rect(L, x0, 190, x1 - x0, 3, hx('#e8ecf4')); rect(L, x0, 193, x1 - x0, 1, T('poleDark')); rect(L, x0, 212, x1 - x0, 2, hx('#d8dce8')); rect(L, x0, 214, x1 - x0, 1, T('poleDark'));
+      for (let x = x0 + 20; x < x1; x += 40) rect(L, x, 191, 2, 1, hx('#ff8a3a'));
+    };
+    rail(0, 292); rail(484, W);
+    return L;
+  }
+  // ---------------------------------------------------------------- traffic: cars at the road's scale (~26 px/m in the far lane), painted once per kind / colour / direction
+  const CAR_COLS = { sedan: ['#c8ccd8', '#1e2a4a', '#8a1a24', '#f0f0f4'], van: ['#f4f4f8', '#3a6ad0', '#d8d0b8'], taxi: ['#e8c020', '#2a8a50'] };
+  const ANIM_IMGS = {};
+  function carImage(kind, col, dir) {
+    const key = 'car:' + kind + ':' + col + ':' + dir;
+    if (ANIM_IMGS[key]) return ANIM_IMGS[key];
+    const body = hx(col), dark = hx(mixc(col, '#000000', 0.35)), light = hx(mixc(col, '#ffffff', 0.35)), GLASS = hx('#1c2c4c'), GLASS2 = hx('#6a8ab0'), TYRE = hx('#101018'), RIM = hx('#8a90a0'), HUB = hx('#d0d4e0'), CHROME = hx('#b8bcc8'), EDGE = hx('#0a0c1e');
+    const W0 = kind === 'van' ? 100 : 120, H0 = kind === 'van' ? 46 : 40, L = layer(W0, H0), G = H0;   // the tyres touch the layer's bottom
+    ellipse(L, W0 / 2, G - 2, W0 / 2 - 2, 3, rgba('#000000', 110));   // the shadow on the road
+    const wy = G - 9, wx = kind === 'van' ? [22, 78] : [28, 92];
+    const bodyTop = kind === 'van' ? 14 : G - 24, cabTop = kind === 'van' ? 4 : G - 34;
+    rect(L, 3, bodyTop + 2, W0 - 6, G - 9 - bodyTop, EDGE); rect(L, 4, bodyTop + 2, W0 - 8, G - 7 - bodyTop - 2, body); rect(L, 6, bodyTop, W0 - 12, 2, body); rect(L, 6, G - 10, W0 - 12, 3, dark);   // the body
+    rect(L, 8, bodyTop + 1, W0 - 16, 1, light); rect(L, 6, bodyTop - 1, W0 - 12, 1, EDGE);
+    rect(L, 1, G - 13, 5, 4, CHROME); rect(L, W0 - 6, G - 13, 5, 4, CHROME); rect(L, 1, G - 14, 5, 1, EDGE); rect(L, W0 - 6, G - 14, 5, 1, EDGE);   // bumpers
+    for (const sx of (kind === 'van' ? [38, 66] : [46, 78])) { rect(L, sx, bodyTop + 3, 1, G - 12 - bodyTop, dark); rect(L, sx - 9, bodyTop + 8, 4, 1, light); }   // door seams, handles
+    const cx0 = kind === 'van' ? 10 : 30, cx1 = kind === 'van' ? W0 - 8 : 94;   // the cabin: a trapezoid (the windscreen slopes), glass, pillars, a reflection
+    for (let y = cabTop - 1; y < bodyTop + 1; y++) { const t = Math.max(0, (y - cabTop) / (bodyTop - cabTop)), sl = kind === 'van' ? 2 : 10, a = Math.round(cx0 + sl * (1 - t)), b = Math.round(cx1 - sl * 0.6 * (1 - t)); rect(L, a - 1, y, b - a + 2, 1, y <= cabTop ? EDGE : body); if (y > cabTop + 1 && y < bodyTop - 1) rect(L, a + 1, y, b - a - 2, 1, GLASS); }
+    for (const px of (kind === 'van' ? [cx0 + 20, cx0 + 48] : [cx0 + 28])) rect(L, px, cabTop + 1, 2, bodyTop - cabTop - 2, body);   // pillars
+    for (let i = 0; i < 7; i++) L.set(cx0 + 5 + i, cabTop + 3 + i, GLASS2); for (let i = 0; i < 4; i++) L.set(cx0 + 12 + i, cabTop + 3 + i, GLASS2);   // the reflection streak
+    if (kind === 'taxi') { rect(L, W0 / 2 - 7, cabTop - 6, 14, 6, EDGE); rect(L, W0 / 2 - 6, cabTop - 5, 12, 4, hx('#ffe060')); rect(L, W0 / 2 - 6, cabTop - 5, 12, 1, hx('#fff6c0')); rect(L, W0 / 2 - 4, cabTop - 3, 8, 1, hx('#1a1a2a')); }   // the roof sign
+    for (const x of wx) { ellipse(L, x, wy, 10, 10, dark); ellipse(L, x, wy, 8, 8, TYRE); ellipse(L, x, wy, 4, 4, RIM); rect(L, x - 1, wy - 1, 2, 2, HUB); }   // wheels in their arches
+    rect(L, W0 - 6, G - 19, 4, 4, hx('#fff4d0')); rect(L, W0 - 5, G - 18, 2, 2, hx('#ffffff')); rect(L, 2, G - 19, 4, 4, hx('#ff3040')); rect(L, 3, G - 18, 2, 2, hx('#ff8090'));   // headlight (+x end) and taillight
+    rect(L, 7, G - 12, 6, 3, hx('#e8e8f0')); rect(L, 8, G - 11, 4, 1, hx('#3a3a5a'));   // the plate
+    const R = dir > 0 ? L : flipX(L); ANIM_IMGS[key] = R; return R;
+  }
+  function animImage(key) { const m = /^car:(\w+):(#[0-9a-f]{6}):(-?1)$/.exec(key); return m ? carImage(m[1], m[2], +m[3]) : null; }
   function paintFront() {   // blossom branches reaching into the top corners, nearer than the fighters
     const L = layer(FRONT_W, H);
     sakuraOn(L, 10, -24, 230, 120, 23, { trunk: false, ang: Math.PI * 0.36, len: 52, light: 1 });
@@ -455,7 +486,7 @@
   const PAINTED = {};
   function paint(id) {
     id = id || TH.id; setTheme(id);
-    if (!PAINTED[id]) { const F = paintFar(); PAINTED[id] = { theme: id, sky: F.sky, clouds: F.clouds, city: F.city, mid: paintMid(), near: paintNear(), front: paintFront(), frontRate: 1.25, midRate: MID_RATE, cloudSpeed: TH.cloudSpeed || 2.5 }; }
+    if (!PAINTED[id]) { const F = paintFar(); PAINTED[id] = { theme: id, sky: F.sky, clouds: F.clouds, city: F.city, mid: paintMid(), near: paintNear(), rail: paintRail(), front: paintFront(), frontRate: 1.25, midRate: MID_RATE, cloudSpeed: TH.cloudSpeed || 2.5 }; }
     return PAINTED[id];
   }
 
@@ -504,12 +535,13 @@
         for (const ax of [40, 120, 200]) out.push({ mid: true, x: cx + ax, y: 17, w: 12, h: 3, col: '#c8d4e8', a: 1 });
         out.push({ mid: true, x: cx, y: 22, w: 1, h: 30, col: '#8a96b0', a: 1 });
         if (c === 0) out.push({ mid: true, x: cx - 3, y: 34, w: 3, h: 8, col: '#ffffff', a: 1 }); } }
-    const cp2 = (s % 9) / 9;   // a car crossing the road behind the fighters every 9 s, alternating direction
-    if (cp2 < 0.5) { const dir = Math.floor(s / 9) & 1 ? 1 : -1, u = cp2 / 0.5, cx = dir > 0 ? -80 + u * (W + 160) : W + 80 - u * (W + 160), CB = TH.day ? '#3a3e6a' : '#141a3a';
-      out.push({ x: cx, y: 206, w: 64, h: 12, col: CB, a: 1 }); out.push({ x: cx + 10, y: 200, w: 40, h: 7, col: CB, a: 1 }); out.push({ x: cx + 13, y: 201, w: 14, h: 5, col: '#9ad8ff', a: 1 }); out.push({ x: cx + 31, y: 201, w: 16, h: 5, col: '#9ad8ff', a: 1 });
-      out.push({ x: cx + 8, y: 217, w: 8, h: 3, col: '#0a0c1e', a: 1 }); out.push({ x: cx + 48, y: 217, w: 8, h: 3, col: '#0a0c1e', a: 1 });
-      out.push({ x: dir > 0 ? cx + 61 : cx, y: 209, w: 3, h: 3, col: '#ffffff', a: 1 }); out.push({ x: dir > 0 ? cx : cx + 61, y: 209, w: 3, h: 3, col: '#ff4040', a: 1 });
-      if (!TH.day) out.push({ x: dir > 0 ? cx + 64 : cx - 26, y: 206, w: 26, h: 8, col: '#fff0c0', a: 0.18 }); }
+    const cp2 = (s % 9) / 9, cn = Math.floor(s / 9);   // a car crossing the road behind the guardrail every 9 s: sedan / kei van / taxi in several colours, alternating direction
+    if (cp2 < 0.5) {
+      const dir = cn & 1 ? 1 : -1, u = cp2 / 0.5, kind = ['sedan', 'van', 'taxi', 'sedan'][cn % 4], cols = CAR_COLS[kind], col = cols[Math.floor(Hh(cn, 71, 21) * cols.length)], im = carImage(kind, col, dir);
+      const span = W + im.w + 40, cx = Math.round(dir > 0 ? -im.w - 20 + u * span : W + 20 - u * span), cy = 216 - im.h;
+      out.push({ img: 'car:' + kind + ':' + col + ':' + dir, x: cx, y: cy, w: im.w, h: im.h, a: 1 });
+      if (!TH.day) out.push({ x: dir > 0 ? cx + im.w : cx - 34, y: 216 - 22, w: 34, h: 10, col: '#fff0c0', a: 0.16 });   // the headlight beam
+    }
     if (TH.rain) for (let k = 0; k < 110; k++) { const spd = 160 + Hh(k, 51, 21) * 120, x = ((Hh(k, 52, 21) * (W + 60) + s * 14) % (W + 60)) - 30, y = ((Hh(k, 53, 21) * 320 + s * spd) % (H + 40)) - 20, front = k % 4 === 0; out.push(front ? { x: Math.round(x), y: Math.round(y), w: 1, h: 9, col: '#bfe0ff', a: 0.5, front: true } : { mid: true, x: Math.round(x * 1.2), y: Math.round(y), w: 1, h: 7, col: '#9ad0e0', a: 0.35 }); }
     const bp = (s % 14) / 14;   // bats (far)
     if (bp < 0.45 && !TH.day) for (let k = 0; k < 3; k++) { const bx = FAR_W + 40 - bp / 0.45 * (FAR_W + 80) + k * 22, by = 26 + k * 7 + Math.sin(s * 6 + k) * 4, flap = Math.floor(s * 10 + k) & 1; out.push({ far: true, x: bx, y: by, w: 2, h: 1, col: '#0a0b1c', a: 1 }); out.push({ far: true, x: bx - 3, y: by - flap, w: 3, h: 1, col: '#0a0b1c', a: 1 }); out.push({ far: true, x: bx + 2, y: by - flap, w: 3, h: 1, col: '#0a0b1c', a: 1 }); }
@@ -696,5 +728,5 @@
 
 
 
-  root.STAGE = { W, H, VW, GROUND, FAR_W, FRONT_W, MID_W, MID_RATE, PXM, MID_PXM, MID_BASE, paint, setTheme, THEMES, THEME_IDS, theme: () => TH, half, anim, breakables, propImage, name: '東京鬼高校・校門前', en: 'TOKYO ONI HIGH — SCHOOL GATE' };
+  root.STAGE = { W, H, VW, GROUND, FAR_W, FRONT_W, MID_W, MID_RATE, PXM, MID_PXM, MID_BASE, paint, setTheme, THEMES, THEME_IDS, theme: () => TH, half, anim, breakables, propImage, animImage, name: '東京鬼高校・校門前', en: 'TOKYO ONI HIGH — SCHOOL GATE' };
 })(typeof window !== 'undefined' ? window : globalThis);

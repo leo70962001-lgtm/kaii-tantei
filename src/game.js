@@ -796,14 +796,14 @@
   // the stage at its painted density (1 world px = 2 canvas px): twice as fine as the old chunky() version, now that the
   // sprites are drawn 1:1 on the 2× canvas (「場景也精細畫」); chunky() is kept for reference
   const cvs = (L) => toCanvas(L.c, L.w, L.h);
-  let SKY = cvs(BG.sky), CLOUDS = cvs(BG.clouds), CITY = cvs(BG.city), NEAR = cvs(BG.near), MID = BG.mid ? cvs(BG.mid) : null, CLOUD_SPEED = BG.cloudSpeed || 2.5;
+  let SKY = cvs(BG.sky), CLOUDS = cvs(BG.clouds), CITY = cvs(BG.city), NEAR = cvs(BG.near), RAIL = BG.rail ? cvs(BG.rail) : null, MID = BG.mid ? cvs(BG.mid) : null, CLOUD_SPEED = BG.cloudSpeed || 2.5;
   let FRONT = BG.front ? toCanvas(BG.front.c, BG.front.w, BG.front.h) : null;   // blossoms in front of the fighters
   const FRONT_RATE = BG.frontRate || 1.25, MID_RATE = BG.midRate || 0.6;
   const STAGES = STAGE.THEME_IDS || ['night'];
   const THUMBS = {};
   function setStage(id) {   // 「選擇場景」: paint (once) and show another theme of the same street
     BG = STAGE.paint(id);
-    SKY = cvs(BG.sky); CLOUDS = cvs(BG.clouds); CITY = cvs(BG.city); NEAR = cvs(BG.near); MID = BG.mid ? cvs(BG.mid) : null; FRONT = BG.front ? cvs(BG.front) : null; CLOUD_SPEED = BG.cloudSpeed || 2.5;
+    SKY = cvs(BG.sky); CLOUDS = cvs(BG.clouds); CITY = cvs(BG.city); NEAR = cvs(BG.near); RAIL = BG.rail ? cvs(BG.rail) : null; MID = BG.mid ? cvs(BG.mid) : null; FRONT = BG.front ? cvs(BG.front) : null; CLOUD_SPEED = BG.cloudSpeed || 2.5;
     sim.stage = id; if (gl && gl.setLayers) gl.setLayers({ sky: SKY, clouds: CLOUDS, city: CITY, mid: MID, near: NEAR, front: FRONT });
   }
   // the clouds drift very slowly (「雲會很緩慢的飄動」): a few far-pixels a second, wrapping — the layer tiles
@@ -814,7 +814,7 @@
     const cur = sim.stage; const bg = STAGE.paint(id);
     const c = document.createElement('canvas'); c.width = 480; c.height = 270; const g = c.getContext('2d');
     const mid = bg.mid ? cvs(bg.mid) : null, near = cvs(bg.near);
-    g.drawImage(cvs(bg.sky), -42, 0); g.drawImage(cvs(bg.clouds), -42, 0); g.drawImage(cvs(bg.city), -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0);
+    g.drawImage(cvs(bg.sky), -42, 0); g.drawImage(cvs(bg.clouds), -42, 0); g.drawImage(cvs(bg.city), -42, 0); if (mid) g.drawImage(mid, -72, 0); g.drawImage(near, -120, 0); if (bg.rail) g.drawImage(cvs(bg.rail), -120, 0);
     const t = document.createElement('canvas'); t.width = 120; t.height = 68; const tg = t.getContext('2d'); tg.imageSmoothingEnabled = true; tg.drawImage(c, 0, 0, 120, 68);
     if (cur) STAGE.paint(cur);   // painting a theme leaves it current; put the shown one back
     return (THUMBS[id] = t);
@@ -977,6 +977,8 @@
 
   // the living background (src/stage.js anim): stage-coordinate rects → screen rects (far items with the far layer's
   // parallax); `front` items go over the fighters, the rest behind them (still in front of the painted layers)
+  const animCanvases = new Map();   // pictures the living background asks for by key (src/stage.js animImage: the cars)
+  function animCanvas(key) { if (!animCanvases.has(key)) { const im = STAGE.animImage(key); animCanvases.set(key, im ? toCanvas(im.c, im.w, im.h) : null); } return animCanvases.get(key); }
   const propCanvases = new Map();
   function propCanvas(b) {
     const key = b.kind + ':' + b.state;
@@ -1003,9 +1005,11 @@
       if (!!it.front !== front) continue;
       const rate = it.far ? 0.35 : it.mid ? MID_RATE : 1, x = Math.round(it.x - camX * rate);
       if (x + it.w < -4 || x > VW + 4) continue;
+      if (it.img) { const cvi = animCanvas(it.img); if (cvi) list.push({ k: 'img', img: cvi, x, y: Math.round(it.y), w: it.w, h: it.h, a: it.a === undefined ? 1 : it.a }); continue; }
       const item = { k: 'rect', x, y: Math.round(it.y), w: it.w, h: it.h, col: it.col, a: it.a, depth: it.far ? 'far' : it.mid ? 'mid' : undefined };
       if (item.depth && depth) depth[item.depth].push(item); else list.push(item);   // far / mid items are drawn behind the near layer
     }
+    if (!front && RAIL) list.push({ k: 'img', img: RAIL, x: Math.round(-camX), y: 0, w: RAIL.width, h: RAIL.height, a: 1 });   // the guardrail over the traffic, under the props and fighters
     if (!front) for (const b of props) {   // the breakable props, painted per state (src/stage.js PROPS)
       const [bx, by, bw, bh] = b.box, x = Math.round(bx - camX);
       if (x + bw < -4 || x > VW + 4) continue;
@@ -1118,7 +1122,7 @@
   }
   function drawTitle() {
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    farStack(lx, -30); if (MID) lx.drawImage(MID, -52, 0); lx.drawImage(NEAR, -120, 0);
+    farStack(lx, -30); if (MID) lx.drawImage(MID, -52, 0); lx.drawImage(NEAR, -120, 0); if (RAIL) lx.drawImage(RAIL, -120, 0);
     lx.fillStyle = 'rgba(5,6,15,0.45)'; lx.fillRect(0, 0, VW, VH);
     lx.fillStyle = 'rgba(5,6,15,0.4)'; lx.fillRect(0, 24, VW, 66); lx.fillStyle = '#ffd24a'; lx.fillRect(VW / 2 - 130, 89, 260, 1); lx.fillStyle = 'rgba(255,210,74,0.35)'; lx.fillRect(VW / 2 - 90, 25, 180, 1);   // the logo band
     badge(292, 142, 182, 104, '#ffd24a', 'rgba(5,6,15,0.72)');   // the menu plate
@@ -1144,7 +1148,7 @@
   function drawSelect() {   // the reference (a mobile fighting game's roster screen): the CG large on the left with the
                             // name plate, the club roster as round icons on the right, the cursor a gold ring
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    farStack(lx, -60); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0);
+    farStack(lx, -60); if (MID) lx.drawImage(MID, -100, 0); lx.drawImage(NEAR, -180, 0); if (RAIL) lx.drawImage(RAIL, -180, 0);
     lx.fillStyle = 'rgba(5,6,15,0.62)'; lx.fillRect(0, 0, VW, VH);
     if (!sim.selCast) { sim.selCast = SLOTS.map((S) => (S.C ? makeFighter(S.C, 0) : null)); }
     const mode = MODES[modeI][0], who = sim.selStep === 0 ? 0 : 1, curSel = sim.sel[who], S0 = SLOTS[curSel];
@@ -1190,7 +1194,7 @@
   }
   function drawStage() {   // 「選擇場景」: the chosen theme fills the screen, the three thumbnails sit over it
     lx.setTransform(RS, 0, 0, RS, 0, 0);
-    farStack(lx, -42); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
+    farStack(lx, -42); if (MID) lx.drawImage(MID, -72, 0); lx.drawImage(NEAR, -120, 0); if (RAIL) lx.drawImage(RAIL, -120, 0); if (FRONT) lx.drawImage(FRONT, -150, 0);
     lx.fillStyle = 'rgba(5,6,15,0.35)'; lx.fillRect(0, 0, VW, VH);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, cv.width, cv.height);
